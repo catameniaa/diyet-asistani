@@ -203,11 +203,13 @@
     }
     const c = byId(id);
     if (!c) return { title: 'Bulunamadı', back: 'hesapla', html: '<div class="card">Hesaplayıcı bulunamadı.</div>' };
+    if (c.view) return c.view(parts.slice(1), q); // kendi arayüzünü çizen hesaplayıcı
     const pf = prefill(c, q);
     let clientLine = '';
     if (q.get('c')) { const cl = DA.state().clients.find((x) => x.id === q.get('c')); if (cl) clientLine = '<div class="note ok">Danışan bilgileri dolduruldu: ' + esc(cl.name) + '</div>'; }
     return {
       title: c.title, tab: 'hesapla', back: q.get('c') ? 'danisan/' + q.get('c') : 'hesapla',
+      ico: c.ico, fav: { h: '#/hesapla/' + c.id, t: c.title, ico: c.ico },
       html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut"></div>',
       mount(app) { const form = DA.$('form[data-calc]', app); DA.$('#calcOut').innerHTML = resultHtml(c, readValues(form, c)); }
     };

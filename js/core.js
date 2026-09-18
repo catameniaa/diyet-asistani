@@ -17,7 +17,37 @@
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
     catch (e) { DA.toast('Kaydedilemedi: tarayıcı depolaması kapalı ya da dolu'); }
   };
-  DA.replaceState = (o) => { state = Object.assign(defaults(), o); DA.save(); };
+  DA.replaceState = (o) => { state = Object.assign(defaults(), o); DA.save(); DA.applyTheme(); };
+
+  /* ---- marka ---- */
+  DA.APP = 'Diyet Asistanı';
+  DA.dyt = () => (state.profile.dyt || '').trim() || 'Dyt. Can Bayramoğlu';
+
+  /* ---- tema: otomatik (sistem) / açık / koyu ---- */
+  DA.THEMES = [['auto', 'Otomatik'], ['light', 'Açık'], ['dark', 'Koyu']];
+  DA.theme = () => state.ui.theme || 'auto';
+  DA.applyTheme = () => {
+    const t = DA.theme(), root = document.documentElement;
+    if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+    const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches);
+    const m = document.querySelector('meta[name=theme-color]');
+    if (m) m.setAttribute('content', dark ? '#15211b' : '#0e7a50');
+  };
+  DA.setTheme = (t) => { state.ui.theme = t; DA.save(); DA.applyTheme(); };
+  DA.applyTheme();
+  if (window.matchMedia) matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (DA.theme() === 'auto') DA.applyTheme(); });
+
+  /* ---- favoriler ve son kullanılanlar ---- */
+  DA.favs = () => (state.ui.fav = state.ui.fav || []);
+  DA.isFav = (h) => DA.favs().some((x) => x.h === h);
+  DA.toggleFav = (h, t, ico) => {
+    const f = DA.favs(), i = f.findIndex((x) => x.h === h);
+    if (i >= 0) f.splice(i, 1); else f.unshift({ h, t, ico: ico || 'calc' });
+    if (f.length > 12) f.length = 12;
+    DA.save();
+    return i < 0;
+  };
+  DA.recents = () => (state.ui.recent = state.ui.recent || []);
 
   /* ---- yardımcılar ---- */
   DA.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -48,7 +78,14 @@
     table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
     save: '<path d="M12 3v12M8 11l4 4 4-4M5 19h14"/>',
     menu: '<path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
-    heart: '<path d="M12 20s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9z"/>'
+    heart: '<path d="M12 20s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9z"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
+    baby: '<circle cx="12" cy="8" r="4"/><path d="M4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/><path d="M10 8h.01M14 8h.01"/>',
+    drop: '<path d="M12 3s6 6.4 6 10.5A6 6 0 0 1 6 13.5C6 9.4 12 3 12 3z"/>',
+    flask: '<path d="M10 3h4M11 3v6L5.5 18A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 1.7-3L13 9V3"/><path d="M8.5 14h7"/>'
   };
   DA.icon = (n) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[n] || '') + '</svg>';
 
@@ -92,7 +129,25 @@
     back.dataset.to = out.back || '';
     DA.$$('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === (out.tab || root)));
     DA.$('#gearBtn').hidden = root === 'daha';
+    DA.$('#searchBtn').hidden = root === 'ara';
+    const fb = DA.$('#favBtn');
+    fb.hidden = !out.fav;
+    if (out.fav) {
+      const on = DA.isFav(out.fav.h);
+      fb.classList.toggle('on', on);
+      fb.setAttribute('aria-pressed', on ? 'true' : 'false');
+      fb.setAttribute('aria-label', on ? 'Favorilerden çıkar' : 'Favorilere ekle');
+      fb.dataset.h = out.fav.h; fb.dataset.t = out.fav.t; fb.dataset.ico = out.fav.ico || 'calc';
+    }
     if (out.mount) out.mount(app);
+    if (parts.length > 1 && out.title && !out.noRecent) {
+      const h = '#/' + parts.map(encodeURIComponent).join('/'), r = DA.recents();
+      const i = r.findIndex((x) => x.h === h);
+      if (i >= 0) r.splice(i, 1);
+      r.unshift({ h, t: out.title, ico: out.ico || 'calc' });
+      if (r.length > 8) r.length = 8;
+      DA.save();
+    }
     window.scrollTo(0, keepScroll ? y : 0);
     DA.$('#top').style.display = out.noHeader ? 'none' : '';
   };

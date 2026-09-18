@@ -1,13 +1,19 @@
 # Diyet Asistanı
 
+Dyt. Can Bayramoğlu
+
 Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdışı çalışan mobil web uygulaması (PWA).
 
-- Hesaplayıcılar: BKİ, enerji (BMH/TEH, makrolar), ideal kilo, bel/kalça ve vücut yağı, kilo kaybı %, sıvı, enteral, GIR
+- 15 hesaplayıcı: BKİ, enerji (BMH/TEH, makrolar), ideal kilo, bel/kalça ve vücut yağı, kilo kaybı %,
+  sıvı, enteral, GIR, gebelik/laktasyon, stres faktörü, çocuk enerji-protein, glisemik indeks ve yük
 - Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
-- Değişim listesi: grup değişimlerinden karbonhidrat/protein/yağ ve enerji, porsiyon örnekleri, menü hedefi ile karşılaştırma
+- Değişim listesi: sayaçlı giriş, hedef enerjiye göre otomatik tam sayı dağıtım (grup kilitlenebilir),
+  porsiyon örnekleri, menü hedefi ile karşılaştırma
 - Karbonhidrat sayımı: İ:KH oranı (500 kuralı), düzeltme faktörü (1800 kuralı), öğün ve düzeltme bolusu
+- Genel arama: besin, hesaplayıcı, referans, danışan ve menülerde tek kutudan
+- Favoriler, son açılanlar ve açık/koyu/otomatik tema
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
-- Danışan takibi (ölçümler, grafik, notlar)
+- Danışan takibi (ölçümler, grafik, notlar) ve 0–19 yaş için otomatik WHO büyüme persentili izlemi
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 

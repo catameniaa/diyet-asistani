@@ -4,6 +4,8 @@
   const { icon, $ } = DA;
   $('#gearBtn').innerHTML = icon('gear');
   $('#backBtn').innerHTML = icon('back');
+  $('#searchBtn').innerHTML = icon('search');
+  $('#favBtn').innerHTML = icon('star');
   const tabs = { ana: ['home', 'Ana Sayfa'], hesapla: ['calc', 'Hesapla'], besin: ['apple', 'Besin'], danisan: ['users', 'Danışan'], referans: ['book', 'Referans'] };
   Object.keys(tabs).forEach((k) => { $('#tabs a[data-tab="' + k + '"]').innerHTML = icon(tabs[k][0]) + '<span>' + tabs[k][1] + '</span>'; });
 

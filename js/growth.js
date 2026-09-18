@@ -79,8 +79,9 @@
     return ['Normal', 'ok'];
   }
 
-  /* Büyüme eğrisi: seçili göstergenin −3/−2/0/+2/+3 SD çizgileri ve çocuğun noktası */
-  function chart(ind, sex, mo, x) {
+  /* Büyüme eğrisi: seçili göstergenin −3/−2/0/+2/+3 SD çizgileri, çocuğun noktası
+     ve (verilirse) önceki ölçümlerden oluşan seyri. trail = [{mo, v}, ...] */
+  function chart(ind, sex, mo, x, trail) {
     const t = tbl(ind, sex), hi = maxMonth(ind, sex);
     const a = mo <= 60 ? 0 : 61, b = mo <= 60 ? Math.min(60, hi) : hi;
     if (mo < a || mo > b) return '';
@@ -98,7 +99,9 @@
         pts[z].push([m, v]);
       }
     });
+    const tr = (trail || []).filter((t) => t.mo >= a && t.mo <= b && isFinite(t.v));
     lo = Math.min(lo, x); up = Math.max(up, x);
+    tr.forEach((t) => { lo = Math.min(lo, t.v); up = Math.max(up, t.v); });
     const pad = (up - lo) * 0.06; lo -= pad; up += pad;
     const px = (m) => L + (m - a) / (b - a) * (W - L - R);
     const py = (v) => T + (up - v) / (up - lo) * (H - T - B);
@@ -115,6 +118,8 @@
         '<text x="' + (L - 5) + '" y="' + co(py(v) + 3) + '" text-anchor="end">' + fmt(v, up - lo > 30 ? 0 : 1) + '</text>').join('') +
       yrs.map((m) => '<text x="' + co(px(m)) + '" y="' + (H - 4) + '" text-anchor="middle">' + label(m) + '</text>').join('') +
       zs.map((z) => '<path class="sd' + (z === 0 ? ' med' : (Math.abs(z) === 3 ? ' s3' : '')) + '" d="' + path(z) + '"/>').join('') +
+      (tr.length > 1 ? '<path class="trail" d="' + tr.map((t, i) => (i ? 'L' : 'M') + co(px(t.mo)) + ' ' + co(py(t.v))).join('') + '"/>' : '') +
+      tr.map((t) => '<circle class="tdot" cx="' + co(px(t.mo)) + '" cy="' + co(py(t.v)) + '" r="3"/>').join('') +
       '<circle class="dot" cx="' + co(px(mo)) + '" cy="' + co(py(x)) + '" r="4.5"/>' +
       '</svg>' +
       '<p class="muted tiny center">Çizgiler yukarıdan aşağıya +3, +2, medyan (0), −2, −3 SD. Nokta = çocuğun ölçümü.</p>';
@@ -168,4 +173,20 @@
       return { rows, badge, html, note, tone: 'info' };
     }
   });
+
+  /* Diğer modüllerin (danışan takibi) kullanması için */
+  DA.growth = {
+    IND: IND,
+    z: (ind, sex, mo, x) => { const p = lms(ind, sex, mo); return p ? zOf(x, p, IND[ind].wt) : NaN; },
+    cat: cat, pct: pctText, chart: chart, maxMonth: maxMonth, lms: lms,
+    /* iki tarih arasındaki tamamlanmış ay sayısı */
+    months: (birthISO, onISO) => {
+      if (!birthISO) return NaN;
+      const b = new Date(birthISO + 'T00:00'), o = new Date((onISO || DA.today()) + 'T00:00');
+      if (isNaN(b) || isNaN(o) || o < b) return NaN;
+      let m = (o.getFullYear() - b.getFullYear()) * 12 + (o.getMonth() - b.getMonth());
+      if (o.getDate() < b.getDate()) m -= 1;
+      return m;
+    }
+  };
 })();

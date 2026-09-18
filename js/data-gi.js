@@ -1,0 +1,62 @@
+/* Glisemik indeks (GI) — glukoz referanslı (glukoz = 100) YAKLAŞIK değerler.
+   Uluslararası GI tablolarında yaygın olarak geçen ortalamalardır. GI; çeşide, olgunluğa,
+   pişirme süresine, öğündeki yağ/protein/lif miktarına ve kişiye göre belirgin değişir —
+   yayımlanmış aralıklar sıklıkla ±10 birim veya daha geniştir.
+   Klinik kullanımda kendi kaynağınızın/ders notunuzun değerini girin; hesaplayıcıda GI elle değiştirilebilir.
+   Sıra: [ad, GI, besin veritabanı kimliği (varsa)] */
+(function () {
+  'use strict';
+  DA.data.gi = [
+    ['Glukoz (referans)', 100, null],
+    ['Beyaz ekmek', 75, 'beyaz-ekmek'],
+    ['Tam buğday ekmeği', 74, 'tam-bugday-ekmegi'],
+    ['Çavdar ekmeği', 58, 'cavdar-ekmegi'],
+    ['Simit', 70, 'simit'],
+    ['Mısır gevreği', 81, 'misir-gevregi'],
+    ['Yulaf ezmesi', 55, 'yulaf-ezmesi-kuru'],
+    ['Beyaz pirinç (haşlanmış)', 73, 'pirinc-haslanmis-sade'],
+    ['Pirinç pilavı', 73, 'pirinc-pilavi-sadeyagli'],
+    ['Bulgur (haşlanmış)', 48, 'bulgur-haslanmis'],
+    ['Makarna (al dente)', 49, 'makarna-haslanmis'],
+    ['Patates (haşlanmış)', 78, 'patates-haslanmis'],
+    ['Patates kızartması', 63, 'patates-kizartmasi'],
+    ['Bisküvi (sade)', 70, 'biskuvi-sade'],
+    ['Kuru fasulye', 24, 'kuru-fasulye-haslanmis'],
+    ['Nohut', 28, 'nohut-haslanmis'],
+    ['Mercimek', 32, 'mercimek-haslanmis'],
+    ['Bezelye (haşlanmış)', 51, 'bezelye-haslanmis'],
+    ['Havuç (haşlanmış)', 39, 'havuc'],
+    ['Süt (tam yağlı)', 39, 'sut-tam-yagli'],
+    ['Süt (yağsız)', 37, 'sut-yagsiz'],
+    ['Yoğurt (sade)', 41, 'yogurt-tam-yagli'],
+    ['Dondurma', 51, 'dondurma-sutlu'],
+    ['Elma', 36, 'elma'],
+    ['Muz', 51, 'muz'],
+    ['Portakal', 43, 'portakal'],
+    ['Üzüm', 59, 'uzum'],
+    ['Karpuz', 76, 'karpuz'],
+    ['Kavun', 65, 'kavun'],
+    ['Şeftali', 42, 'seftali'],
+    ['Armut', 38, 'armut'],
+    ['Kayısı (taze)', 34, 'kayisi-taze'],
+    ['Kayısı (kuru)', 30, 'kayisi-kuru'],
+    ['İncir (kuru)', 61, 'incir-kuru'],
+    ['Hurma', 42, 'hurma'],
+    ['Kuru üzüm', 64, 'kuru-uzum'],
+    ['Kiraz', 22, 'kiraz'],
+    ['Çilek', 41, 'cilek'],
+    ['Kivi', 50, 'kivi'],
+    ['Portakal suyu', 50, 'portakal-suyu-taze'],
+    ['Kola', 63, 'kola'],
+    ['Bal', 61, 'bal'],
+    ['Toz şeker (sakaroz)', 65, 'toz-seker'],
+    ['Sütlü çikolata', 40, 'cikolata-sutlu'],
+    ['Bitter çikolata', 23, 'bitter-cikolata-70-85'],
+    ['Sütlaç', 60, 'sutlac'],
+    ['Mercimek çorbası', 44, 'mercimek-corbasi'],
+    ['Lahmacun', 70, 'lahmacun'],
+    ['Ceviz', 15, 'ceviz'],
+    ['Badem', 15, 'badem'],
+    ['Yer fıstığı', 14, 'yer-fistigi']
+  ];
+})();

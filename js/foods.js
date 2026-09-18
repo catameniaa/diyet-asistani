@@ -34,7 +34,7 @@
   DA.live.foodSearch = (el) => { query = el.value; DA.$('#foodList').innerHTML = foodListHtml(); };
   DA.actions.foodCat = (el) => { cat = el.dataset.c; DA.render(true); };
 
-  DA.views.besin = () => {
+  DA.views.besin = (parts, q) => {
     const cats = ['Tümü'].concat(DA.data.foodCats);
     if (DA.state().customFoods.length) cats.push('Eklediklerim');
     return {
@@ -44,7 +44,11 @@
         '<div class="chips mt-s">' + cats.map((c) => '<button class="chip' + (c === cat ? ' on' : '') + '" data-act="foodCat" data-c="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' +
         '<div id="foodList">' + foodListHtml() + '</div>' +
         '<p class="muted tiny center">Değerler 100 g için yaklaşık ortalamalardır (USDA ve yaygın Türk mutfağı değerleri). Ödev/klinik çalışmada TürKomp ile doğrulayın.</p>' +
-        '<button class="fab" data-act="foodNew" aria-label="Besin ekle">' + DA.icon('plus') + '</button>'
+        '<button class="fab" data-act="foodNew" aria-label="Besin ekle">' + DA.icon('plus') + '</button>',
+      mount() {
+        const id = q && q.get('f');
+        if (id && getFood(id)) DA.actions.foodDetail({ dataset: { id } });
+      }
     };
   };
 
@@ -132,6 +136,7 @@
       '<div class="sticky-tot">' + bar('Enerji', t.kcal, tg.kcal, 'kcal') +
       '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + '</b><small>protein g</small></div><div><b>' + fmt(t.c, 0) + '</b><small>karb. g</small></div><div><b>' + fmt(t.f, 0) + '</b><small>yağ g</small></div><div><b>' + fmt(t.fib, 0) + '</b><small>lif g</small></div></div>' +
       (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
+      exchangeCard(t) +
       MEALS.map((k) => {
         const list = m.meals[k] || [], mt = mealTotals(list);
         return '<div class="card"><div class="row between"><h2>' + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
@@ -150,6 +155,33 @@
       '<button class="btn danger block mt" data-act="menuDelete" data-m="' + m.id + '">Menüyü sil</button>';
     return { title: m.title, tab: 'besin', back: 'menu', html };
   };
+  /* Menünün makrolarının yaklaşık değişim karşılığı */
+  function exchangeCard(t) {
+    if (!DA.exchange || !(t.kcal > 0)) return '';
+    return '<details class="acc"><summary>Değişim listesi karşılığı (yaklaşık)</summary><div class="body">' +
+      '<div class="macros"><div><b>' + fmt(t.c / 15, 1) + '</b><small>KH değişimi</small></div>' +
+      '<div><b>' + fmt(t.p / 6, 1) + '</b><small>et eşdeğeri</small></div>' +
+      '<div><b>' + fmt(t.f / 5, 1) + '</b><small>yağ eşdeğeri</small></div></div>' +
+      '<p class="muted tiny" style="margin-bottom:0">Kaba karşılıktır: karbonhidrat 15 g, protein 6 g, yağ 5 g başına 1 değişim sayılır. Gruplar birbirine protein ve yağ da taşıdığı için gerçek dağılım farklı olur — planı <a href="#/hesapla/degisim">Değişim listesi</a> ile kurun.</p></div></details>';
+  }
+
+  /* Değişim planından menü iskeleti — hedefi plandan alır, dağılımı nota yazar */
+  DA.menuFromExchange = (counts, groups, tot) => {
+    if (!tot || !tot.n) return DA.toast('Önce değişim planı oluştur');
+    const lines = groups.filter((g) => counts[g.k]).map((g) => '• ' + g.l + ': ' + fmt(counts[g.k], 1) + ' değişim');
+    const m = {
+      id: DA.uid(), title: 'Değişim planı menüsü', date: DA.today(), client: '',
+      note: 'Değişim dağılımı:\n' + lines.join('\n') +
+        '\n\nHedef: ' + fmt(tot.kcal, 0) + ' kcal · KH ' + fmt(tot.c, 0) + ' g · Protein ' + fmt(tot.p, 0) + ' g · Yağ ' + fmt(tot.f, 0) + ' g',
+      target: { kcal: Math.round(tot.kcal), p: Math.round(tot.p), c: Math.round(tot.c), f: Math.round(tot.f) },
+      meals: {}
+    };
+    MEALS.forEach((k) => { m.meals[k] = []; });
+    DA.state().menus.unshift(m); DA.save();
+    DA.toast('Menü oluşturuldu — öğünlere besin ekle');
+    DA.go('menu/' + m.id);
+  };
+
   DA.live.menuMeta = (el) => {
     const m = DA.state().menus.find((x) => x.id === el.dataset.m); if (!m) return;
     m[el.dataset.f] = el.value; DA.save();
@@ -210,7 +242,7 @@
 
   /* ---------- Yazdır / paylaş ---------- */
   function menuText(m) {
-    const t = menuTotals(m); let s = m.title + '\n' + DA.fdate(m.date) + (m.client ? ' — ' + m.client : '') + '\n';
+    const t = menuTotals(m); let s = m.title + '\n' + DA.fdate(m.date) + (m.client ? ' — ' + m.client : '') + '\n' + DA.dyt() + '\n';
     MEALS.forEach((k) => {
       const l = m.meals[k] || []; if (!l.length) return;
       s += '\n' + k + ' (' + fmt(mealTotals(l).kcal, 0) + ' kcal)\n';
@@ -236,10 +268,11 @@
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
           '<div class="printdoc"><h2>' + esc(m.title) + '</h2><div style="color:#555;font-size:13px">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
+          '<div class="by">' + esc(DA.dyt()) + '</div>' +
           '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +
           (m.note ? '<div style="margin-top:10px"><b>Notlar:</b><br>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +
-          '<div class="ft">Besin değerleri yaklaşık ortalamalardır. Bu liste bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+          '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — besin değerleri yaklaşık ortalamalardır. Bu liste bireysel tıbbi tavsiye yerine geçmez.</div></div>'
       };
     }
     if (parts[0] === 'staj') return DA.views._printJournal(parts.slice(1));
