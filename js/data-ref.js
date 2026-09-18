@@ -50,15 +50,40 @@
         ['Kalsiyum (mg)', '1000', '1000'], ['Demir (mg)', '8', '18'], ['Çinko (mg)', '11', '8'], ['Magnezyum (mg)', '400–420', '310–320'],
         ['Potasyum (mg, AI)', '3400', '2600'], ['İyot (µg)', '150', '150'], ['Selenyum (µg)', '55', '55']
       ]) },
-    { id: 'dm', t: 'Diyabet', tags: 'diyabet şeker karbonhidrat sayımı hipoglisemi', h:
+    { id: 'dm', t: 'Diyabet: tanı ve glisemik hedefler (TEMD)', tags: 'diyabet şeker tanı hba1c ogtt hedef temd hipoglisemi', h:
+      '<p class="muted small">TEMD kılavuzu doğrultusunda. Hedefler bireyselleştirilir; hasta kararı için güncel kılavuza bakın.</p>' +
+      '<div class="sect">Tanı eşikleri</div>' +
+      tbl(['Ölçüm', 'Diyabet tanısı'], [
+        ['Açlık kan şekeri (AKŞ)', '≥126 mg/dL (en az 8 saat açlık)'],
+        ['OGTT 2. saat (75 g glukoz)', '≥200 mg/dL'],
+        ['HbA1c', '≥%6,5'],
+        ['Rastlantısal kan şekeri', '≥200 mg/dL + diyabet semptomları (poliüri, polidipsi, kilo kaybı)']
+      ]) +
+      '<div class="sect">Glisemik hedefler (yetişkin, gebe olmayan)</div>' +
+      tbl(['Ölçüm', 'Hedef'], [
+        ['Açlık / öğün öncesi', '80–130 mg/dL'],
+        ['Tokluk (öğün sonrası 2. saat)', '<180 mg/dL'],
+        ['HbA1c', '<%7,0']
+      ]) +
       ul([
-        'Tanı: AKŞ ≥126, OGTT 2. saat ≥200, HbA1c ≥%6,5 (mg/dL).',
-        'Genel HbA1c hedefi çoğu erişkinde <%7 (bireyselleştirilir).',
-        'Diyet: tek bir “diyabet diyeti” yoktur; bireyselleştirilmiş, karbonhidrat miktarı/kalitesi tutarlı, lif yüksek, eklenmiş şeker düşük plan.',
-        'Karbonhidrat sayımı: öğünlerde karbonhidrat gramı takibi; insülin/karbonhidrat oranı hekimle belirlenir.',
+        'HbA1c bireyselleştirmesi: genç ve yeni tanılılarda <%6,5; yaşlı ya da komplikasyonlu bireylerde <%8,0.',
         'Hipoglisemi (<70 mg/dL): 15 g hızlı karbonhidrat, 15 dk sonra tekrar ölç (15-15 kuralı).',
-        'Kilo verme (fazla kiloluda) %5–10 hedefi glisemik kontrolü belirgin iyileştirir.'
+        'Prediyabet: AKŞ 100–125 mg/dL (bozulmuş açlık glukozu), OGTT 2. saat 140–199 mg/dL, HbA1c %5,7–6,4.'
       ]) },
+    { id: 'dmtbt', t: 'Diyabet: tıbbi beslenme tedavisi ve karbonhidrat sayımı', tags: 'diyabet karbonhidrat sayımı insülin 500 1800 değişim tbt beslenme', h:
+      ul([
+        'Tek bir “diyabet diyeti” yoktur; bireyselleştirilmiş, karbonhidrat miktarı ve kalitesi tutarlı, lif yüksek, eklenmiş şeker düşük plan uygulanır.',
+        'Kilo verme (fazla kiloluda) %5–10 hedefi glisemik kontrolü belirgin iyileştirir.',
+        '1 karbonhidrat değişimi = 15 g karbonhidrat. Bazı merkezlerde 10 g kullanılabilir; standart 15 g’dır.',
+        'Öğünlere karbonhidrat dağıtımı ve değişim sayıları için <a href="#/hesapla/degisim">Değişim listesi</a> hesaplayıcısını kullanın.'
+      ]) +
+      '<div class="sect">İnsülin hesapları</div>' +
+      tbl(['Kural', 'Formül', 'Anlamı'], [
+        ['500 kuralı (İ:KH oranı)', '500 ÷ günlük toplam insülin dozu', '1 ünite hızlı etkili insülinin karşıladığı karbonhidrat (g)'],
+        ['1800 kuralı (düzeltme faktörü)', '1800 ÷ günlük toplam insülin dozu', '1 ünite insülinin kan şekerini düşürdüğü miktar (mg/dL)']
+      ]) +
+      '<p class="muted small">Örnek: günde toplam 40 ünite insülin kullanan bir hastada İ:KH = 500/40 = 12,5 (≈12 g karbonhidrat için 1 ünite); düzeltme faktörü = 1800/40 = 45 mg/dL.</p>' +
+      '<div class="note warn">İ:KH oranı ve düzeltme faktörü hastaya özeldir, hekim tarafından belirlenir. Hesaplayıcı yalnızca eğitim amaçlıdır. <a href="#/hesapla/khsayim">Karbonhidrat sayımı hesaplayıcısı</a></div>' },
     { id: 'ht', t: 'Hipertansiyon ve dislipidemi', tags: 'tansiyon dash kolesterol trigliserit', h:
       ul([
         'DASH: sebze, meyve, tam tahıl, az yağlı süt ürünleri, kuruyemiş; doymuş yağ ve sodyum düşük.',
@@ -103,6 +128,32 @@
         'Doğal protein (süt, et, yumurta, baklagil) miktarı bireysel Phe toleransına göre belirlenir; düşük proteinli özel ürünler kullanılır.',
         'Aspartam Phe içerdiği için etiketlerde “fenilalanin kaynağı içerir” uyarısına dikkat edilir.'
       ]) },
+    { id: 'tuber', t: 'TÜBER: makro dağılım, lif, tuz ve su', tags: 'tüber türkiye beslenme rehberi makro lif posa tuz su enerji', h:
+      '<p class="muted small">Türkiye Beslenme Rehberi (TÜBER) doğrultusunda, sağlıklı yetişkin için.</p>' +
+      '<div class="sect">Makro besin ögeleri (enerjinin yüzdesi)</div>' +
+      tbl(['Besin ögesi', 'Öneri'], [
+        ['Karbonhidrat', '%45–60 — kompleks karbonhidrat ve tam tahıl tercih edilir; rafine şeker <%10'],
+        ['Protein', '%10–20 — böbrek fonksiyonları normalse ortalama 0,8–1,0 g/kg/gün'],
+        ['Yağ', '%20–35'],
+        ['— Doymuş yağ', '<%10'],
+        ['— Çoklu doymamış yağ', '%6–10'],
+        ['— Tekli doymamış yağ', '%10–15']
+      ]) +
+      '<div class="sect">Lif, tuz ve su</div>' +
+      tbl(['Besin ögesi', 'Öneri'], [
+        ['Lif (posa)', '25–30 g/gün ya da her 1000 kcal için 14 g'],
+        ['Tuz', '<5 g/gün (≈1 silme tatlı kaşığı; sodyum <2000 mg). Diyabetli hipertansiflerde daha da kısıtlanabilir.'],
+        ['Su', 'Kadın en az 2,0 L/gün, erkek en az 2,5 L/gün (ya da 30–35 ml/kg/gün)']
+      ]) },
+    { id: 'tuberenerji', t: 'TÜBER: yaşa ve cinsiyete göre enerji ve sıvı', tags: 'tüber enerji ihtiyacı sıvı yaş cinsiyet sedanter', h:
+      '<p class="muted small">Sedanter / hafif aktif yetişkin için yaklaşık değerler. Bireysel hesap için enerji hesaplayıcısını kullanın.</p>' +
+      tbl(['Yaş', 'Cinsiyet', 'Enerji (kcal/gün)', 'Sıvı (L/gün)'], [
+        ['19–30', 'Erkek', '~2400–2600', '2,5'], ['19–30', 'Kadın', '~1800–2000', '2,0'],
+        ['31–50', 'Erkek', '~2300–2500', '2,5'], ['31–50', 'Kadın', '~1800–2000', '2,0'],
+        ['51–70', 'Erkek', '~2100–2300', '2,5'], ['51–70', 'Kadın', '~1700–1900', '2,0'],
+        ['70+', 'Erkek', '~1900–2100', '2,5'], ['70+', 'Kadın', '~1500–1700', '2,0']
+      ]) +
+      '<p class="muted small">Değerler ortalamadır; boy, kilo, vücut kompozisyonu ve fiziksel aktivite düzeyine göre değişir.</p>' },
     { id: 'form', t: 'Sık kullanılan formüller', tags: 'formül bki bmh harris mifflin ideal kilo', h:
       ul([
         'BKİ = kg / (boy m)².',

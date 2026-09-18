@@ -3,16 +3,17 @@
   'use strict';
   const { esc, fmt } = DA;
 
-  /* Bir değişim başına: c = karbonhidrat (g), p = protein (g), f = yağ (g) */
+  /* Bir değişim başına: c = karbonhidrat (g), p = protein (g), f = yağ (g), ex = porsiyon örnekleri.
+     Grup değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır. */
   const GROUPS = [
-    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6 },
-    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3 },
-    { k: 'et', l: 'Et', c: 0, p: 6, f: 5 },
-    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0 },
-    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0 },
-    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0 },
-    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5 },
-    { k: 'tohum', l: 'Yağlı tohum', c: 0, p: 2, f: 5 }
+    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
+    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
+    { k: 'et', l: 'Et', c: 0, p: 6, f: 5, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
+    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates' },
+    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, ex: '4 yemek kaşığı pişmiş sebze yemeği; 1 kase çiğ salata' },
+    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, ex: '1 küçük boy elma; 1 küçük boy muz; 1 orta boy portakal; 12–15 adet üzüm' },
+    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, ex: '1 tatlı kaşığı zeytinyağı; 5 adet zeytin' },
+    { k: 'tohum', l: 'Yağlı tohum', c: 0, p: 2, f: 5, ex: '2 tam ceviz; 5–6 adet badem' }
   ];
   const kcalOf = (g) => g.c * 4 + g.p * 4 + g.f * 9;
 
@@ -56,6 +57,14 @@
       '<p class="muted tiny">Hedef, enerji hesaplayıcısındaki “Menü hedefi olarak kaydet” ile güncellenir.</p>';
   }
 
+  /* Porsiyon örnekleri — her grupta 1 değişimin karşılığı */
+  function portions() {
+    return '<details class="acc mt"><summary>Porsiyon örnekleri (1 değişim)</summary><div class="body">' +
+      '<table class="t"><tbody>' + GROUPS.map((g) =>
+        '<tr><td><b>' + esc(g.l) + '</b></td><td>' + esc(g.ex) + '</td></tr>').join('') +
+      '</tbody></table><p class="muted tiny">Porsiyonlar yaklaşıktır; besinin cinsine ve pişirme yöntemine göre değişir.</p></div></details>';
+  }
+
   let lastText = '';
   DA.actions.shareExchange = () => {
     if (!lastText) return DA.toast('Önce değişim sayılarını gir');
@@ -70,7 +79,7 @@
       const t = totals(v);
       if (!t.n) {
         return { rows: [{ l: 'Toplam', v: '0 kcal', s: 'Gruplara değişim sayısı gir' }],
-          html: '<p class="muted small">Her satıra o gruptan kaç değişim verileceğini yaz. Yarım değişim için 0,5 yazabilirsin.</p>',
+          html: '<p class="muted small">Her satıra o gruptan kaç değişim verileceğini yaz. Yarım değişim için 0,5 yazabilirsin.</p>' + portions(),
           note: 'Değerler derste kullanılan değişim listesine göredir. Vitamin ve mineral içermez.', tone: 'info' };
       }
       const e = t.kcal || 1;
@@ -85,7 +94,7 @@
         GROUPS.filter((g) => isFinite(v[g.k]) && v[g.k]).map((g) => '• ' + g.l + ': ' + fmt(v[g.k], 1) + ' değişim').join('\n') +
         '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g';
 
-      return { rows, html: breakdown(v, t) + vsTarget(t),
+      return { rows, html: breakdown(v, t) + vsTarget(t) + portions(),
         note: 'Değerler derste kullanılan değişim listesine göredir; kaynaklar arasında küçük farklar olabilir. Vitamin ve mineral içermez.', tone: 'info',
         actions: [{ label: 'Planı paylaş / kopyala', act: 'shareExchange' }] };
     }
