@@ -13,7 +13,7 @@ Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar �
 ## Yayınlama (GitHub Pages)
 
 Repo → Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `(root)`.
-Adres: `https://<kullanici-adi>.github.io/<repo-adi>/`
+Adres: https://catameniaa.github.io/diyet-asistani/
 
 iPhone'da Safari ile aç → Paylaş → Ana Ekrana Ekle.
 
