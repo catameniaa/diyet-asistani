@@ -152,6 +152,18 @@ table.t th{color:var(--mute);font-weight:650;font-size:12.5px}
 .empty{text-align:center;color:var(--mute);padding:28px 12px}
 .empty svg.i{width:44px;height:44px;opacity:.5;margin-bottom:8px}
 
+/* büyüme eğrisi (WHO persentil) */
+.gchart{margin:6px 0 2px}
+.gchart .sd{fill:none;stroke:var(--mute);stroke-width:1.1;opacity:.55}
+.gchart .sd.s3{stroke-dasharray:3 3;opacity:.4}
+.gchart .sd.med{stroke:var(--pri);stroke-width:2;opacity:1}
+.gchart .dot{fill:var(--bad);stroke:var(--card);stroke-width:2}
+
+/* değişim listesi tablosu */
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0}
+table.t th.n,table.t td.n{text-align:right;white-space:nowrap}
+table.xt tfoot th{color:var(--ink);font-size:13.5px;border-bottom:0;border-top:1px solid var(--line)}
+
 /* print view */
 .printdoc{background:#fff;color:#000;padding:18px;border-radius:var(--r);border:1px solid var(--line)}
 .printdoc h2{font-size:20px;margin-bottom:2px}

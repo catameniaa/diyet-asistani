@@ -3,6 +3,8 @@
 Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdışı çalışan mobil web uygulaması (PWA).
 
 - Hesaplayıcılar: BKİ, enerji (BMH/TEH, makrolar), ideal kilo, bel/kalça ve vücut yağı, kilo kaybı %, sıvı, enteral, GIR
+- Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
+- Değişim listesi: grup değişimlerinden karbonhidrat/protein/yağ ve enerji, menü hedefi ile karşılaştırma
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
 - Danışan takibi (ölçümler, grafik, notlar)
 - Klinik hızlı referans, çalışma kartları (aralıklı tekrar), staj günlüğü
@@ -19,3 +21,7 @@ iPhone'da Safari ile aç → Paylaş → Ana Ekrana Ekle.
 
 Derleme adımı yoktur; saf HTML/CSS/JS.
 Besin değerleri yaklaşık ortalamalardır; klinik çalışmada TürKomp ile doğrulayın.
+
+Çocuk persentilleri WHO LMS katsayıları ile hesaplanır: 0–60 ay WHO Child Growth Standards (2006),
+61–228 ay WHO Growth Reference (2007). Ağırlık/yaş 0–120 ay, boy/yaş ve BKİ/yaş 0–228 aydır.
+Değişim listesi değerleri derste kullanılan listeye göredir; vitamin ve mineral içermez.

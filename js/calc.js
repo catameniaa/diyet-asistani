@@ -172,6 +172,7 @@
     if (r.err) return '<div class="note bad">' + esc(r.err) + '</div>';
     let h = (r.badge ? '<div class="mb"><span class="badge ' + r.badge[1] + '">' + esc(r.badge[0]) + '</span></div>' : '');
     h += r.rows.map((x) => '<div class="res' + (x.hl ? ' hl' : '') + '"><span class="l">' + esc(x.l) + '</span><span class="v">' + esc(x.v) + (x.s ? '<span class="sub">' + esc(x.s) + '</span>' : '') + '</span></div>').join('');
+    if (r.html) h += r.html; // hesaplayıcının kendi ürettiği blok (tablo, grafik)
     if (r.note) h += '<div class="note ' + (r.tone === 'info' ? '' : r.tone) + '">' + esc(r.note) + '</div>';
     if (r.actions) h += r.actions.map((a) => '<button class="btn sec block mt-s" data-act="' + a.act + '">' + esc(a.label) + '</button>').join('');
     return h;
