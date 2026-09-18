@@ -1,0 +1,58 @@
+/* Başlangıç çalışma kartları [kategori, soru, cevap]. Kendi kartlarınızı uygulamadan ekleyebilirsiniz.
+   Kılavuzlar zamanla değişir; sınav/klinik kullanımdan önce güncel kaynağınızı kontrol edin. */
+(function () {
+  'use strict';
+  const EM = 'Enerji & Makro', VM = 'Vitamin & Mineral', AN = 'Antropometri', KL = 'Klinik';
+  const rows = [
+    [EM, '1 g karbonhidrat, protein, yağ ve alkol kaç kcal enerji verir?', 'Karbonhidrat 4, protein 4, yağ 9, alkol 7 kcal/g.'],
+    [EM, 'Diyet lifinin enerji katkısı yaklaşık ne kadar kabul edilir?', 'Yaklaşık 2 kcal/g (kolonda fermente olan kısmı).'],
+    [EM, 'Sağlıklı yetişkinde protein RDA değeri nedir?', '0,8 g/kg/gün.'],
+    [EM, 'Yetişkin için AMDR (kabul edilebilir makro besin dağılım aralığı) nedir?', 'Karbonhidrat %45–65, protein %10–35, yağ %20–35.'],
+    [EM, 'Esansiyel yağ asitleri hangileridir?', 'Linoleik asit (omega-6) ve alfa-linolenik asit (omega-3).'],
+    [EM, 'Doymuş yağ için genel öneri nedir?', 'Toplam enerjinin %10’undan az (WHO); kardiyovasküler risk varsa daha düşük (AHA yaklaşık %5–6).'],
+    [EM, 'Eklenmiş (serbest) şeker için WHO önerisi nedir?', 'Toplam enerjinin %10’undan az; %5’in altı ek fayda sağlar.'],
+    [EM, 'WHO’nun günlük tuz önerisi nedir?', 'Günde 5 g’dan az tuz (yaklaşık 2 g sodyum).'],
+    [EM, 'Günlük lif önerisi yaklaşık ne kadardır?', 'Yaklaşık 25–30 g/gün (yaklaşık 14 g/1000 kcal).'],
+    [EM, 'Glisemik indeks (Gİ) nedir? Düşük, orta, yüksek sınırları?', '50 g karbonhidrat içeren besinin kan glukoz yanıtının referansa oranı. Düşük ≤55, orta 56–69, yüksek ≥70.'],
+    [EM, 'Besinlerin termik etkisi (TEF) yaklaşık kaçtır?', 'Karma diyette yaklaşık %10. Protein %20–30, karbonhidrat %5–10, yağ %0–3.'],
+    [EM, 'Tahıllar ve baklagillerin sınırlayıcı amino asitleri nelerdir?', 'Tahıllar: lizin. Baklagiller: metiyonin (sistein).'],
+    [EM, 'Referans (en yüksek kaliteli) protein kaynağı olarak hangisi kabul edilir?', 'Yumurta proteini (PDCAAS 1,0; süt ve soya izolatı da 1,0).'],
+    [VM, 'Yağda çözünen vitaminler hangileridir?', 'A, D, E ve K.'],
+    [VM, 'B12 eksikliği hangi anemiye yol açar?', 'Megaloblastik (makrositik) anemi; intrinsik faktör eksikliğinde pernisiyöz anemi.'],
+    [VM, 'Gebelikte folat neden önemlidir? Önerilen doz?', 'Nöral tüp defektlerini önler. Gebelik öncesi ve ilk trimesterde 400 µg/gün (folik asit).'],
+    [VM, 'C vitamini eksikliği hastalığı nedir?', 'Skorbüt (diş eti kanaması, perifoliküler kanamalar, yara iyileşmesinde gecikme).'],
+    [VM, 'D vitamini eksikliğinde çocuklarda ve yetişkinlerde görülen hastalık?', 'Çocuklarda raşitizm, yetişkinlerde osteomalazi.'],
+    [VM, 'Pellagra hangi vitamin eksikliğidir? Belirtileri?', 'Niasin (B3). Dermatit, diyare, demans (ve tedavisiz ölüm) — “4D”.'],
+    [VM, 'Tiamin (B1) eksikliğinde görülen tablolar?', 'Beriberi; alkolizmde Wernicke–Korsakoff sendromu.'],
+    [VM, 'Demir emilimini artıran ve azaltan faktörler?', 'Artıran: C vitamini, hem demir, et-balık-tavuk faktörü. Azaltan: fitat, polifenoller (çay, kahve), kalsiyum.'],
+    [VM, 'Hem ve non-hem demirin yaklaşık emilim oranları?', 'Hem demir yaklaşık %15–35, non-hem demir yaklaşık %2–20.'],
+    [VM, 'İyot eksikliğinin sonuçları?', 'Guatr, hipotiroidi; gebelikte fetal gelişim bozukluğu (kretinizm).'],
+    [VM, 'Yetişkinde (19–50 yaş) kalsiyum RDA değeri?', '1000 mg/gün (kadınlarda 51+ ve erkeklerde 71+ için 1200 mg).'],
+    [VM, 'K vitamini ve varfarin ilişkisi nedir?', 'Varfarin K vitaminine bağımlı pıhtılaşma faktörlerini baskılar; K vitamini alımı düzenli ve tutarlı olmalıdır.'],
+    [VM, 'Çinko eksikliğinin belirtileri?', 'Büyüme geriliği, yara iyileşmesinde gecikme, tat/koku kaybı, bağışıklık zayıflığı; akrodermatit enteropatika.'],
+    [AN, 'WHO’ya göre yetişkin BKİ sınıflaması nasıldır?', '<18,5 zayıf; 18,5–24,9 normal; 25–29,9 fazla kilolu; ≥30 obez (30–34,9 I, 35–39,9 II, ≥40 III).'],
+    [AN, 'Mifflin–St Jeor bazal metabolizma hızı formülü?', 'Erkek: 10×kg + 6,25×cm − 5×yaş + 5. Kadın: 10×kg + 6,25×cm − 5×yaş − 161.'],
+    [AN, 'Toplam enerji harcaması (TEH) nasıl hesaplanır?', 'BMH × fiziksel aktivite düzeyi (PAL): 1,2 hareketsiz; 1,375 hafif; 1,55 orta; 1,725 aktif; 1,9 çok aktif.'],
+    [AN, 'Bel çevresi risk sınırları (Avrupa, IDF)?', 'Erkek ≥94 cm, kadın ≥80 cm risk; erkek ≥102 cm, kadın ≥88 cm yüksek risk.'],
+    [AN, 'Kilo kaybı yüzdesi nasıl hesaplanır ve ne zaman ciddidir?', '(Olağan kilo − şimdiki kilo) / olağan kilo × 100. Örn. 1 haftada >%2, 1 ayda >%5, 3 ayda >%7,5, 6 ayda >%10 ciddi.'],
+    [AN, 'Düzeltilmiş vücut ağırlığı (adjusted BW) formülü?', 'İdeal kilo + 0,25 × (gerçek kilo − ideal kilo); obez hastalarda enerji/protein hesabında kullanılır (bazı merkezlerde 0,25–0,4).'],
+    [AN, 'Devine ideal kilo formülü?', 'Erkek: 50 kg + 60 inç üzerindeki her inç için 2,3 kg. Kadın: 45,5 kg + aynı şekilde 2,3 kg (1 inç = 2,54 cm).'],
+    [KL, 'Diyabet tanı ölçütleri nelerdir?', 'Açlık glukoz ≥126 mg/dL; OGTT 2. saat ≥200; HbA1c ≥%6,5; semptom + rastgele glukoz ≥200 mg/dL.'],
+    [KL, 'Prediyabet ölçütleri?', 'Açlık glukoz 100–125 mg/dL; OGTT 2. saat 140–199 mg/dL; HbA1c %5,7–6,4.'],
+    [KL, 'Metabolik sendrom (NCEP ATP III) ölçütleri?', '5 ölçütten en az 3: bel (E >102, K >88 cm), TG ≥150, HDL (E <40, K <50), tansiyon ≥130/85, açlık glukoz ≥100 mg/dL.'],
+    [KL, 'DASH diyetinin özeti?', 'Sebze, meyve, tam tahıl, az yağlı süt ürünleri, kuruyemiş; doymuş yağ ve sodyum düşük (sodyum ≤2300 mg, ideal 1500 mg).'],
+    [KL, 'Refeeding sendromunda hangi bulgular beklenir? Önlem?', 'Hipofosfatemi, hipokalemi, hipomagnezemi, sıvı yüklenmesi. Yavaş başla, elektrolitleri izle, tiamin ver.'],
+    [KL, 'Çölyak hastalığında hangi tahıllar yasaktır?', 'Buğday, arpa, çavdar (gluten). Yulafta çapraz bulaşma riski vardır.'],
+    [KL, 'Fenilketonüride (PKU) hangi amino asit kısıtlanır?', 'Fenilalanin (Phe); tirozin şartlı esansiyel hale gelir.'],
+    [KL, 'Diyaliz öncesi KBH’de protein hedefi genelde nedir? Diyalizde?', 'Diyaliz öncesi yaklaşık 0,55–0,8 g/kg/gün (evre ve kılavuza göre); hemodiyalizde yaklaşık 1,0–1,2 g/kg/gün.'],
+    [KL, 'Malnütrisyon tarama araçlarına örnekler?', 'MUST (yetişkin), NRS-2002 (hastane), MNA (yaşlı), STAMP/STRONGkids/PYMS (çocuk).'],
+    [KL, 'GLIM ölçütleri nasıl işler?', 'En az 1 fenotipik ölçüt (kilo kaybı, düşük BKİ, azalmış kas kütlesi) + en az 1 etiyolojik ölçüt (azalmış alım/emilim, hastalık yükü/inflamasyon).'],
+    [KL, 'GİS çalışıyorsa neden enteral beslenme tercih edilir?', 'Bağırsak mukoza bütünlüğünü korur, enfeksiyon riskini ve maliyeti azaltır; parenteral beslenmeye göre fizyolojiktir.'],
+    [KL, 'Düşük FODMAP’ın açılımı ve kullanımı?', 'Fermente oligo-, di-, monosakkaritler ve poliyoller. IBS’de kısa süreli eliminasyon, sonra tek tek yeniden tanıtma.'],
+    [KL, 'Gebelik ve laktasyonda ek enerji ihtiyacı (DRI)?', '1. trimester ek yok; 2. trimester +340; 3. trimester +452 kcal/gün; laktasyonun ilk 6 ayında yaklaşık +330 kcal/gün.'],
+    [KL, 'Çocuklarda günlük sıvı ihtiyacı (Holliday–Segar)?', '≤10 kg: 100 ml/kg; 10–20 kg: 1000 ml + 50 ml/kg (10 kg üzeri); >20 kg: 1500 ml + 20 ml/kg (20 kg üzeri).'],
+    [KL, 'Erişkin diyabetinde genel HbA1c hedefi (ADA)?', 'Çoğu erişkin için <%7; hedef bireyselleştirilir.'],
+    [KL, 'Hipoglisemide “15-15 kuralı” nedir?', '15 g hızlı etkili karbonhidrat ver, 15 dakika sonra kan şekerini tekrar ölç; hedefe ulaşana dek tekrarla.']
+  ];
+  DA.data.cards = rows.map((r, i) => ({ id: 'b' + i, cat: r[0], q: r[1], a: r[2], builtin: true }));
+})();

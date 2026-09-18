@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diyet Asistanı</title>
+<meta name="description" content="Diyetetik öğrencileri ve diyetisyenler için ücretsiz, çevrimdışı çalışan mobil araç seti.">
+<meta name="theme-color" content="#1f7a4d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Diyet Asistanı">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top" id="top">
+  <button class="iconbtn" id="backBtn" data-act="back" aria-label="Geri" hidden></button>
+  <h1 id="title">Diyet Asistanı</h1>
+  <a class="iconbtn" id="gearBtn" href="#/daha" aria-label="Ayarlar"></a>
+</header>
+
+<main id="app" tabindex="-1"></main>
+
+<nav class="tabs" id="tabs" aria-label="Ana menü">
+  <a href="#/ana" data-tab="ana"></a>
+  <a href="#/hesapla" data-tab="hesapla"></a>
+  <a href="#/besin" data-tab="besin"></a>
+  <a href="#/danisan" data-tab="danisan"></a>
+  <a href="#/referans" data-tab="referans"></a>
+</nav>
+
+<div class="sheet-wrap" id="sheet" hidden>
+  <div class="sheet-bg" data-act="closeSheet"></div>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-head"><b id="sheetTitle"></b><button class="iconbtn" data-act="closeSheet" aria-label="Kapat">✕</button></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/core.js"></script>
+<script src="js/data-foods.js"></script>
+<script src="js/data-cards.js"></script>
+<script src="js/data-ref.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/foods.js"></script>
+<script src="js/clients.js"></script>
+<script src="js/reference.js"></script>
+<script src="js/journal.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/more.js"></script>
+<script src="js/boot.js"></script>
+</body>
+</html>
