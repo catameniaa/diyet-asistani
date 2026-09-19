@@ -1,2 +1,8 @@
 .DS_Store
 node_modules/
+
+# TürKomp çekici çıktıları (ham veri ve önbellek depoya girmez)
+turkomp_out/
+tools/turkomp_out/
+__pycache__/
+*.pyc
