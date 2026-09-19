@@ -61,14 +61,20 @@ except ImportError:
 
 BASE = "https://turkomp.tarimorman.gov.tr"
 
-# Link toplamaya buradan başlanır. Site yapısı değişirse yeni liste sayfaları eklenebilir.
-SEED_PATHS = ["/main", "/food_group", "/foods", "/"]
+# Link toplamaya buradan başlanır. Gerçek gıda listesi /database?type=foods adresinde.
+SEED_PATHS = ["/database?type=foods", "/main", "/"]
+
+# Oturuma/isteğe özel, sayfanın kimliğini değiştirmeyen parametreler.
+# csrt bir CSRF jetonudur: her oturumda değişir. Adresi önbelleğe alırken ve
+# "bu sayfayı gördüm mü" derken bunları yok sayarız, yoksa aynı sayfa her
+# jetonda yeni sayfa gibi görünüp sonsuz gezinmeye ve tekrar tekrar indirmeye yol açar.
+VOLATILE_PARAMS = {"csrt", "jsessionid", "_", "t", "ts"}
 
 # Gıda detay sayfası deseni: /food-<slug>-<id>
 FOOD_URL_RE = re.compile(r"/food-[^/?#]+-(\d+)\s*$", re.I)
 
 # Link toplarken izlenecek liste/gezinme sayfaları (gıda detayları dışındakiler)
-LIST_URL_RE = re.compile(r"/(main|food_group|foods|component|component_result|search)", re.I)
+LIST_URL_RE = re.compile(r"/(database|main|food_group|foods|component|component_result|search)", re.I)
 
 # Gıda adı için denenecek seçiciler, sırayla. İlk dolu sonuç kullanılır.
 NAME_SELECTORS = ["h1", "h2.food-name", ".food-title", "#foodName", "title"]
@@ -173,9 +179,21 @@ def slugify(s: str) -> str:
     return s.strip("-")
 
 
+def normalize_url(url: str) -> str:
+    """
+    Oturuma özel parametreleri atarak adresi sadeleştirir.
+    Yalnızca karşılaştırma ve önbellek adı için kullanılır; istek daima
+    özgün adrese (jetonu ile birlikte) gönderilir.
+    """
+    p = urllib.parse.urlparse(url)
+    keep = [(k, v) for k, v in urllib.parse.parse_qsl(p.query, keep_blank_values=True)
+            if k.lower() not in VOLATILE_PARAMS]
+    return urllib.parse.urlunparse(p._replace(query=urllib.parse.urlencode(keep), fragment=""))
+
+
 def cache_path(cache_dir: str, url: str) -> str:
     """URL'den okunabilir, çakışmayan bir dosya adı üretir."""
-    p = urllib.parse.urlparse(url)
+    p = urllib.parse.urlparse(normalize_url(url))
     name = (p.path + ("?" + p.query if p.query else "")).strip("/") or "index"
     name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)[:120]
     return os.path.join(cache_dir, name + ".html")
@@ -254,6 +272,19 @@ class TurKompScraper:
             return True
         return self.robots.can_fetch(self.session.headers["User-Agent"], url)
 
+    def bootstrap_session(self) -> None:
+        """
+        Önce kök sayfayı ziyaret ederek oturum çerezini alır. Site CSRF jetonu (csrt)
+        kullandığı için, jetonu koda gömmek yerine sayfalardaki güncel linklerden
+        okumak gerekir; bu ziyaret o zinciri başlatır.
+        """
+        try:
+            self.get(BASE + "/", record_failure=False)
+            if self.session.cookies:
+                log.info("Oturum çerezi alındı (%d adet).", len(self.session.cookies))
+        except Exception as e:
+            log.debug("oturum başlatılamadı: %s", e)
+
     # -- tek sayfa ----------------------------------------------------------
 
     def _sleep(self) -> None:
@@ -326,15 +357,18 @@ class TurKompScraper:
         Site yapısını bilmeye gerek kalmasın diye genişlik öncelikli gezinme kullanılır:
         yalnızca aynı alan adındaki liste/gezinme sayfaları izlenir.
         """
-        seen_pages: set[str] = set()
+        seen_pages: set[str] = set()        # normalleştirilmiş adresler
         foods: dict[str, str] = {}          # id -> url (aynı gıdayı iki kez almayalım)
         queue = [urllib.parse.urljoin(BASE, p) for p in SEED_PATHS]
 
+        self.bootstrap_session()
+
         while queue and len(seen_pages) < max_pages:
             url = queue.pop(0)
-            if url in seen_pages:
+            key = normalize_url(url)
+            if key in seen_pages:
                 continue
-            seen_pages.add(url)
+            seen_pages.add(key)
 
             html = self.get(url, record_failure=False)
             if not html:
@@ -350,7 +384,8 @@ class TurKompScraper:
                 m = FOOD_URL_RE.search(urllib.parse.urlparse(link).path)
                 if m:
                     foods.setdefault(m.group(1), link)
-                elif LIST_URL_RE.search(link) and link not in seen_pages and link not in queue:
+                elif LIST_URL_RE.search(link) and normalize_url(link) not in seen_pages \
+                        and all(normalize_url(link) != normalize_url(q) for q in queue):
                     queue.append(link)
 
             log.info("link taraması: %d sayfa gezildi, %d gıda bulundu", len(seen_pages), len(foods))
@@ -537,6 +572,14 @@ def inspect(scraper: TurKompScraper, url: str) -> None:
     print(f"\nSayfadaki /food-... link sayısı: {len(links)}")
     for l in list(links)[:5]:
         print("   ", l)
+    if not tables or not links:
+        markers = [m for m in ("DataTable", "ajax", "XMLHttpRequest", "fetch(", "/api/", "json")
+                   if m.lower() in html.lower()]
+        if markers:
+            print(f"\nDİKKAT: Sayfada tablo/link az ama şu izler var: {markers}")
+            print("Liste JavaScript ile yükleniyor olabilir. Bu durumda HTML'i kazımak yerine")
+            print("tarayıcının Ağ (Network) sekmesinde veriyi getiren isteği bulup doğrudan")
+            print("o adrese gitmek çok daha sağlıklı olur.")
     print("\nBu çıktıya göre ayarlar bölümündeki NAME_SELECTORS / COL_HINTS / FOOD_URL_RE düzeltilebilir.")
 
 

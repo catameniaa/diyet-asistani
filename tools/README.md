@@ -37,9 +37,23 @@ Bakanlığı) sayfalarındaki gıda kompozisyon verisini toplar ve dört biçimd
 | `cache/` | İndirilen ham HTML — silmeyin, yeniden çekimi önler |
 | `scrape.log` | Tüm koşumun kaydı |
 
+## Site hakkında bilinenler
+
+- Gıda listesi: `https://turkomp.tarimorman.gov.tr/database?type=foods`
+- Detay sayfası: `/food-<slug>-<id>` (örn. `/food-tuz-sofra-iyotsuz-667`)
+- Adreslerde **`csrt`** adlı bir CSRF jetonu var ve oturuma özeldir. Bu yüzden script
+  jetonu koda gömmez: önce kök sayfayı ziyaret edip oturum çerezini alır, sonra jetonu
+  sayfalardaki güncel linklerden okur. Önbellek adı ve "bu sayfayı gördüm mü" kontrolü
+  yapılırken `csrt` yok sayılır — yoksa aynı sayfa her jetonda yeni sayfa sanılıp
+  defalarca indirilirdi.
+- Veri tabanında 14 gıda grubunda ~645 gıda ve ~100 bileşen bulunuyor.
+  2–4 sn gecikmeyle tam çekim yaklaşık 25–45 dakika sürer.
+
 ## Sunucuya saygı
 
 - İstekler tek iş parçacığında, aralarında 2–4 sn rastgele bekleme ile atılır (`--delay`).
+- **Aynı sayfa ikinci kez indirilmez.** Ölçüldü: dolu önbellekle yapılan ikinci koşum,
+  link taraması dahil sunucuya **sıfır** istek gönderiyor.
 - İndirilen her sayfa `cache/` altına yazılır; ayrıştırmayı kaç kez tekrarlarsanız
   tekrarlayın siteye bir daha gidilmez. **Çekim ve ayrıştırma bilerek ayrı adımlardır.**
 - `robots.txt` okunur ve uygulanır (`--no-robots` ile kapatılabilir; kapatmadan önce
