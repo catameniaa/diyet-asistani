@@ -99,9 +99,45 @@
         '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg') + '</div>' +
         '<div class="sect">Ölçümler</div>' +
         (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : '<div class="muted small center mb">Henüz ölçüm yok.</div>') +
-        '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>'
+        savedCalcs(c) +
+        '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>' +
+        '<a class="btn block" href="#/yazdir/danisan/' + c.id + '">' + DA.icon('share') + ' Danışan raporu (PDF / Paylaş)</a>'
     };
   };
+  /* Danışan dosyasına işlenmiş hesaplar */
+  function savedCalcs(c) {
+    const list = (c.calcs || []).slice().reverse();
+    if (!list.length) return '';
+    return '<div class="sect">Kayıtlı hesaplar</div><div class="list">' + list.map((x) =>
+      '<div class="li"><span class="ic">' + DA.icon(x.ico || 'calc') + '</span><span class="grow">' +
+      '<div class="t">' + esc(x.t) + '</div><div class="s">' + esc(DA.fdate(x.d)) + ' · ' + esc(x.s) + '</div></span>' +
+      '<button class="iconbtn" style="width:36px;height:36px" data-act="calcDelete" data-id="' + c.id + '" data-cid="' + x.id + '" aria-label="Sil">' + DA.icon('trash') + '</button></div>').join('') + '</div>';
+  }
+  DA.actions.calcDelete = (el) => {
+    const c = clients().find((x) => x.id === el.dataset.id);
+    c.calcs = (c.calcs || []).filter((x) => x.id !== el.dataset.cid);
+    DA.save(); DA.render(true);
+  };
+  /* Hesaplayıcılardan çağrılır */
+  DA.saveCalcToClient = (clientId, rec) => {
+    const c = clients().find((x) => x.id === clientId);
+    if (!c) return DA.toast('Danışan bulunamadı');
+    c.calcs = c.calcs || [];
+    c.calcs.push({ id: uid(), d: DA.today(), t: rec.t, s: rec.s, ico: rec.ico });
+    DA.save();
+    DA.toast(c.name + ' dosyasına kaydedildi');
+  };
+
+  /* Ana sayfadan hızlı ölçüm: danışan seç, ölçüm formunu aç */
+  DA.actions.quickMeas = () => {
+    const list = clients();
+    if (!list.length) return DA.toast('Önce danışan ekle');
+    if (list.length === 1) return DA.actions.measNew({ dataset: { id: list[0].id } });
+    DA.sheet('Kime ölçüm ekleniyor?', '<div class="list">' + list.map((c) =>
+      '<button class="li chev" data-act="measNew" data-id="' + c.id + '"><span class="ic">' + esc((c.name[0] || '?').toUpperCase()) + '</span>' +
+      '<span class="grow"><div class="t">' + esc(c.name) + '</div></span></button>').join('') + '</div>');
+  };
+
   DA.live.clientSearch = (el) => { DA.state().ui.clientQ = el.value; DA.save(); DA.render(true); const i = DA.$('input[data-live=clientSearch]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
   DA.live.clientNote = (el) => { const c = clients().find((x) => x.id === el.dataset.id); c.note = el.value; DA.save(); };
 
@@ -150,6 +186,49 @@
     if (f.dataset.mid) Object.assign(c.meas.find((m) => m.id === f.dataset.mid), rec); else c.meas.push(Object.assign({ id: uid() }, rec));
     DA.save(); DA.closeSheet(); DA.render(true);
   };
+  /* ---- Danışan raporu ---- */
+  DA.views._printClient = (parts) => {
+    const c = clients().find((x) => x.id === parts[0]);
+    if (!c) return { title: 'Rapor', back: 'danisan', html: '<div class="card">Danışan bulunamadı.</div>' };
+    const m = sortedMeas(c), last = m[m.length - 1], first = m[0];
+    const wPts = m.filter((x) => x.w).map((x) => ({ t: new Date(x.d + 'T00:00').getTime(), y: x.w }));
+    const a2 = age(c);
+    const bmiOf = (x) => { const h = x.h || c.h; return (x.w && h) ? x.w / Math.pow(h / 100, 2) : null; };
+    const rows = m.slice().reverse().map((x) => {
+      const b2 = bmiOf(x);
+      return '<tr><td>' + esc(DA.fdate(x.d)) + '</td><td class="n">' + (x.w ? fmt(x.w, 1) : '—') + '</td>' +
+        '<td class="n">' + (x.h || c.h ? fmt(x.h || c.h, 0) : '—') + '</td>' +
+        '<td class="n">' + (b2 ? fmt(b2, 1) : '—') + '</td>' +
+        '<td class="n">' + (x.waist ? fmt(x.waist, 0) : '—') + '</td>' +
+        '<td class="n">' + (x.fat ? fmt(x.fat, 1) : '—') + '</td></tr>';
+    }).join('');
+    const delta = (first && last && first !== last && first.w && last.w) ? last.w - first.w : null;
+    return {
+      title: 'Danışan raporu', tab: 'danisan', back: 'danisan/' + c.id, noRecent: true,
+      html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
+        '<button class="btn ghost block" data-act="clientShare" data-id="' + c.id + '">Metin olarak paylaş</button></div>' +
+        '<div class="printdoc"><h2>' + esc(c.name) + '</h2>' +
+        '<div style="color:#555;font-size:13px">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a2 != null ? ' · ' + a2 + ' yaş' : '') +
+        (c.h ? ' · ' + fmt(c.h, 0) + ' cm' : '') + ' · Rapor tarihi ' + esc(DA.fdate(DA.today())) + '</div>' +
+        '<div class="by">' + esc(DA.dyt()) + '</div>' +
+        (m.length ? '<table><thead><tr><th>Tarih</th><th class="n">Kilo</th><th class="n">Boy</th><th class="n">BKİ</th><th class="n">Bel</th><th class="n">Yağ %</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p>Henüz ölçüm kaydı yok.</p>') +
+        (delta != null ? '<div><b>Toplam değişim:</b> ' + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta), 1) + ' kg (' + m.length + ' ölçüm)</div>' : '') +
+        (wPts.length > 1 ? '<div style="margin:12px 0">' + chartSvg(wPts, 'kg') + '</div>' : '') +
+        pediatric(c, m).replace(/<div class="card"[^>]*>|<\/div>\s*$/g, '') +
+        ((c.calcs || []).length ? '<div style="margin-top:12px"><b>Kayıtlı hesaplar</b>' +
+          (c.calcs || []).slice().reverse().map((x) => '<div style="font-size:13px">' + esc(DA.fdate(x.d)) + ' — ' + esc(x.t) + ': ' + esc(x.s) + '</div>').join('') + '</div>' : '') +
+        (c.note ? '<div style="margin-top:12px"><b>Notlar</b><br>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
+        '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — bu rapor bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+    };
+  };
+  DA.actions.clientShare = (el) => {
+    const c = clients().find((x) => x.id === el.dataset.id), m = sortedMeas(c);
+    const t = c.name + '\n' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (age(c) != null ? ' · ' + age(c) + ' yaş' : '') + '\n\n' +
+      m.slice().reverse().map((x) => DA.fdate(x.d) + ': ' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : ''].filter(Boolean).join(' · ')).join('\n') +
+      (c.note ? '\n\nNot: ' + c.note : '') + '\n\n' + DA.dyt();
+    DA.shareText(c.name + ' — rapor', t);
+  };
+
   DA.actions.measDelete = (el) => {
     if (!confirm('Ölçüm silinsin mi?')) return;
     const c = clients().find((x) => x.id === el.dataset.id); c.meas = c.meas.filter((m) => m.id !== el.dataset.mid); DA.save(); DA.closeSheet(); DA.render(true);

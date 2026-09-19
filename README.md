@@ -8,12 +8,15 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   sıvı, enteral, GIR, gebelik/laktasyon, stres faktörü, çocuk enerji-protein, glisemik indeks ve yük
 - Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
 - Değişim listesi: sayaçlı giriş, hedef enerjiye göre otomatik tam sayı dağıtım (grup kilitlenebilir),
-  porsiyon örnekleri, menü hedefi ile karşılaştırma
+  öğünlere enerji payına göre bölme, porsiyon örnekleri, menü hedefi ile karşılaştırma
 - Karbonhidrat sayımı: İ:KH oranı (500 kuralı), düzeltme faktörü (1800 kuralı), öğün ve düzeltme bolusu
 - Genel arama: besin, hesaplayıcı, referans, danışan ve menülerde tek kutudan
 - Favoriler, son açılanlar ve açık/koyu/otomatik tema
+- Yedek hatırlatması (son yedekten 14 gün geçince uyarır) ve yeni sürüm bildirimi
+- 74 çalışma kartı (aralıklı tekrar): TEMD, TÜBER, değişim listesi, WHO persentil eşikleri
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
-- Danışan takibi (ölçümler, grafik, notlar) ve 0–19 yaş için otomatik WHO büyüme persentili izlemi
+- Danışan takibi (ölçümler, grafik, notlar), 0–19 yaş için otomatik WHO büyüme persentili izlemi,
+  hesapları dosyaya işleme ve tek sayfalık danışan raporu (PDF / paylaş)
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 

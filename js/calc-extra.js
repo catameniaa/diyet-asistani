@@ -113,7 +113,7 @@
     id: 'cocukenerji', title: 'Çocuk enerji ve protein', desc: 'DRI tahmini enerji gereksinimi (EER) ve protein RDA', ico: 'baby',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
-      num_('age', 'Yaş (yıl; bebekte ondalık, örn. 0,5)'),
+      Object.assign(num_('age', 'Yaş (yıl; bebekte ondalık, örn. 0,5)'), { rng: [0, 18, 'yaş'] }),
       num_('w', 'Ağırlık (kg)'), num_('h', 'Boy (cm; 3 yaş üstü için gerekli)', '', true),
       { k: 'pa', l: 'Fiziksel aktivite (3 yaş üstü)', t: 'sel', def: 'act', o: PA_O }
     ],

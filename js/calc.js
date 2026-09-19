@@ -165,16 +165,47 @@
     return v;
   }
 
+  /* Makul giriş aralıkları: alan anahtarına göre [alt, üst, birim].
+     Hesaplayıcı kendi alanında rng ile değiştirebilir; rng: false ile kapatabilir. */
+  const RANGE = {
+    h: [40, 230, 'cm'], w: [1, 400, 'kg'], age: [0, 120, 'yaş'],
+    waist: [30, 250, 'cm'], hip: [40, 250, 'cm'], neck: [15, 80, 'cm'], fat: [2, 70, '%'],
+    w0: [1, 400, 'kg'], hafta: [1, 45, 'hafta'], ates: [30, 45, '°C'],
+    cho: [0, 100, '%'], pro: [0, 100, '%'], gtid: [1, 300, 'ünite'],
+    bg: [20, 900, 'mg/dL'], hedef: [50, 300, 'mg/dL'], gi: [0, 120, ''], kh: [0, 1000, 'g'], g: [0, 5000, 'g']
+  };
+  function rangeWarnings(c, v) {
+    const out = [];
+    c.fields.forEach((f) => {
+      if (f.rng === false) return;
+      const r = f.rng || RANGE[f.k];
+      const x = v[f.k];
+      if (!r || !isFinite(x)) return;
+      if (x < r[0] || x > r[1]) out.push(f.l.replace(/\s*\(.*$/, '') + ': ' + fmt(x, 1) + (r[2] ? ' ' + r[2] : '') +
+        ' — beklenen ' + r[0] + '–' + r[1] + (r[2] ? ' ' + r[2] : ''));
+    });
+    return out;
+  }
+
+  /* Danışandan açıldıysa (?c=) sonucu o dosyaya işleyebilmek için */
+  let curClient = null, lastRes = null;
+
   function resultHtml(c, v) {
     const missing = c.req.filter((k) => !isFinite(v[k]));
     if (missing.length) return '<div class="muted center small" style="padding:18px 6px">Sonucu görmek için gerekli değerleri gir.</div>';
     const r = c.run(v);
     if (r.err) return '<div class="note bad">' + esc(r.err) + '</div>';
-    let h = (r.badge ? '<div class="mb"><span class="badge ' + r.badge[1] + '">' + esc(r.badge[0]) + '</span></div>' : '');
+    const warn = rangeWarnings(c, v);
+    let h = warn.length ? '<div class="note warn"><b>Girdiyi kontrol et:</b><br>' + warn.map(esc).join('<br>') + '</div>' : '';
+    h += (r.badge ? '<div class="mb"><span class="badge ' + r.badge[1] + '">' + esc(r.badge[0]) + '</span></div>' : '');
     h += r.rows.map((x) => '<div class="res' + (x.hl ? ' hl' : '') + '"><span class="l">' + esc(x.l) + '</span><span class="v">' + esc(x.v) + (x.s ? '<span class="sub">' + esc(x.s) + '</span>' : '') + '</span></div>').join('');
     if (r.html) h += r.html; // hesaplayıcının kendi ürettiği blok (tablo, grafik)
     if (r.note) h += '<div class="note ' + (r.tone === 'info' ? '' : r.tone) + '">' + esc(r.note) + '</div>';
     if (r.actions) h += r.actions.map((a) => '<button class="btn sec block mt-s" data-act="' + a.act + '">' + esc(a.label) + '</button>').join('');
+    /* özet: vurgulu satırlar, yoksa ilk iki satır */
+    const hi = r.rows.filter((x) => x.hl);
+    lastRes = { t: c.title, ico: c.ico, s: (hi.length ? hi : r.rows.slice(0, 2)).map((x) => x.l + ': ' + x.v).join(' · ') };
+    if (curClient) h += '<button class="btn ghost block mt-s" data-act="saveToClient">' + DA.icon('users') + ' Danışan dosyasına kaydet</button>';
     return h;
   }
 
@@ -187,6 +218,10 @@
     DA.save();
     DA.$('#calcOut').innerHTML = resultHtml(c, v);
   };
+  DA.actions.saveToClient = () => {
+    if (!curClient || !lastRes) return DA.toast('Önce değerleri gir');
+    DA.saveCalcToClient(curClient, lastRes);
+  };
   DA.actions.saveTargets = () => {
     const c = byId('enerji');
     if (!c._last) return DA.toast('Önce değerleri gir');
@@ -197,6 +232,7 @@
   DA.views.hesapla = (parts, q) => {
     const id = parts[0];
     if (!id) {
+      curClient = null;
       return { title: 'Hesaplayıcılar', tab: 'hesapla', html: '<div class="list">' + DA.calcs.map((c) =>
         '<a class="li chev" href="#/hesapla/' + c.id + '"><span class="ic">' + DA.icon(c.ico) + '</span><span class="grow"><div class="t">' + esc(c.title) + '</div><div class="s">' + esc(c.desc) + '</div></span></a>').join('') + '</div>' +
         '<p class="muted small center">Girdiğin boy, kilo, yaş ve cinsiyet hesaplayıcılar arasında hatırlanır.</p>' };
@@ -204,6 +240,7 @@
     const c = byId(id);
     if (!c) return { title: 'Bulunamadı', back: 'hesapla', html: '<div class="card">Hesaplayıcı bulunamadı.</div>' };
     if (c.view) return c.view(parts.slice(1), q); // kendi arayüzünü çizen hesaplayıcı
+    curClient = q.get('c') || null; lastRes = null;
     const pf = prefill(c, q);
     let clientLine = '';
     if (q.get('c')) { const cl = DA.state().clients.find((x) => x.id === q.get('c')); if (cl) clientLine = '<div class="note ok">Danışan bilgileri dolduruldu: ' + esc(cl.name) + '</div>'; }

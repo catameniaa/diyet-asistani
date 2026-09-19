@@ -88,6 +88,59 @@
     return { kcalErr: best.kcalErr, kcal: totals(out).kcal, want };
   }
 
+  /* ---- öğünlere dağıtım ----
+     Varsayılan enerji payları; her grubun toplamı en büyük kalan yöntemiyle tam sayı olarak bölünür. */
+  const MEALS = [['kahvalti', 'Kahvaltı', 25], ['ara1', 'Ara öğün', 10], ['ogle', 'Öğle', 30], ['ara2', 'Ara öğün', 10], ['aksam', 'Akşam', 25]];
+  const meals = () => (S().exMeal = S().exMeal || {});
+
+  /* Her değişim birimini, enerji hedefine göre en çok geride kalan öğüne verir.
+     Grup toplamları birebir korunur; öğün payları enerji bazında dengelenir.
+     (Grupları tek tek bölmek, eşitliklerde hep ilk öğünü kayırıp akşamı aç bırakıyordu.) */
+  function autoMeals() {
+    const tot = totals(counts()).kcal || 1;
+    const out = {}, acik = {};
+    MEALS.forEach((m) => { out[m[0]] = {}; acik[m[0]] = tot * m[2] / 100; });
+
+    /* Büyük kalorili birimler önce yerleşsin ki küçükler açığı kapatabilsin */
+    const units = [];
+    GROUPS.forEach((g) => {
+      const n = Math.round(cnt(g.k));
+      for (let i = 0; i < n; i++) units.push(g);
+    });
+    units.sort((a, b) => kcalOf(b) - kcalOf(a));
+
+    units.forEach((g) => {
+      let best = MEALS[0][0];
+      MEALS.forEach((m) => { if (acik[m[0]] > acik[best]) best = m[0]; });
+      out[best][g.k] = (out[best][g.k] || 0) + 1;
+      acik[best] -= kcalOf(g);
+    });
+    S().exMeal = out; DA.save();
+  }
+  const mealTot = (mk) => totals(meals()[mk] || {});
+  /* Bir grubun öğünlere dağıtılmış toplamı */
+  function assigned(gk) {
+    return MEALS.reduce((t, m) => t + ((meals()[m[0]] || {})[gk] || 0), 0);
+  }
+
+  function mealsHtml() {
+    const any = MEALS.some((m) => mealTot(m[0]).n > 0);
+    if (!any) return '<div class="card"><div class="empty">' + icon('menu') +
+      '<div>Değişimleri öğünlere bölmek için <b>Öğünlere dağıt</b>’a dokun.</div></div></div>';
+    const eksik = GROUPS.map((g) => {
+      const d = Math.round(cnt(g.k)) - assigned(g.k);
+      return d ? esc(g.l) + ': ' + (d > 0 ? d + ' dağıtılmadı' : (-d) + ' fazla') : '';
+    }).filter(Boolean);
+    return '<div class="list">' + MEALS.map((m) => {
+      const t = mealTot(m[0]), v = meals()[m[0]] || {};
+      const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(g.l.replace(/ \(.*\)/, '')) + ' ' + v[g.k]).join(' · ');
+      return '<button class="li" data-act="exMealEdit" data-m="' + m[0] + '">' +
+        '<span class="grow"><div class="t">' + esc(m[1]) + '</div><div class="s">' + (det || 'boş') + '</div></span>' +
+        '<span class="end">' + fmt(t.kcal, 0) + ' kcal<br><span class="tiny">%' + fmt(t.kcal / (totals(counts()).kcal || 1) * 100, 0) + '</span></span></button>';
+    }).join('') + '</div>' +
+    (eksik.length ? '<div class="note warn"><b>Öğün toplamları planla uyuşmuyor:</b><br>' + eksik.join('<br>') + '</div>' : '');
+  }
+
   /* ---- parçalar ---- */
   function rowsHtml() {
     const L = locks();
@@ -137,6 +190,10 @@
     return DA.APP + ' — Değişim listesi planı\n' +
       GROUPS.filter((g) => cnt(g.k)).map((g) => '• ' + g.l + ': ' + fmt(cnt(g.k), 1) + ' değişim').join('\n') +
       '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g' +
+      (MEALS.some((m) => mealTot(m[0]).n) ? '\n\nÖĞÜNLER\n' + MEALS.map((m) => {
+        const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + mv[g.k]).join(', ');
+        return det ? m[1] + ' (' + fmt(mealTot(m[0]).kcal, 0) + ' kcal): ' + det : '';
+      }).filter(Boolean).join('\n') : '') +
       '\n\n' + DA.dyt();
   }
 
@@ -186,6 +243,9 @@
           '<span class="muted tiny">Sayıya dokunarak tam değer gir</span></div>' +
 
           '<div id="exOut">' + outHtml() + '</div>' +
+          '<div class="sect">Öğünler</div>' +
+          '<button class="btn sec block mb" data-act="exMealAuto">' + icon('menu') + ' Öğünlere dağıt (%25 · %10 · %30 · %10 · %25)</button>' +
+          '<div id="exMeals">' + mealsHtml() + '</div>' +
           portions() +
           '<div class="note">Değerler derste kullanılan değişim listesine göredir ve diyabet değişim listesiyle aynıdır. Vitamin ve mineral içermez.</div>'
       };
@@ -194,16 +254,17 @@
 
   /* ---- etkileşim ---- */
   const redraw = () => {
-    const r = DA.$('#exRows'), o = DA.$('#exOut');
+    const r = DA.$('#exRows'), o = DA.$('#exOut'), m = DA.$('#exMeals');
     if (r) r.innerHTML = rowsHtml();
     if (o) o.innerHTML = outHtml();
+    if (m) m.innerHTML = mealsHtml();
   };
   const setCount = (k, n) => { counts()[k] = Math.max(0, Math.round(n * 2) / 2); DA.save(); redraw(); };
 
   DA.actions.exInc = (el) => setCount(el.dataset.k, cnt(el.dataset.k) + 1);
   DA.actions.exDec = (el) => setCount(el.dataset.k, cnt(el.dataset.k) - 1);
   DA.actions.exLock = (el) => { const L = locks(), k = el.dataset.k; L[k] = !L[k]; DA.save(); redraw(); };
-  DA.actions.exReset = () => { S().ex = {}; S().exLock = {}; DA.save(); redraw(); DA.toast('Sıfırlandı'); };
+  DA.actions.exReset = () => { S().ex = {}; S().exLock = {}; S().exMeal = {}; DA.save(); redraw(); DA.toast('Sıfırlandı'); };
 
   DA.actions.exSet = (el) => {
     const k = el.dataset.k, g = byKey(k);
@@ -234,6 +295,37 @@
     DA.toast(r.kcalErr <= 30 ? 'Dağıtıldı: ' + Math.round(r.kcal) + ' kcal (hedefe ' + Math.round(r.kcalErr) + ' kcal)' :
       'En yakın dağıtım: ' + Math.round(r.kcal) + ' kcal (fark ' + Math.round(r.kcalErr) + ' kcal)');
   };
+
+  DA.actions.exMealAuto = () => {
+    if (!totals(counts()).n) return DA.toast('Önce değişim planı oluştur');
+    autoMeals(); redraw(); DA.toast('Öğünlere dağıtıldı');
+  };
+  DA.actions.exMealEdit = (el) => {
+    const mk = el.dataset.m, m = MEALS.find((x) => x[0] === mk);
+    const v = meals()[mk] || {};
+    DA.sheet(m[1], '<div id="exMealBody">' + mealEditHtml(mk, v) + '</div>');
+  };
+  function mealEditHtml(mk, v) {
+    return GROUPS.filter((g) => Math.round(cnt(g.k)) > 0).map((g) => {
+      const n = v[g.k] || 0, kalan = Math.round(cnt(g.k)) - assigned(g.k);
+      return '<div class="xrow"><span class="grow"><div class="t">' + esc(g.l) + '</div>' +
+        '<div class="s">planda ' + Math.round(cnt(g.k)) + ' · dağıtılmamış ' + kalan + '</div></span>' +
+        '<span class="stepper"><button data-act="exMealDec" data-m="' + mk + '" data-k="' + g.k + '"' + (n <= 0 ? ' disabled' : '') + '>−</button>' +
+        '<button class="n' + (n ? '' : ' z') + '" disabled>' + n + '</button>' +
+        '<button data-act="exMealInc" data-m="' + mk + '" data-k="' + g.k + '"' + (kalan <= 0 ? ' disabled' : '') + '>+</button></span></div>';
+    }).join('') + '<p class="muted tiny">Bu öğünün toplamı: <b>' + fmt(mealTot(mk).kcal, 0) + ' kcal</b></p>';
+  }
+  function setMeal(mk, gk, n) {
+    const M = meals();
+    M[mk] = M[mk] || {};
+    if (n <= 0) delete M[mk][gk]; else M[mk][gk] = n;
+    DA.save();
+    const b = DA.$('#exMealBody');
+    if (b) b.innerHTML = mealEditHtml(mk, M[mk]);
+    redraw();
+  }
+  DA.actions.exMealInc = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) + 1);
+  DA.actions.exMealDec = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) - 1);
 
   DA.actions.exShare = () => DA.shareText('Değişim listesi planı', planText());
   DA.actions.exMenu = () => {

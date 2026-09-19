@@ -186,5 +186,21 @@
     catch (e) { DA.sheet('Metni kopyala', '<textarea readonly rows="12" style="width:100%">' + DA.esc(text) + '</textarea>'); }
   };
 
+  /* Yeni sürüm çubuğu — service worker yenisini indirdiğinde gösterilir */
+  DA.showUpdate = () => {
+    if (document.getElementById('updBar')) return;
+    const d = document.createElement('div');
+    d.id = 'updBar'; d.className = 'updbar';
+    d.innerHTML = '<span>Yeni sürüm hazır</span><button class="btn sm" data-act="doUpdate">Yenile</button>' +
+      '<button class="iconbtn" data-act="hideUpdate" aria-label="Kapat">\u2715</button>';
+    document.body.appendChild(d);
+  };
+  DA.actions.doUpdate = () => {
+    const reg = DA._sw;
+    if (reg && reg.waiting) reg.waiting.postMessage('skipWaiting');
+    else location.reload();
+  };
+  DA.actions.hideUpdate = () => { const b = document.getElementById('updBar'); if (b) b.remove(); };
+
   DA.emptyState = (icon, text) => '<div class="empty">' + DA.icon(icon) + '<div>' + text + '</div></div>';
 })();

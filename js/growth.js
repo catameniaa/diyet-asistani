@@ -129,7 +129,7 @@
     id: 'cocuk', title: 'Çocuk persentil (WHO)', desc: 'Ağırlık/yaş, boy/yaş, BKİ/yaş — z-skoru ve persentil', ico: 'users',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
-      { k: 'age', l: 'Yaş', t: 'num', ph: 'örn. 30' },
+      { k: 'age', l: 'Yaş', t: 'num', ph: 'örn. 30', rng: false },
       { k: 'unit', l: 'Yaş birimi', t: 'sel', o: [['ay', 'Ay'], ['yil', 'Yıl']], def: 'ay' },
       { k: 'w', l: 'Ağırlık (kg)', t: 'num', ph: '', opt: true },
       { k: 'h', l: 'Boy (cm)', t: 'num', ph: '', opt: true },

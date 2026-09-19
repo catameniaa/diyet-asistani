@@ -2,7 +2,7 @@
    Kılavuzlar zamanla değişir; sınav/klinik kullanımdan önce güncel kaynağınızı kontrol edin. */
 (function () {
   'use strict';
-  const EM = 'Enerji & Makro', VM = 'Vitamin & Mineral', AN = 'Antropometri', KL = 'Klinik';
+  const EM = 'Enerji & Makro', VM = 'Vitamin & Mineral', AN = 'Antropometri', KL = 'Klinik', DG = 'Değişim & Diyabet', TB = 'TÜBER & Persentil';
   const rows = [
     [EM, '1 g karbonhidrat, protein, yağ ve alkol kaç kcal enerji verir?', 'Karbonhidrat 4, protein 4, yağ 9, alkol 7 kcal/g.'],
     [EM, 'Diyet lifinin enerji katkısı yaklaşık ne kadar kabul edilir?', 'Yaklaşık 2 kcal/g (kolonda fermente olan kısmı).'],
@@ -52,6 +52,31 @@
     [KL, 'Gebelik ve laktasyonda ek enerji ihtiyacı (DRI)?', '1. trimester ek yok; 2. trimester +340; 3. trimester +452 kcal/gün; laktasyonun ilk 6 ayında yaklaşık +330 kcal/gün.'],
     [KL, 'Çocuklarda günlük sıvı ihtiyacı (Holliday–Segar)?', '≤10 kg: 100 ml/kg; 10–20 kg: 1000 ml + 50 ml/kg (10 kg üzeri); >20 kg: 1500 ml + 20 ml/kg (20 kg üzeri).'],
     [KL, 'Erişkin diyabetinde genel HbA1c hedefi (ADA)?', 'Çoğu erişkin için <%7; hedef bireyselleştirilir.'],
+    [DG, 'Değişim listesinde süt (tam yağlı) grubunun bir değişimi kaç KH, protein ve yağ içerir?', '9 g karbonhidrat, 6 g protein, 6 g yağ — yaklaşık 114 kcal. Yarım yağlısında yağ 3 g (87 kcal).'],
+    [DG, 'Ekmek ve yerine geçenler (EYG) grubunun bir değişimi?', '15 g karbonhidrat, 2 g protein, yağ yok — 68 kcal. Örnek: 1 ince dilim ekmek (25 g), 3 yemek kaşığı pilav.'],
+    [DG, 'Et grubunun bir değişimi?', '6 g protein, 5 g yağ, karbonhidrat yok — 69 kcal. Örnek: 30 g et/tavuk/balık, 1 dilim beyaz peynir, 1 yumurta.'],
+    [DG, 'Sebze ve meyve gruplarının birer değişimi?', 'Sebze 6 g KH + 2 g protein (32 kcal); meyve 15 g KH (60 kcal).'],
+    [DG, 'Yağ ve yağlı tohum gruplarının birer değişimi?', 'Yağ 5 g yağ (45 kcal); yağlı tohum 2 g protein + 5 g yağ (53 kcal).'],
+    [DG, 'Karbonhidrat sayımında 1 karbonhidrat değişimi kaç gramdır?', '15 g karbonhidrat. Bazı merkezler 10 g kullanır ama standart 15 g’dır.'],
+    [DG, '500 kuralı nedir, ne verir?', 'İnsülin/karbonhidrat oranı = 500 ÷ günlük toplam insülin dozu. 1 ünite hızlı etkili insülinin karşıladığı karbonhidrat gramını verir.'],
+    [DG, '1800 kuralı nedir, ne verir?', 'Düzeltme faktörü (insülin duyarlılık faktörü) = 1800 ÷ günlük toplam insülin dozu. 1 ünitenin kan şekerini kaç mg/dL düşüreceğini verir.'],
+    [DG, 'TEMD’e göre diyabet tanı eşikleri nelerdir?', 'AKŞ ≥126 mg/dL (8 saat açlık), OGTT 2. saat ≥200 mg/dL, HbA1c ≥%6,5; ya da rastlantısal ≥200 mg/dL + semptomlar.'],
+    [DG, 'Yetişkin diyabetlide glisemik hedefler nelerdir?', 'Açlık/öğün öncesi 80–130 mg/dL, tokluk 2. saat <180 mg/dL, HbA1c <%7. Genç/yeni tanıda <%6,5; yaşlı veya komplikasyonluda <%8,0.'],
+    [DG, 'Prediyabet sınırları nelerdir?', 'AKŞ 100–125 mg/dL (bozulmuş açlık glukozu), OGTT 2. saat 140–199 mg/dL, HbA1c %5,7–6,4.'],
+    [DG, 'Glisemik yük nasıl hesaplanır ve sınıfları nedir?', 'GY = GI × porsiyondaki karbonhidrat (g) ÷ 100. Düşük ≤10, orta 11–19, yüksek ≥20. (GI: düşük ≤55, orta 56–69, yüksek ≥70.)'],
+    [TB, 'TÜBER’e göre makro besin ögelerinin enerji yüzdeleri nedir?', 'Karbonhidrat %45–60 (rafine şeker <%10), protein %10–20, yağ %20–35 (doymuş <%10).'],
+    [TB, 'TÜBER’e göre lif, tuz ve su önerileri nelerdir?', 'Lif 25–30 g/gün ya da 1000 kcal başına 14 g; tuz <5 g/gün (sodyum <2000 mg); su kadın ≥2,0 L, erkek ≥2,5 L (ya da 30–35 ml/kg).'],
+    [TB, 'WHO büyüme referansında z-skoru hangi formülle hesaplanır?', 'z = ((X/M)^L − 1) / (L×S); L=0 ise z = ln(X/M)/S. L, M, S yaş ve cinsiyete özgü tablolardan alınır.'],
+    [TB, 'BKİ/yaş z-skoruna göre 5–19 yaş sınıflaması nedir?', '>+2 obez, +1 ile +2 fazla kilolu, −2 ile +1 normal, <−2 zayıflık, <−3 ağır zayıflık.'],
+    [TB, 'BKİ/yaş sınıflaması 0–5 yaşta neden farklıdır?', '0–5 yaşta eşikler bir SD yukarıdadır: >+3 obez, +2 ile +3 kilolu, +1 ile +2 kilo fazlalığı riski. 5 yaş üstünde >+2 obez, >+1 fazla kilolu.'],
+    [TB, 'Boy/yaş z-skoru −2’nin altındaysa ne denir?', 'Bodurluk (stunting) — kronik beslenme yetersizliğinin göstergesi. −3’ün altı ağır bodurluk.'],
+    [TB, 'Ağırlık/yaş z-skoru −2’nin altındaysa ne denir?', 'Düşük ağırlık (underweight); −3 altı ağır düşük ağırlık. Ağırlık/yaş fazla kiloyu sınıflamak için kullanılmaz, BKİ/yaş kullanılır.'],
+    [TB, 'WHO büyüme standartları hangi yaş aralıklarını kapsar?', 'Ağırlık/yaş 0–10 yaş; boy/yaş ve BKİ/yaş 0–19 yaş. 0–5 yaş 2006 standartları, 5–19 yaş 2007 referansı.'],
+    [TB, 'Çocukta boy ölçümü yaş ile nasıl değişir?', '24 aydan küçükte yatarak (uzunluk), 24 ay ve üstünde ayakta (boy) ölçülür. Aradaki fark yaklaşık 0,7 cm’dir.'],
+    [EM, 'Gebelikte trimesterlere göre ek enerji ne kadardır?', '1. trimesterde ek enerji önerilmez; 2. trimesterde +340 kcal/gün, 3. trimesterde +452 kcal/gün (DRI).'],
+    [EM, 'Laktasyonda ek enerji ve protein ne kadardır?', 'İlk 6 ayda +500 kcal/gün, 6–12 ayda +400 kcal/gün; ek protein +25 g/gün.'],
+    [AN, 'IOM 2009’a göre gebelikte önerilen toplam ağırlık kazanımı nedir?', 'Zayıf (BKİ<18,5) 12,5–18 kg; normal 11,5–16 kg; fazla kilolu 7–11,5 kg; obez 5–9 kg (tekil gebelik).'],
+    [KL, 'Kritik hastada enerji ve protein için yaygın hedef aralıklar nelerdir?', 'Enerji 25–30 kcal/kg/gün, protein 1,2–2,0 g/kg/gün. Mümkünse indirekt kalorimetri tercih edilir.'],
     [KL, 'Hipoglisemide “15-15 kuralı” nedir?', '15 g hızlı etkili karbonhidrat ver, 15 dakika sonra kan şekerini tekrar ölç; hedefe ulaşana dek tekrarla.']
   ];
   DA.data.cards = rows.map((r, i) => ({ id: 'b' + i, cat: r[0], q: r[1], a: r[2], builtin: true }));

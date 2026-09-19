@@ -276,6 +276,7 @@
       };
     }
     if (parts[0] === 'staj') return DA.views._printJournal(parts.slice(1));
+    if (parts[0] === 'danisan') return DA.views._printClient(parts.slice(1));
     return { title: 'Yazdır', html: '<div class="card">Bulunamadı.</div>' };
   };
   DA.actions.doPrint = () => window.print();

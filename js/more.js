@@ -36,6 +36,12 @@
       '<div class="note ok"><b>Uygulama gibi kullan:</b> ' + (isIOS() ? 'Safari’de <b>Paylaş</b> simgesine dokun → <b>Ana Ekrana Ekle</b>.' : 'Tarayıcı menüsünden “Ana ekrana ekle / Uygulamayı yükle” seç.') +
       '<button class="btn sm ghost block" style="margin-top:10px" data-act="hideInstall">Tamam, gizle</button></div>' : '';
 
+    const gun = DA.daysSinceBackup(), veri = S.clients.length + S.menus.length + S.journal.length;
+    const yedek = (veri && (gun === null || gun >= 14)) ?
+      '<div class="note warn"><b>' + (gun === null ? 'Hiç yedek almadın.' : gun + ' gündür yedek almadın.') + '</b> ' +
+      'Veriler yalnızca bu cihazda; tarayıcı verilerini temizlersen ya da telefon değişirse kaybolur.' +
+      '<button class="btn sm block" style="margin-top:10px" data-act="backup">' + icon('save') + ' Şimdi yedek al</button></div>' : '';
+
     const hero = '<div class="hero"><div class="hi">' + esc(greeting()) + '</div><h2>' + esc(DA.APP) + '</h2>' +
       '<div class="by">' + esc(DA.dyt()) + '</div>' +
       '<div class="stats">' +
@@ -46,7 +52,9 @@
 
     return {
       title: DA.APP, tab: 'ana',
-      html: hero + hint + quickRow() +
+      html: hero + yedek + hint + quickRow() +
+        '<div class="grid2 mb"><button class="btn sec block" data-act="quickMeas">' + icon('plus') + ' Ölçüm ekle</button>' +
+        '<a class="btn sec block" href="#/staj">' + icon('note') + ' Staj notu</a></div>' +
         '<div class="sect">Araçlar</div>' +
         '<div class="tiles">' +
         tile('#/hesapla', 'calc', 'Hesaplayıcılar', DA.calcs.length + ' hesaplayıcı') +
@@ -98,6 +106,8 @@
         '<a class="li chev" href="#/daha/sablon"><span class="ic">' + icon('table') + '</span><span class="grow"><div class="t">Numbers şablonları</div></span></a></div>' +
 
         '<div class="sect">Yedek</div><div class="card"><p class="small muted" style="margin-top:0">Tüm verilerin (danışanlar, menüler, notlar, kartlar) yalnızca bu cihazda tutulur. Telefon değiştirirsen ya da tarayıcı verilerini temizlersen kaybolur — düzenli yedek al.</p>' +
+        '<div class="res"><span class="l">Son yedek</span><span class="v" style="font-size:15px">' +
+        (DA.state().ui.lastBackup ? esc(DA.fdate(DA.state().ui.lastBackup)) + '<span class="sub">' + DA.daysSinceBackup() + ' gün önce</span>' : 'Hiç alınmadı') + '</span></div>' +
         '<button class="btn block" data-act="backup">' + icon('save') + ' Yedeği indir / paylaş</button>' +
         '<label class="btn ghost block mt-s" style="cursor:pointer">Yedeği yükle<input type="file" accept="application/json,.json" data-change="restore" hidden></label>' +
         '<button class="btn danger block mt-s" data-act="wipe">Tüm verileri sil</button></div>' +
@@ -116,14 +126,28 @@
     DA.save(); DA.toast('Kaydedildi'); DA.render(true);
   };
 
+  /* Son yedekten bu yana geçen gün */
+  DA.daysSinceBackup = () => {
+    const d = DA.state().ui.lastBackup;
+    if (!d) return null;
+    const t = new Date(d + 'T00:00');
+    if (isNaN(t)) return null;
+    return Math.floor((Date.now() - t.getTime()) / 86400000);
+  };
+  function markBackup() {
+    const S = DA.state();
+    S.ui.lastBackup = DA.today(); DA.save();
+    DA.toast('Yedeklendi: ' + S.clients.length + ' danışan, ' + S.menus.length + ' menü, ' + S.journal.length + ' staj kaydı');
+  }
+
   DA.actions.backup = async () => {
     const json = JSON.stringify(DA.state(), null, 1), name = 'diyet-asistani-yedek-' + DA.today() + '.json';
     try {
       const file = new File([json], name, { type: 'application/json' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); markBackup(); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    DA.toast('Yedek indirildi');
+    markBackup();
   };
   DA.live.restore = (el) => {
     const f = el.files[0]; if (!f) return;
