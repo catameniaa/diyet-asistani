@@ -126,6 +126,7 @@
           gridHtml(i) + '</div></details>' +
           '<a class="btn ghost block mt" href="#/hesapla/porsiyon">' + DA.icon('table') + ' Yaş ve cinsiyete göre porsiyon önerileri</a>' +
           '<a class="btn ghost block mt-s" href="#/hesapla/hedef">' + DA.icon('book') + ' Bu enerji düzeyinin besin ögesi hedefleri</a>' +
+          '<a class="btn ghost block mt-s" href="#/hesapla/istege">' + DA.icon('apple') + ' İsteğe bağlı pay ne kadar tatlı eder?</a>' +
           '<div class="note">Kaynak: ' + esc(DA.data.tuber.oruntu.src) + '. ' +
           'Hangi enerji düzeyinin hangi yaş ve aktivite grubuna denk geldiği için Ek 1.1.1–1.1.4’e bakın.</div>' +
           '<div class="card">' + notesHtml() + '</div>'
