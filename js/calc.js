@@ -177,10 +177,18 @@
       const cl = DA.state().clients.find((x) => x.id === cid);
       if (cl) {
         p.sex = cl.sex || p.sex; p.h = cl.h || p.h;
-        if (cl.birth) p.age = new Date().getFullYear() - cl.birth;
+        /* Yaş: önce doğum tarihinden (gün hassasiyetiyle), yoksa doğum yılından */
+        if (cl.bdate && DA.growth) { const mo = DA.growth.months(cl.bdate); if (isFinite(mo)) p.age = Math.floor(mo / 12); }
+        else if (cl.bdate) p.age = new Date().getFullYear() - parseInt(cl.bdate.slice(0, 4), 10);
+        else if (cl.birth) p.age = new Date().getFullYear() - cl.birth;
+        if (cl.pal) p.pal = cl.pal;
         const last = (cl.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).pop();
         if (last && last.w) p.w = last.w;
         if (last && last.fat) p.fat = last.fat;
+        if (last && last.h) p.h = last.h;
+        const bel = (cl.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).filter((x) => x.waist).pop();
+        if (bel) p.waist = bel.waist;
+        if (last && last.hip) p.hip = last.hip;
       }
     }
     return p;
@@ -243,7 +251,12 @@
     if (r.actions) h += r.actions.map((a) => '<button class="btn sec block mt-s" data-act="' + a.act + '">' + esc(a.label) + '</button>').join('');
     /* özet: vurgulu satırlar, yoksa ilk iki satır */
     const hi = r.rows.filter((x) => x.hl);
-    lastRes = { t: c.title, ico: c.ico, s: (hi.length ? hi : r.rows.slice(0, 2)).map((x) => x.l + ': ' + x.v).join(' · ') };
+    /* Zaman çizgisinde karşılaştırabilmek için baş satırın sayısal değeri de saklanır */
+    const bas = (hi.length ? hi : r.rows)[0];
+    const sayi = bas ? DA.num(String(bas.v).replace(/[^0-9,.\-]/g, '')) : NaN;
+    lastRes = { t: c.title, ico: c.ico, s: (hi.length ? hi : r.rows.slice(0, 2)).map((x) => x.l + ': ' + x.v).join(' · '),
+      k: bas ? bas.l : '', v: isFinite(sayi) ? sayi : null,
+      u: bas ? String(bas.v).replace(/[0-9,.\-]/g, '').trim() : '' };
     if (curClient) h += '<button class="btn ghost block mt-s" data-act="saveToClient">' + DA.icon('users') + ' Danışan dosyasına kaydet</button>';
     return h;
   }

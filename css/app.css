@@ -170,6 +170,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--line-2);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:99px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;box-shadow:var(--sh-1)}
 .chip.on{background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+.chip.tag{cursor:pointer;user-select:none}
+.chip.tag input{position:absolute;opacity:0;pointer-events:none}
+.chip.tag:has(input:checked){background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.li .end.up{color:var(--warn);font-weight:700}
+.li .end.down{color:var(--ok);font-weight:700}
 .badge{display:inline-block;padding:4px 11px;border-radius:99px;font-size:13px;font-weight:700}
 .badge.ok{background:var(--ok-bg);color:var(--ok)} .badge.warn{background:var(--warn-bg);color:var(--warn)} .badge.bad{background:var(--bad-bg);color:var(--bad)} .badge.info{background:var(--info-bg);color:var(--info)}
 .note{border-radius:var(--r-s);padding:11px 13px;font-size:13.5px;margin:10px 0;background:var(--info-bg);color:var(--info);border-left:3px solid currentColor}

@@ -230,12 +230,20 @@
   /* ---- görünüm ---- */
   DA.calcs.push({
     id: 'degisim', data: ['tuber','hedef'], title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'table',
-    view() {
+    view(parts, q) {
+      const cid = q && q.get('c');
+      const cl = cid ? (DA.state().clients || []).find((x) => x.id === cid) : null;
+      S().exClient = cl ? cl.id : null;
       const T = target();
       return {
         title: 'Değişim listesi', tab: 'hesapla', back: 'hesapla', ico: 'table',
         fav: { h: '#/hesapla/degisim', t: 'Değişim listesi', ico: 'table' },
+        back: cl ? 'danisan/' + cl.id : 'hesapla',
         html:
+          (cl ? '<div class="note ok"><b>' + esc(cl.name) + '</b> için plan. ' +
+            (cl.avoid ? 'Kaçınılan: ' + esc(cl.avoid) + '. ' : '') +
+            '<button class="btn sm block" style="margin-top:10px" data-act="exSaveClient" data-id="' + esc(cl.id) + '">' +
+            icon('save') + ' Planı danışana kaydet</button></div>' : '') +
           '<div class="card"><div class="sect" style="margin-top:0">Hedef</div>' +
           '<div class="grid2"><label class="fld"><span>Enerji (kcal)</span><input type="text" inputmode="numeric" name="kcal" value="' + esc(T.kcal) + '" data-live="exT"></label>' +
           '<label class="fld"><span>Karbonhidrat %</span><input type="text" inputmode="numeric" name="c" value="' + esc(T.c) + '" data-live="exT"></label></div>' +
@@ -341,6 +349,38 @@
   DA.actions.exMealDec = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) - 1);
 
   DA.actions.exShare = () => DA.shareText('Değişim listesi planı', planText());
+  DA.actions.exSaveClient = (el) => {
+    const c = (DA.state().clients || []).find((x) => x.id === el.dataset.id);
+    if (!c) return DA.toast('Danışan bulunamadı');
+    const t = totals(counts());
+    if (!t.n) return DA.toast('Önce gruplara değişim ekle');
+    c.plan = { d: DA.today(), hedef: Object.assign({}, target()), ex: Object.assign({}, counts()),
+      meal: JSON.parse(JSON.stringify(S().exMeal || {})),
+      top: { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) } };
+    DA.save();
+    DA.toast(c.name + ' dosyasına kaydedildi');
+  };
+  /* Rapor ve başka ekranlar için: kayıtlı planı okunabilir tabloya çevir */
+  DA.exchangePlanHtml = (plan) => {
+    if (!plan || !plan.ex) return '';
+    const rows = GROUPS.filter((g) => plan.ex[g.k]).map((g) =>
+      '<tr><td>' + esc(g.l) + '</td><td class="n">' + fmt(plan.ex[g.k], 1) + '</td>' +
+      '<td class="n">' + fmt(plan.ex[g.k] * g.c, 0) + '</td><td class="n">' + fmt(plan.ex[g.k] * g.p, 0) + '</td>' +
+      '<td class="n">' + fmt(plan.ex[g.k] * g.f, 0) + '</td></tr>').join('');
+    if (!rows) return '';
+    const ogun = MEALS.map((mm) => {
+      const mv = (plan.meal || {})[mm[0]] || {};
+      const det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + mv[g.k]).join(', ');
+      return det ? '<div style="font-size:13px"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
+    }).filter(Boolean).join('');
+    return '<div style="margin-top:12px"><b>Değişim listesi planı</b> <span style="color:#666;font-size:12px">' +
+      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</span>' +
+      '<table><thead><tr><th>Grup</th><th class="n">Değişim</th><th class="n">KH</th><th class="n">P</th><th class="n">Y</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody><tfoot><tr><th>Toplam</th><th></th><th class="n">' + plan.top.c + '</th>' +
+      '<th class="n">' + plan.top.p + '</th><th class="n">' + plan.top.f + '</th></tr></tfoot></table>' +
+      '<div style="font-size:13px;margin-top:4px"><b>Toplam enerji:</b> ' + plan.top.kcal + ' kcal</div>' +
+      (ogun ? '<div style="margin-top:8px">' + ogun + '</div>' : '') + '</div>';
+  };
   DA.actions.exMenu = () => {
     if (DA.menuFromExchange) DA.menuFromExchange(counts(), GROUPS, totals(counts()));
     else DA.toast('Menü planlayıcı bulunamadı');
