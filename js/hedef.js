@@ -59,6 +59,65 @@
       '<b>Protein g/gün</b> karşılanması gereken en düşük miktardır (PRI); <b>protein % kkal</b> ise kabul edilebilir dağılım aralığıdır.</p>';
   }
 
+  /* ---- Örüntü içeriği ile hedefin yan yana karşılaştırması ----
+     Oran VERİLMEZ: kaynaktaki Ek 3.4.3 tablosu resmî karşılama yüzdelerini içerir ve bu yüzdeler
+     içerik ÷ hedef ile birebir yeniden üretilemiyor (A vitamini, riboflavin ve B6’da fark çıkıyor).
+     Bu yüzden burada yalnızca iki sütun yan yana konur, yorum Ek 3.4.3’ün kendi sonuçlarından alınır. */
+  const IC = () => DA.data.icerik;
+  function karsilamaHtml(sex, T, i, pi) {
+    const ic = IC();
+    if (!ic) return '';
+    const kcal = T.c[i].kcal[pi];
+    let ki = 0;
+    ic.kcal.forEach((k, j) => { if (Math.abs(k - kcal) < Math.abs(ic.kcal[ki] - kcal)) ki = j; });
+
+    const rows = [];
+    ic.r.forEach((r) => {
+      if (!r.k) return;
+      const [rn, ru] = r.k.split('|');
+      const tr = T.r.find((x) => x.n === rn && x.u === ru);
+      if (!tr || tr.v[i] == null) return;
+      let hedef = Array.isArray(tr.v[i]) ? tr.v[i][0] : tr.v[i];
+      if (r.kx) hedef *= r.kx;
+      if (!(hedef > 0)) return;
+      const raw = r.v[ki];
+      rows.push({ n: r.n, u: r.u, tam: Array.isArray(raw) ? raw[0] : raw,
+        yy: Array.isArray(raw) ? raw[1] : null, hedef, ul: r.ul });
+    });
+    if (!rows.length) return '';
+
+    return '<details class="acc"><summary>Örüntü içeriği ile hedefin karşılaştırması' +
+      ' <span class="muted tiny">' + ic.kcal[ki] + ' kkal</span></summary><div class="body">' +
+      '<div class="scrollx"><table class="t"><thead><tr><th>Besin ögesi</th>' +
+      '<th class="n">Örüntü içeriği</th><th class="n">Hedef</th></tr></thead><tbody>' +
+      rows.map((x) => '<tr><td>' + esc(x.n) + ' <span class="muted tiny">' + esc(x.u) + '</span></td>' +
+        '<td class="n"><b>' + fmt(x.tam, 2) + '</b>' +
+        (x.yy != null ? '<br><span class="muted tiny">' + fmt(x.yy, 2) + ' yarım yağlı</span>' : '') + '</td>' +
+        '<td class="n">' + fmt(x.hedef, 2) + (x.ul ? '<br><span class="muted tiny">üst sınır</span>' : '') + '</td></tr>').join('') +
+      '</tbody></table></div>' +
+      '<div class="sect">TÜBER’in değerlendirmesi <span class="muted tiny">Ek 3.4.3</span></div>' +
+      '<ul class="tight">' + ic.karsilama.map((x) => '<li>' + x + '</li>').join('') + '</ul>' +
+      '<p class="muted tiny" style="margin-bottom:0">Yukarıdaki tablo Ek 3.2.1 içerikleri ile Ek 3.4.1/3.4.2 hedeflerini yan yana koyar. ' +
+      'Resmî karşılama yüzdeleri için ' + esc(ic.karsilamaSrc) + ' tablosuna bakın.</p></div></details>';
+  }
+
+  /* Ek 3.2.1 — örüntünün ham besin ögesi içeriği */
+  function icerikHtml(kcal) {
+    const ic = IC();
+    if (!ic) return '';
+    let i = 0;
+    ic.kcal.forEach((k, j) => { if (Math.abs(k - kcal) < Math.abs(ic.kcal[i] - kcal)) i = j; });
+    const cv = (v) => v == null ? '—' : Array.isArray(v) ? fmt(v[0], 2) + ' / ' + fmt(v[1], 2) : fmt(v, 2);
+    return '<details class="acc"><summary>Örüntünün besin ögesi içeriği' +
+      ' <span class="muted tiny">Ek 3.2.1 · ' + ic.kcal[i] + ' kkal</span></summary><div class="body">' +
+      '<div class="scrollx"><table class="t"><thead><tr><th>Besin ögesi</th><th class="n">İçerik</th><th>Birim</th></tr></thead><tbody>' +
+      ic.r.map((r) => '<tr><td>' + esc(r.n) + '</td><td class="n"><b>' + cv(r.v[i]) + '</b>' +
+        (r.p ? '<br><span class="muted tiny">(' + cv(r.p[i]) + ')</span>' : '') +
+        '</td><td class="muted tiny">' + esc(r.u) + '</td></tr>').join('') +
+      '</tbody></table></div><ul class="tight muted tiny">' + ic.n.map((x) => '<li>' + x + '</li>').join('') + '</ul>' +
+      '<p class="muted tiny" style="margin-bottom:0">Kaynak: ' + esc(ic.src) + '</p></div></details>';
+  }
+
   /* Ek 3.1.2 — en yakın enerji düzeyi için elzem enerji ve isteğe bağlı pay */
   function enerjiHtml(kcal) {
     const O = OE(), L = O.kcal;
@@ -102,6 +161,8 @@
           T.c.map((c, j) => '<button class="chip' + (j === i ? ' on' : '') + '" data-act="hdCol" data-i="' + j + '">' +
             esc(c.y) + '</button>').join('') + '</div></div>' +
           hedefHtml(sex, T, i, pi) +
+          karsilamaHtml(sex, T, i, pi) +
+          icerikHtml(T.c[i].kcal[pi]) +
           enerjiHtml(T.c[i].kcal[pi]) +
           '<details class="acc"><summary>Tüm yaş grupları</summary><div class="body">' + gridHtml(sex, i) + '</div></details>' +
           '<a class="btn ghost block" href="#/hesapla/oruntu">' + icon('book') + ' Bu enerji düzeyinin porsiyon örüntüsü</a>' +
