@@ -61,7 +61,7 @@
     return {
       title: 'Staj günlüğü — PDF', back: 'staj',
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="jShare">Metin olarak paylaş</button></div>' +
-        '<div class="printdoc"><h2>Staj günlüğü</h2><div style="color:#555;font-size:13px">Toplam ' + fmt(total, 1) + ' saat · ' + list.length + ' kayıt</div>' +
+        '<div class="printdoc">' + DA.antet() + '<h2>Staj günlüğü</h2><div style="color:#555;font-size:13px">Toplam ' + fmt(total, 1) + ' saat · ' + list.length + ' kayıt</div>' +
         list.map((e) => '<div style="margin:14px 0;border-top:1px solid #ddd;padding-top:8px"><b>' + esc(DA.fdate(e.d)) + '</b> · ' + esc(e.type) + (e.place ? ' · ' + esc(e.place) : '') + (e.hours ? ' · ' + fmt(e.hours, 1) + ' sa' : '') + (e.title ? '<div><b>' + esc(e.title) + '</b></div>' : '') + '<div>' + esc(e.text || '').replace(/\n/g, '<br>') + '</div></div>').join('') + '</div>'
     };
   };

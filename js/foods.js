@@ -4,7 +4,56 @@
   const { esc, fmt, num, uid } = DA;
   const MEALS = ['Kahvaltı', 'Kuşluk', 'Öğle', 'İkindi', 'Akşam', 'Gece ara öğünü'];
 
-  const allFoods = () => DA.data.foods.concat(DA.state().customFoods.map((f) => Object.assign({ custom: true }, f)));
+  /* ---- TÜBER porsiyon verisini (Ek 2.3.1) temel listeyle birleştir ----
+     Aynı besin iki kez görünmesin: ad eşleşirse mevcut kayda standart porsiyon
+     ölçüsü ve mikro besin paneli eklenir, eşleşmezse yeni kayıt olarak gelir. */
+  const MIKRO = [['Kolesterol', 'mg'], ['Kalsiyum', 'mg'], ['Demir', 'mg'], ['Çinko', 'mg'], ['Potasyum', 'mg'],
+    ['A vitamini', 'µg'], ['C vitamini', 'mg'], ['B1 vitamini', 'mg'], ['B2 vitamini', 'mg'],
+    ['Niasin eşd.', 'mg'], ['B6 vitamini', 'mg'], ['B12 vitamini', 'µg'], ['Folik asit', 'µg']];
+  const sade = (n) => DA.trLower(n).replace(/[(),.]/g, ' ').replace(/\s+/g, ' ').trim();
+  let _birlesikKey = null, _birlesik = null;
+
+  function tuberFoods() {
+    const P = DA.data.porsiyonBesin;
+    if (!P) return [];
+    const out = [];
+    P.g.forEach((g) => g.f.forEach((f) => {
+      const por = f[1];
+      if (!(por > 0)) return;
+      const k = 100 / por;
+      out.push({
+        id: 'tb-' + sade(f[0]).replace(/[^a-z0-9]+/g, '-'), n: f[0], cat: g.g, tuber: true,
+        kcal: f[2] * k, p: f[3] * k, c: f[4] * k, fib: f[5] * k, f: f[6] * k,
+        u: [['1 standart porsiyon', por]],
+        mik: MIKRO.map((m, i) => [m[0], f[7 + i] == null ? null : f[7 + i], m[1]]),
+        por: por
+      });
+    }));
+    return out;
+  }
+
+  function allFoods() {
+    const P = DA.data.porsiyonBesin;
+    const key = (P ? 'T' : '-') + DA.state().customFoods.length;
+    if (_birlesik && _birlesikKey === key) return _birlesik;
+    const temel = DA.data.foods.map((f) => Object.assign({}, f));
+    if (P) {
+      const idx = {};
+      temel.forEach((f) => { idx[sade(f.n)] = f; });
+      tuberFoods().forEach((t) => {
+        const v = idx[sade(t.n)];
+        if (v) {
+          /* mevcut kayda standart porsiyon ölçüsü ve mikro paneli ekle */
+          v.u = (v.u || []).concat([['1 standart porsiyon (TÜBER)', t.por]]);
+          v.mik = t.mik; v.por = t.por; v.tuberAd = t.n;
+        } else temel.push(t);
+      });
+    }
+    _birlesik = temel.concat(DA.state().customFoods.map((f) => Object.assign({ custom: true }, f)));
+    _birlesikKey = key;
+    return _birlesik;
+  }
+  DA.foodsInvalidate = () => { _birlesik = null; };
   const getFood = (id) => allFoods().find((f) => f.id === id);
   const nut = (f, g) => ({ kcal: f.kcal * g / 100, p: f.p * g / 100, c: f.c * g / 100, f: f.f * g / 100, fib: (f.fib || 0) * g / 100 });
   const add = (a, b) => ({ kcal: a.kcal + b.kcal, p: a.p + b.p, c: a.c + b.c, f: a.f + b.f, fib: a.fib + b.fib });
@@ -22,6 +71,68 @@
   }
   function mealTotals(list) { return list.reduce((t, it) => add(t, itemNut(it)), zero()); }
 
+  /* ---- Menünün mikro besin toplamı ----
+     Yalnızca TÜBER panelini taşıyan besinler sayılır; kapsam oranı da bildirilir. */
+  function menuMikro(m) {
+    const top = {}, say = { var: 0, yok: 0 };
+    MEALS.forEach((k) => (m.meals[k] || []).forEach((it) => {
+      const f = getFood(it.id);
+      if (!f || !f.mik) { say.yok++; return; }
+      say.var++;
+      f.mik.forEach((x) => {
+        if (x[1] == null) return;
+        top[x[0]] = top[x[0]] || { v: 0, u: x[2] };
+        top[x[0]].v += x[1] * it.g / f.por;   /* panel 1 porsiyon içindir */
+      });
+    }));
+    return { top, say };
+  }
+
+  /* Menü toplamını TÜBER hedefleriyle yan yana koy */
+  function mikroKartHtml(m) {
+    const H = DA.data.hedef;
+    const { top, say } = menuMikro(m);
+    const adlar = Object.keys(top);
+    if (!adlar.length) return '';
+    const p = DA.state().profile || {};
+    let hedefSut = null, basligi = '';
+    if (H && p.age > 0) {
+      const sex = p.sex === 'K' ? 'K' : 'E', T = H[sex];
+      const i = DA.hedefBand ? DA.hedefBand(sex, p.age) : null;
+      if (i != null && i >= 0) { hedefSut = T; basligi = (sex === 'K' ? 'Kadın' : 'Erkek') + ' ' + T.c[i].y + ' yaş'; hedefSut._i = i; }
+    }
+    const hedefOf = (ad) => {
+      if (!hedefSut) return null;
+      const r = hedefSut.r.find((x) => x.n === ad);
+      if (!r) return null;
+      let v = r.v[hedefSut._i];
+      if (v == null) return null;
+      v = Array.isArray(v) ? v[0] : v;
+      return (r.u === 'g/gün' && ad === 'Potasyum') ? v * 1000 : v;
+    };
+    return '<details class="acc"><summary>Mikro besin toplamı' +
+      (say.yok ? ' <span class="muted tiny">' + say.var + '/' + (say.var + say.yok) + ' besin</span>' : '') +
+      '</summary><div class="body">' +
+      (say.yok ? '<div class="note warn">Menüdeki ' + say.yok + ' besinin mikro besin verisi yok; toplam eksik. ' +
+        'TÜBER standart porsiyon listesindeki besinleri seçersen tam hesaplanır.</div>' : '') +
+      '<div class="scrollx"><table class="t"><thead><tr><th>Besin ögesi</th><th class="n">Menü</th>' +
+      (hedefSut ? '<th class="n">Hedef</th><th class="n">%</th>' : '') + '</tr></thead><tbody>' +
+      adlar.map((ad) => {
+        const h = hedefOf(ad);
+        const o = top[ad];
+        return '<tr><td>' + esc(ad) + ' <span class="muted tiny">' + esc(o.u) + '</span></td>' +
+          '<td class="n"><b>' + fmt(o.v, 2) + '</b></td>' +
+          (hedefSut ? '<td class="n muted">' + (h ? fmt(h, 2) : '—') + '</td>' +
+            '<td class="n">' + (h ? '<span class="badge ' + (o.v / h >= 0.95 ? 'ok' : o.v / h >= 0.7 ? 'warn' : 'bad') + '">%' +
+              fmt(o.v / h * 100, 0) + '</span>' : '—') + '</td>' : '') + '</tr>';
+      }).join('') + '</tbody></table></div>' +
+      (hedefSut ? '<p class="muted tiny">Hedefler profildeki yaş ve cinsiyete göre: <b>' + esc(basligi) +
+        '</b> (TÜBER Ek 3.4.1/3.4.2).</p>'
+        : '<p class="muted tiny">Hedeflerle karşılaştırmak için profile yaş gir.</p>') +
+      '<p class="muted tiny" style="margin-bottom:0">Değerler TÜBER 2022 Ek 2.3.1 standart porsiyon verisinden ölçeklenir.</p>' +
+      '</div></details>';
+  }
+
   /* ---------- Besin listesi ---------- */
   let cat = 'Tümü', query = '';
   function foodListHtml() {
@@ -29,13 +140,17 @@
     const items = allFoods().filter((f) => (cat === 'Tümü' || f.cat === cat || (cat === 'Eklediklerim' && f.custom)) && (!q || DA.trLower(f.n).includes(q)));
     if (!items.length) return DA.emptyState('search', 'Besin bulunamadı.<br><span class="small">Sağ üstteki + ile kendi besinini ekleyebilirsin.</span>');
     return '<div class="list">' + items.map((f) =>
-      '<button class="li" data-act="foodDetail" data-id="' + esc(f.id) + '"><span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">P ' + fmt(f.p, 1) + ' · K ' + fmt(f.c, 1) + ' · Y ' + fmt(f.f, 1) + ' g</div></span><span class="end"><b style="color:var(--ink)">' + fmt(f.kcal, 0) + '</b> kcal</span></button>').join('') + '</div>';
+      '<button class="li" data-act="foodDetail" data-id="' + esc(f.id) + '"><span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">P ' + fmt(f.p, 1) + ' · K ' + fmt(f.c, 1) + ' · Y ' + fmt(f.f, 1) + ' g' + (f.por ? ' · porsiyon ' + fmt(f.por, 0) + ' g' : '') + '</div></span><span class="end"><b style="color:var(--ink)">' + fmt(f.kcal, 0) + '</b> kcal</span></button>').join('') + '</div>';
   }
   DA.live.foodSearch = (el) => { query = el.value; DA.$('#foodList').innerHTML = foodListHtml(); };
   DA.actions.foodCat = (el) => { cat = el.dataset.c; DA.render(true); };
 
   DA.views.besin = (parts, q) => {
-    const cats = ['Tümü'].concat(DA.data.foodCats);
+    /* Kategoriler listedeki gerçek gruplardan türetilir (TÜBER grupları da dahil) */
+    const gorulen = [];
+    allFoods().forEach((f) => { if (!f.custom && gorulen.indexOf(f.cat) < 0) gorulen.push(f.cat); });
+    const sira = DA.data.foodCats.filter((c) => gorulen.indexOf(c) >= 0);
+    const cats = ['Tümü'].concat(sira, gorulen.filter((c) => sira.indexOf(c) < 0));
     if (DA.state().customFoods.length) cats.push('Eklediklerim');
     return {
       title: 'Besinler', tab: 'besin',
@@ -43,9 +158,12 @@
         '<input type="search" placeholder="Besin ara…" value="' + esc(query) + '" data-live="foodSearch" aria-label="Besin ara">' +
         '<div class="chips mt-s">' + cats.map((c) => '<button class="chip' + (c === cat ? ' on' : '') + '" data-act="foodCat" data-c="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' +
         '<div id="foodList">' + foodListHtml() + '</div>' +
-        '<p class="muted tiny center">Değerler 100 g için yaklaşık ortalamalardır (USDA ve yaygın Türk mutfağı değerleri). Ödev/klinik çalışmada TürKomp ile doğrulayın.</p>' +
+        '<p class="muted tiny center">Değerler 100 g içindir. Standart porsiyonu ve mikro besin paneli olan kayıtlar ' +
+        'TÜBER 2022 Ek 2.3.1’den gelir; diğerleri USDA ve yaygın Türk mutfağı ortalamalarıdır (yaklaşık). ' +
+        'Klinik çalışmada TürKomp ile doğrulayın.</p>' +
         '<button class="fab" data-act="foodNew" aria-label="Besin ekle">' + DA.icon('plus') + '</button>',
       mount() {
+        if (!DA.data.porsiyonBesin) DA.need(['porsiyonBesin']).then(() => { DA.foodsInvalidate(); DA.render(true); }).catch(() => {});
         const id = q && q.get('f');
         if (id && getFood(id)) DA.actions.foodDetail({ dataset: { id } });
       }
@@ -70,7 +188,13 @@
   DA.actions.foodDetail = (el) => {
     const f = getFood(el.dataset.id); if (!f) return;
     const menus = DA.state().menus;
-    DA.sheet(f.n, '<div class="muted small">' + esc(f.cat) + ' · 100 g’da ' + fmt(f.kcal, 0) + ' kcal</div>' +
+    const mikroHtml = f.mik ? '<details class="acc mt"><summary>Standart porsiyonda besin ögeleri' +
+      ' <span class="muted tiny">TÜBER Ek 2.3.1 · ' + fmt(f.por, 0) + ' g</span></summary><div class="body">' +
+      '<table class="t"><tbody>' + f.mik.map((m) => '<tr><td>' + esc(m[0]) + '</td><td class="n"><b>' +
+      (m[1] == null ? '—' : fmt(m[1], 2)) + '</b> ' + esc(m[2]) + '</td></tr>').join('') +
+      '</tbody></table></div></details>' : '';
+    DA.sheet(f.n, '<div class="muted small">' + esc(f.cat) + ' · 100 g’da ' + fmt(f.kcal, 0) + ' kcal' +
+      (f.por ? ' · 1 porsiyon ' + fmt(f.por, 0) + ' g' : '') + (f.tuber ? ' · TÜBER' : '') + '</div>' + mikroHtml +
       '<form id="amtForm" data-id="' + esc(f.id) + '" onsubmit="return false"><div class="grid2 mt"><label class="fld"><span>Miktar</span><input type="text" inputmode="decimal" name="amt" value="1" data-live="amt"></label>' +
       '<label class="fld"><span>Birim</span><select name="unit" data-live="amt">' + unitOptions(f) + '</select></label></div>' +
       '<div id="amtPrev"></div>' +
@@ -90,7 +214,7 @@
   };
   DA.actions.foodDelete = (el) => {
     if (!confirm('Bu besin silinsin mi?')) return;
-    const S = DA.state(); S.customFoods = S.customFoods.filter((f) => f.id !== el.dataset.id); DA.save(); DA.closeSheet(); DA.render(true);
+    const S = DA.state(); S.customFoods = S.customFoods.filter((f) => f.id !== el.dataset.id); DA.foodsInvalidate(); DA.save(); DA.closeSheet(); DA.render(true);
   };
   DA.actions.foodNew = () => {
     DA.sheet('Yeni besin (100 g için)', '<form data-form="foodNew"><label class="fld"><span>Ad</span><input type="text" name="n" required></label>' +
@@ -104,6 +228,7 @@
     if (!d.n.trim() || !isFinite(kcal)) return DA.toast('Ad ve enerji gerekli');
     const por = num(d.por);
     DA.state().customFoods.push({ id: 'c_' + uid(), n: d.n.trim(), cat: 'Eklediklerim', kcal, p: num(d.p) || 0, c: num(d.c) || 0, f: num(d.f) || 0, fib: num(d.fib) || 0, u: por > 0 ? [['1 porsiyon', por]] : [] });
+    DA.foodsInvalidate();
     DA.save(); DA.closeSheet(); cat = 'Eklediklerim'; DA.render(true); DA.toast('Besin eklendi');
   };
 
@@ -129,6 +254,9 @@
     }
     const m = DA.state().menus.find((x) => x.id === id);
     if (!m) return { title: 'Menü', back: 'menu', html: '<div class="card">Menü bulunamadı.</div>' };
+    if (!DA.data.porsiyonBesin || !DA.data.hedef) {
+      DA.need(['porsiyonBesin', 'hedef']).then(() => { DA.foodsInvalidate(); DA.render(true); }).catch(() => {});
+    }
     const t = menuTotals(m), tg = targetOf(m);
     const pct = (a, b) => (b > 0 ? Math.min(100, a / b * 100) : 0);
     const bar = (l, a, b, u) => '<div class="mt-s"><div class="row between small"><span>' + l + '</span><span><b>' + fmt(a, 0) + '</b> / ' + fmt(b, 0) + ' ' + u + '</span></div><div class="bar' + (a > b * 1.05 ? ' over' : '') + '"><i style="width:' + pct(a, b) + '%"></i></div></div>';
@@ -137,6 +265,7 @@
       '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + '</b><small>protein g</small></div><div><b>' + fmt(t.c, 0) + '</b><small>karb. g</small></div><div><b>' + fmt(t.f, 0) + '</b><small>yağ g</small></div><div><b>' + fmt(t.fib, 0) + '</b><small>lif g</small></div></div>' +
       (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
       exchangeCard(t) +
+      mikroKartHtml(m) +
       MEALS.map((k) => {
         const list = m.meals[k] || [], mt = mealTotals(list);
         return '<div class="card"><div class="row between"><h2>' + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
@@ -252,7 +381,16 @@
     if (m.note) s += '\n\nNot: ' + m.note;
     return s;
   }
+  /* Yazdırma rotaları hesaplayıcı yönlendiricisinden geçmediği için
+     ihtiyaç duydukları veriyi kendileri yükler. */
+  const YAZ_VERI = { degisim: ['tuber', 'hedef'], ornekmenu: ['ornekMenu'], menu: ['porsiyonBesin', 'hedef'] };
   DA.views.yazdir = (parts) => {
+    const ihtiyac = YAZ_VERI[parts[0]];
+    if (ihtiyac && !DA.hazir(ihtiyac)) {
+      DA.need(ihtiyac).then(() => { DA.foodsInvalidate(); DA.render(true); }).catch(() => {});
+      return { title: 'Yazdır', back: 'ana', noRecent: true,
+        html: '<div class="card"><div class="empty">' + DA.icon('note') + '<div>Yükleniyor…</div></div></div>' };
+    }
     if (parts[0] === 'menu') {
       const m = DA.state().menus.find((x) => x.id === parts[1]);
       if (!m) return { title: 'Yazdır', back: 'menu', html: '<div class="card">Menü bulunamadı.</div>' };
@@ -267,7 +405,7 @@
         title: 'PDF / Paylaş', tab: 'besin', back: 'menu/' + m.id,
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
-          '<div class="printdoc"><h2>' + esc(m.title) + '</h2><div style="color:#555;font-size:13px">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
+          '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div style="color:#555;font-size:13px">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
           '<div class="by">' + esc(DA.dyt()) + '</div>' +
           '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +
@@ -277,6 +415,8 @@
     }
     if (parts[0] === 'staj') return DA.views._printJournal(parts.slice(1));
     if (parts[0] === 'danisan') return DA.views._printClient(parts.slice(1));
+    if (parts[0] === 'degisim' && DA.views._printExchange) return DA.views._printExchange(parts.slice(1));
+    if (parts[0] === 'ornekmenu' && DA.views._printOrnek) return DA.views._printOrnek(parts.slice(1));
     return { title: 'Yazdır', html: '<div class="card">Bulunamadı.</div>' };
   };
   DA.actions.doPrint = () => window.print();

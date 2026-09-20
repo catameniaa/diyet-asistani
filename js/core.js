@@ -24,6 +24,12 @@
   DA.dyt = () => (state.profile.dyt || '').trim() || 'Dyt. Can Bayramoğlu';
 
   /* ---- tema: otomatik (sistem) / açık / koyu ---- */
+  /* Yazdırma çıktılarının başındaki antet: ad-unvan ve iletişim satırı */
+  DA.antet = () => {
+    const p = state.profile || {};
+    return '<div class="antet"><div class="ad">' + DA.esc(DA.dyt()) + '</div>' +
+      (p.iletisim ? '<div class="il">' + DA.esc(p.iletisim) + '</div>' : '') + '</div>';
+  };
   DA.THEMES = [['auto', 'Otomatik'], ['light', 'Açık'], ['dark', 'Koyu']];
   DA.theme = () => state.ui.theme || 'auto';
   DA.applyTheme = () => {

@@ -162,7 +162,7 @@
           '<details class="acc"><summary>Tüm yaş grupları</summary><div class="body">' + gridHtml(sex, i) + '</div></details>' +
           '<a class="btn ghost block" href="#/hesapla/oruntu">' + icon('book') + ' Bu enerji düzeyinin porsiyon örüntüsü</a>' +
           '<div class="note">Kaynak: ' + esc(H().src) + '. AA = az aktif · OA = orta aktif · A = aktif. ' + esc(H().n) + '</div>' +
-          '<div class="card"><p class="muted tiny" style="margin-bottom:0">' + esc(H().bug) + '</p></div>'
+          '<div class="card"><p class="muted tiny">' + esc(H().bug) + '</p>' + (DA.kaynakRozet ? DA.kaynakRozet('hedef') : '') + '</div>'
       };
     }
   });

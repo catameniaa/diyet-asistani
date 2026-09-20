@@ -302,7 +302,7 @@
       title: 'Danışan raporu', tab: 'danisan', back: 'danisan/' + c.id, noRecent: true,
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="clientShare" data-id="' + c.id + '">Metin olarak paylaş</button></div>' +
-        '<div class="printdoc"><h2>' + esc(c.name) + '</h2>' +
+        '<div class="printdoc">' + DA.antet() + '<h2>' + esc(c.name) + '</h2>' +
         '<div style="color:#555;font-size:13px">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a2 != null ? ' · ' + a2 + ' yaş' : '') +
         (c.h ? ' · ' + fmt(c.h, 0) + ' cm' : '') + ' · Rapor tarihi ' + esc(DA.fdate(DA.today())) + '</div>' +
         '<div class="by">' + esc(DA.dyt()) + '</div>' +

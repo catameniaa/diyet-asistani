@@ -224,7 +224,8 @@
       '</div>' +
       breakdown(v, t) +
       '<button class="btn sec block" data-act="exShare">' + icon('share') + ' Planı paylaş / kopyala</button>' +
-      '<button class="btn ghost block mt-s" data-act="exMenu">' + icon('menu') + ' Bu plandan menü iskeleti oluştur</button>';
+      '<div class="grid2 mt-s"><button class="btn ghost block" data-act="exMenu">' + icon('menu') + ' Menü iskeleti</button>' +
+      '<a class="btn ghost block" href="#/yazdir/degisim' + (S().exClient ? '/' + S().exClient : '') + '">' + icon('note') + ' Yazdır</a></div>';
   }
 
   /* ---- görünüm ---- */
@@ -349,6 +350,32 @@
   DA.actions.exMealDec = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) - 1);
 
   DA.actions.exShare = () => DA.shareText('Değişim listesi planı', planText());
+
+  /* ---- Yazdırma: danışana verilebilir tek sayfalık plan ---- */
+  DA.views._printExchange = (parts) => {
+    const cid = parts[0];
+    const cl = cid ? (DA.state().clients || []).find((x) => x.id === cid) : null;
+    const plan = cl && cl.plan ? cl.plan
+      : { d: DA.today(), hedef: target(), ex: counts(), meal: S().exMeal || {},
+          top: (() => { const t = totals(counts()); return { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) }; })() };
+    if (!plan.top.kcal) return { title: 'Plan', back: 'hesapla/degisim',
+      html: '<div class="card">Önce değişim listesinde bir plan oluştur.</div>' };
+    const orn = GROUPS.filter((g) => plan.ex[g.k]).map((g) =>
+      '<tr><td>' + esc(g.l) + '</td><td class="n">' + fmt(plan.ex[g.k], 1) + '</td><td>' + esc(g.ex) + '</td></tr>').join('');
+    return {
+      title: 'Değişim planı', tab: 'hesapla', back: cl ? 'danisan/' + cl.id : 'hesapla/degisim', noRecent: true,
+      html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
+        '<button class="btn ghost block" data-act="exShare">Metin olarak paylaş</button></div>' +
+        '<div class="printdoc">' + DA.antet() + '<h2>Değişim listesi planı</h2>' +
+        '<div style="color:#555;font-size:13px">' + (cl ? esc(cl.name) + ' · ' : '') + esc(DA.fdate(plan.d)) +
+        ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</div>' +
+        (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan).replace(/^<div style="margin-top:12px">/, '<div>') : '') +
+        '<div style="margin-top:14px"><b>1 değişim ne kadar?</b>' +
+        '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' +
+        (cl && cl.avoid ? '<div style="font-size:13px"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
+        '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — bu plan bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+    };
+  };
   DA.actions.exSaveClient = (el) => {
     const c = (DA.state().clients || []).find((x) => x.id === el.dataset.id);
     if (!c) return DA.toast('Danışan bulunamadı');

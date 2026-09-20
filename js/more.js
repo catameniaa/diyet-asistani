@@ -130,7 +130,8 @@
     DA.render(true);
   };
 
-  DA.views.daha = (parts) => {
+  DA.views.daha = (parts, q) => {
+    if (parts[0] === 'kaynaknot' && DA.views._kaynakNot) return DA.views._kaynakNot(q);
     if (parts[0] === 'sablon') return {
       title: 'Numbers şablonları', back: 'daha',
       html: '<div class="card"><h2>Diyetisyen şablonları (.xlsx)</h2><p class="small muted" style="margin-top:0">Beş sayfalık tek dosya: danışan takip çizelgesi, haftalık menü, 3 günlük besin tüketim kaydı, staj saat çizelgesi, enerji hesaplama. Formüller hazır.</p>' +
@@ -149,12 +150,15 @@
 
         '<div class="sect">Diyetisyen</div><div class="card">' +
         '<form data-form="dyt"><label class="fld"><span>Ad ve unvan</span><input type="text" name="dyt" value="' + esc(DA.dyt()) + '" placeholder="Dyt. Ad Soyad" autocomplete="name"></label>' +
+        '<label class="fld"><span>İletişim satırı (yazdırma başlığında görünür)</span><input type="text" name="iletisim" value="' +
+        esc((DA.state().profile || {}).iletisim || '') + '" placeholder="Klinik adı · telefon · e-posta"></label>' +
         '<button class="btn block" type="submit">Kaydet</button></form>' +
         '<p class="muted tiny" style="margin-bottom:0">Ana sayfada, menü PDF’lerinde ve paylaşılan planlarda görünür.</p></div>' +
 
         '<div class="list"><a class="li chev" href="#/staj"><span class="ic">' + icon('note') + '</span><span class="grow"><div class="t">Staj günlüğü</div></span></a>' +
         '<a class="li chev" href="#/kart"><span class="ic">' + icon('cards') + '</span><span class="grow"><div class="t">Çalışma kartları</div></span></a>' +
-        '<a class="li chev" href="#/daha/sablon"><span class="ic">' + icon('table') + '</span><span class="grow"><div class="t">Numbers şablonları</div></span></a></div>' +
+        '<a class="li chev" href="#/daha/sablon"><span class="ic">' + icon('table') + '</span><span class="grow"><div class="t">Numbers şablonları</div></span></a>' +
+        '<a class="li chev" href="#/daha/kaynaknot"><span class="ic">' + icon('book') + '</span><span class="grow"><div class="t">Kaynak notları</div><div class="s">TÜBER 2022’de bulunan dizgi ve birim hataları</div></span></a></div>' +
 
         '<div class="sect">Yedek</div><div class="card"><p class="small muted" style="margin-top:0">Tüm verilerin (danışanlar, menüler, notlar, kartlar) yalnızca bu cihazda tutulur. Telefon değiştirirsen ya da tarayıcı verilerini temizlersen kaybolur — düzenli yedek al.</p>' +
         '<div class="res"><span class="l">Son yedek</span><span class="v" style="font-size:15px">' +
@@ -173,7 +177,9 @@
 
   DA.live.theme = (el) => { DA.setTheme(el.value); DA.toast('Tema: ' + (DA.THEMES.find((t) => t[0] === el.value) || [, ''])[1]); };
   DA.forms.dyt = (f) => {
-    DA.state().profile.dyt = DA.formData(f).dyt.trim();
+    const d = DA.formData(f);
+    DA.state().profile.dyt = d.dyt.trim();
+    DA.state().profile.iletisim = (d.iletisim || '').trim();
     DA.save(); DA.toast('Kaydedildi'); DA.render(true);
   };
 
@@ -200,6 +206,11 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
     markBackup();
   };
+  /* ---- Yedek yükleme: önce içeriği göster, sonra üzerine yaz ya da birleştir ---- */
+  let _yedek = null;
+  const sayi = (o) => ({ danisan: (o.clients || []).length, menu: (o.menus || []).length,
+    staj: (o.journal || []).length, besin: (o.customFoods || []).length });
+
   DA.live.restore = (el) => {
     const f = el.files[0]; if (!f) return;
     const r = new FileReader();
@@ -207,11 +218,43 @@
       try {
         const o = JSON.parse(r.result);
         if (!o || typeof o !== 'object' || !Array.isArray(o.clients)) throw new Error('bad');
-        if (!confirm('Mevcut veriler bu yedekle DEĞİŞTİRİLECEK. Devam edilsin mi?')) return;
-        DA.replaceState(o); DA.toast('Yedek yüklendi'); DA.render(false);
+        _yedek = o;
+        const y = sayi(o), m = sayi(DA.state());
+        const sat = (l, a, b) => '<tr><td>' + l + '</td><td class="n">' + a + '</td><td class="n muted">' + b + '</td></tr>';
+        DA.sheet('Yedek dosyası', '<p class="muted small">' + esc(f.name) + '</p>' +
+          '<table class="t"><thead><tr><th></th><th class="n">Dosyada</th><th class="n">Şu an</th></tr></thead><tbody>' +
+          sat('Danışan', y.danisan, m.danisan) + sat('Menü', y.menu, m.menu) +
+          sat('Staj kaydı', y.staj, m.staj) + sat('Eklenen besin', y.besin, m.besin) +
+          '</tbody></table>' +
+          (o.lastBackup ? '<p class="muted tiny">Yedek tarihi: ' + esc(DA.fdate(String(o.lastBackup).slice(0, 10))) + '</p>' : '') +
+          '<button class="btn block" data-act="restoreMerge">' + icon('plus') + ' Birleştir (mevcut kayıtlar korunur)</button>' +
+          '<button class="btn danger block mt-s" data-act="restoreReplace">Üzerine yaz (mevcut veriler silinir)</button>' +
+          '<p class="muted tiny" style="margin-bottom:0">Birleştirmede aynı kimlikli kayıtlar atlanır; iki cihaz kullanıyorsan bunu seç.</p>');
       } catch (e) { DA.toast('Geçersiz yedek dosyası'); }
     };
     r.readAsText(f); el.value = '';
+  };
+
+  DA.actions.restoreReplace = () => {
+    if (!_yedek) return;
+    if (!confirm('Mevcut veriler bu yedekle DEĞİŞTİRİLECEK. Devam edilsin mi?')) return;
+    DA.replaceState(_yedek); _yedek = null; DA.closeSheet(); DA.toast('Yedek yüklendi'); DA.render(false);
+  };
+
+  DA.actions.restoreMerge = () => {
+    if (!_yedek) return;
+    const S = DA.state(), o = _yedek, ekle = { danisan: 0, menu: 0, staj: 0, besin: 0 };
+    const birlestir = (alan, ad) => {
+      const mevcut = S[alan] || (S[alan] = []);
+      const idx = {}; mevcut.forEach((x) => { idx[x.id] = 1; });
+      (o[alan] || []).forEach((x) => { if (x && x.id && !idx[x.id]) { mevcut.push(x); ekle[ad]++; } });
+    };
+    birlestir('clients', 'danisan'); birlestir('menus', 'menu');
+    birlestir('journal', 'staj'); birlestir('customFoods', 'besin');
+    DA.save(); _yedek = null; DA.closeSheet();
+    DA.toast('Eklendi: ' + ekle.danisan + ' danışan, ' + ekle.menu + ' menü, ' + ekle.staj + ' staj, ' + ekle.besin + ' besin');
+    if (DA.foodsInvalidate) DA.foodsInvalidate();
+    DA.render(false);
   };
   DA.actions.wipe = () => {
     if (!confirm('Tüm veriler kalıcı olarak silinecek. Emin misin?')) return;

@@ -18,8 +18,9 @@
       '<p class="muted small">' + esc(m.d) + '</p>' +
       m.o.map((o) => '<div class="sect">' + esc(o[0]) + '</div><ul class="tight">' +
         o[1].map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>').join('') +
-      '<button class="btn sec block mt" data-act="omCopy" data-id="' + esc(m.id) + '">' +
-      icon('share') + ' Menüyü kopyala</button>' +
+      '<div class="grid2 mt"><button class="btn sec block" data-act="omCopy" data-id="' + esc(m.id) + '">' +
+      icon('share') + ' Kopyala</button>' +
+      '<a class="btn sec block" href="#/yazdir/ornekmenu/' + esc(m.id) + '">' + icon('note') + ' Yazdır</a></div>' +
       (m.gebe
         ? '<a class="btn ghost block mt-s" href="#/hesapla/gebe">' + icon('heart') + ' Gebelik ve emzirme referansları</a>'
         : '<button class="btn ghost block mt-s" data-act="omHedef" data-id="' + esc(m.id) + '">' +
@@ -50,6 +51,21 @@
       };
     }
   });
+
+  DA.views._printOrnek = (parts) => {
+    const m = M().m.find((x) => x.id === parts[0]) || M().m[0];
+    return {
+      title: 'Örnek menü', tab: 'referans', back: 'hesapla/ornekmenu', noRecent: true,
+      html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
+        '<button class="btn ghost block" data-act="omCopy" data-id="' + esc(m.id) + '">Metin olarak paylaş</button></div>' +
+        '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.t) + '</h2>' +
+        '<div style="color:#555;font-size:13px">' + esc(m.d) + '</div>' +
+        m.o.map((o) => '<div style="margin-top:12px"><b>' + esc(o[0]) + '</b>' +
+          '<ul style="margin:4px 0 0;padding-left:20px">' + o[1].map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+        '<div class="ft">Kaynak: ' + esc(M().src) + ' · ' + esc(DA.dyt()) +
+        ' — menü örnektir, kişiye göre uyarlanmalıdır.</div></div>'
+    };
+  };
 
   DA.actions.omPick = (el) => { S().omSec = el.dataset.id; DA.save(); DA.render(); };
   DA.actions.omCopy = (el) => {
