@@ -33,6 +33,16 @@ Adres: https://catameniaa.github.io/diyet-asistani/
 iPhone'da Safari ile aç → Paylaş → Ana Ekrana Ekle.
 
 Derleme adımı yoktur; saf HTML/CSS/JS.
+
+## Testler
+
+```
+node tools/test/run.js
+```
+
+Hesaplayıcılarda bilinen girdi-çıktı doğrulaması, TÜBER tablolarında satır-sütun
+ve çapraz tutarlılık kontrolü, tarama araçlarında puan-band testi ve 51 rotanın
+iki temada taranması. Ayrıntı: `tools/test/README.md`.
 Besin değerleri yaklaşık ortalamalardır; klinik çalışmada TürKomp ile doğrulayın.
 
 Çocuk persentilleri WHO LMS katsayıları ile hesaplanır: 0–60 ay WHO Child Growth Standards (2006),
