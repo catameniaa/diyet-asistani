@@ -61,7 +61,8 @@
     panel(kcal, counts) {
       const O = DA.data.tuber.oruntu, i = nearest(kcal), lvl = O.kcal[i];
       const d = Math.abs(lvl - kcal);
-      return '<details class="acc"><summary>TÜBER’e göre bu enerji düzeyinde porsiyonlar' +
+      return (DA.hedefLink ? DA.hedefLink(kcal) : '') +
+        '<details class="acc"><summary>TÜBER’e göre bu enerji düzeyinde porsiyonlar' +
         ' <span class="muted tiny">(' + lvl + ' kkal)</span></summary><div class="body">' +
         (d > 100 ? '<p class="muted tiny">Hedefin ' + fmt(kcal, 0) + ' kkal; tabloda en yakın örüntü <b>' + lvl + ' kkal</b>.</p>' : '') +
         columnHtml(i) +
@@ -124,6 +125,7 @@
           '<details class="acc"><summary>Tüm enerji düzeyleri (1000–3200 kkal)</summary><div class="body">' +
           gridHtml(i) + '</div></details>' +
           '<a class="btn ghost block mt" href="#/hesapla/porsiyon">' + DA.icon('table') + ' Yaş ve cinsiyete göre porsiyon önerileri</a>' +
+          '<a class="btn ghost block mt-s" href="#/hesapla/hedef">' + DA.icon('book') + ' Bu enerji düzeyinin besin ögesi hedefleri</a>' +
           '<div class="note">Kaynak: ' + esc(DA.data.tuber.oruntu.src) + '. ' +
           'Hangi enerji düzeyinin hangi yaş ve aktivite grubuna denk geldiği için Ek 1.1.1–1.1.4’e bakın.</div>' +
           '<div class="card">' + notesHtml() + '</div>'
