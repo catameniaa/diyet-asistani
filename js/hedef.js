@@ -59,46 +59,41 @@
       '<b>Protein g/gün</b> karşılanması gereken en düşük miktardır (PRI); <b>protein % kkal</b> ise kabul edilebilir dağılım aralığıdır.</p>';
   }
 
-  /* ---- Örüntü içeriği ile hedefin yan yana karşılaştırması ----
-     Oran VERİLMEZ: kaynaktaki Ek 3.4.3 tablosu resmî karşılama yüzdelerini içerir ve bu yüzdeler
-     içerik ÷ hedef ile birebir yeniden üretilemiyor (A vitamini, riboflavin ve B6’da fark çıkıyor).
-     Bu yüzden burada yalnızca iki sütun yan yana konur, yorum Ek 3.4.3’ün kendi sonuçlarından alınır. */
+  /* ---- Ek 3.4.3: örüntü bu profilin hedeflerini ne kadar karşılıyor? ---- */
   const IC = () => DA.data.icerik;
+  const KA = () => DA.data.karsilama;
+
   function karsilamaHtml(sex, T, i, pi) {
-    const ic = IC();
-    if (!ic) return '';
-    const kcal = T.c[i].kcal[pi];
-    let ki = 0;
-    ic.kcal.forEach((k, j) => { if (Math.abs(k - kcal) < Math.abs(ic.kcal[ki] - kcal)) ki = j; });
+    const K = KA(), ic = IC();
+    if (!K) return '';
+    const col = T.c[i], pal = col.pal[pi], kcal = col.kcal[pi];
+    const row = K.c.find((c) => c[0] === sex && c[1] === col.y && c[2] === pal);
+    if (!row) return '<details class="acc"><summary>Örüntü hedefleri karşılıyor mu?</summary><div class="body">' +
+      '<p class="muted small">Bu yaş-cinsiyet-aktivite bileşimi Ek 3.4.3’te yer almıyor. ' +
+      'Tabloda 10 yaş üstü için hem az hem orta aktif, diğer yaş gruplarında yalnızca az aktif sütunu vardır.</p></div></details>';
 
-    const rows = [];
-    ic.r.forEach((r) => {
-      if (!r.k) return;
-      const [rn, ru] = r.k.split('|');
-      const tr = T.r.find((x) => x.n === rn && x.u === ru);
-      if (!tr || tr.v[i] == null) return;
-      let hedef = Array.isArray(tr.v[i]) ? tr.v[i][0] : tr.v[i];
-      if (r.kx) hedef *= r.kx;
-      if (!(hedef > 0)) return;
-      const raw = r.v[ki];
-      rows.push({ n: r.n, u: r.u, tam: Array.isArray(raw) ? raw[0] : raw,
-        yy: Array.isArray(raw) ? raw[1] : null, hedef, ul: r.ul });
-    });
-    if (!rows.length) return '';
+    const v = row[4], ham = K.ham;
+    const pct = [];
+    K.r.forEach((n, j) => { if (j === 0 || ham.indexOf(j) >= 0) return; pct.push({ n, x: v[j] }); });
+    const num = (x) => typeof x === 'number' ? x : parseFloat(String(x).split('-')[0]);
+    const eksik = pct.filter((p) => p.n.indexOf('Sodyum') < 0 && num(p.x) < 95);
+    const tone = (p) => p.n.indexOf('Sodyum') >= 0 ? (num(p.x) <= 100 ? 'ok' : 'bad')
+      : num(p.x) >= 95 ? 'ok' : num(p.x) >= 80 ? 'warn' : 'bad';
 
-    return '<details class="acc"><summary>Örüntü içeriği ile hedefin karşılaştırması' +
-      ' <span class="muted tiny">' + ic.kcal[ki] + ' kkal</span></summary><div class="body">' +
-      '<div class="scrollx"><table class="t"><thead><tr><th>Besin ögesi</th>' +
-      '<th class="n">Örüntü içeriği</th><th class="n">Hedef</th></tr></thead><tbody>' +
-      rows.map((x) => '<tr><td>' + esc(x.n) + ' <span class="muted tiny">' + esc(x.u) + '</span></td>' +
-        '<td class="n"><b>' + fmt(x.tam, 2) + '</b>' +
-        (x.yy != null ? '<br><span class="muted tiny">' + fmt(x.yy, 2) + ' yarım yağlı</span>' : '') + '</td>' +
-        '<td class="n">' + fmt(x.hedef, 2) + (x.ul ? '<br><span class="muted tiny">üst sınır</span>' : '') + '</td></tr>').join('') +
-      '</tbody></table></div>' +
-      '<div class="sect">TÜBER’in değerlendirmesi <span class="muted tiny">Ek 3.4.3</span></div>' +
-      '<ul class="tight">' + ic.karsilama.map((x) => '<li>' + x + '</li>').join('') + '</ul>' +
-      '<p class="muted tiny" style="margin-bottom:0">Yukarıdaki tablo Ek 3.2.1 içerikleri ile Ek 3.4.1/3.4.2 hedeflerini yan yana koyar. ' +
-      'Resmî karşılama yüzdeleri için ' + esc(ic.karsilamaSrc) + ' tablosuna bakın.</p></div></details>';
+    return '<details class="acc"><summary>Örüntü bu hedefleri karşılıyor mu?' +
+      ' <span class="muted tiny">Ek 3.4.3 · ' + row[3] + ' kkal</span></summary><div class="body">' +
+      (eksik.length ? '<div class="note warn">Hedefin altında kalan: <b>' +
+        eksik.map((p) => esc(p.n) + ' %' + p.x).join('</b>, <b>') + '</b></div>'
+        : '<div class="note ok">Tüm besin ögeleri hedefin %95’i ve üzerinde.</div>') +
+      '<table class="t"><tbody>' + pct.map((p) =>
+        '<tr><td>' + esc(p.n) + (p.n.indexOf('Sodyum') >= 0 ? ' <span class="muted tiny">üst sınırın yüzdesi</span>' : '') +
+        '</td><td class="n"><span class="badge ' + tone(p) + '">%' + esc(p.x) + '</span></td></tr>').join('') +
+      '</tbody></table>' +
+      '<div class="sect">Örüntünün kendi değerleri</div><table class="t"><tbody>' +
+      ham.map((j) => '<tr><td>' + esc(K.r[j]) + '</td><td class="n"><b>' + esc(v[j]) + '</b></td></tr>').join('') +
+      '</tbody></table>' +
+      '<ul class="tight muted tiny">' + K.n.map((x) => '<li>' + x + '</li>').join('') + '</ul>' +
+      '<p class="muted tiny" style="margin-bottom:0">Kaynak: ' + esc(K.src) + '</p></div></details>';
   }
 
   /* Ek 3.2.1 — örüntünün ham besin ögesi içeriği */

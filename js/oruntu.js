@@ -55,6 +55,28 @@
 
   const notesHtml = () => '<p class="muted tiny">' + esc(DA.data.tuber.oruntu.bugs) + '</p>';
 
+  /* Ek 3.3.1 — bu enerji düzeyi hangi yaş, cinsiyet ve aktivite grubuna denk geliyor? */
+  function eslestirmeHtml(kcal) {
+    const E = DA.data.eslestirme;
+    if (!E) return '';
+    const row = E.r.find((r) => r.k === kcal);
+    if (!row) return '';
+    const blok = (g, arr) => {
+      const dolu = arr.map((x, i) => [E.pal[i], x]).filter((p) => p[1]);
+      if (!dolu.length) return '';
+      return '<div class="sect">' + esc(g) + '</div><table class="t"><tbody>' +
+        dolu.map((p) => '<tr><td style="width:40%">' + esc(p[0][0]) +
+          '<br><span class="muted tiny">PAL ' + fmt(p[0][1], 1) + '</span></td>' +
+          '<td>' + p[1].split('\n').map(esc).join('<br>') + '</td></tr>').join('') + '</tbody></table>';
+    };
+    const body = blok(E.grup[0][0], row.c) + blok(E.grup[1][0], row.y);
+    if (!body) return '';
+    return '<details class="acc"><summary>' + kcal + ' kkal kime uygun?' +
+      ' <span class="muted tiny">Ek 3.3.1</span></summary><div class="body">' + body +
+      '<ul class="tight muted tiny">' + E.n.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' +
+      '<p class="muted tiny" style="margin-bottom:0">Kaynak: ' + esc(E.src) + '</p></div></details>';
+  }
+
   DA.oruntu = {
     frac,
     /* Değişim listesi ekranı için açılır karşılaştırma paneli */
@@ -122,6 +144,7 @@
             '<button class="chip' + (j === i ? ' on' : '') + '" data-act="oruntuPick" data-k="' + k + '">' + k + '</button>').join('') +
           '</div></div>' +
           '<div class="card">' + columnHtml(i) + '</div>' +
+          eslestirmeHtml(DA.data.tuber.oruntu.kcal[i]) +
           '<details class="acc"><summary>Tüm enerji düzeyleri (1000–3200 kkal)</summary><div class="body">' +
           gridHtml(i) + '</div></details>' +
           '<a class="btn ghost block mt" href="#/hesapla/porsiyon">' + DA.icon('table') + ' Yaş ve cinsiyete göre porsiyon önerileri</a>' +
