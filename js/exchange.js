@@ -197,6 +197,12 @@
       '\n\n' + DA.dyt();
   }
 
+  /* TÜBER Ek 3.1.1 karşılaştırması — hedef enerjiye en yakın örüntü */
+  function tuberHtml() {
+    if (!DA.oruntu) return '';
+    return DA.oruntu.panel(target().kcal, counts());
+  }
+
   function outHtml() {
     const v = counts(), t = totals(v), T = target();
     if (!t.n) return '<div class="card"><div class="empty">' + icon('table') +
@@ -243,6 +249,7 @@
           '<span class="muted tiny">Sayıya dokunarak tam değer gir</span></div>' +
 
           '<div id="exOut">' + outHtml() + '</div>' +
+          '<div id="exTuber">' + tuberHtml() + '</div>' +
           '<div class="sect">Öğünler</div>' +
           '<button class="btn sec block mb" data-act="exMealAuto">' + icon('menu') + ' Öğünlere dağıt (%25 · %10 · %30 · %10 · %25)</button>' +
           '<div id="exMeals">' + mealsHtml() + '</div>' +
@@ -254,10 +261,12 @@
 
   /* ---- etkileşim ---- */
   const redraw = () => {
-    const r = DA.$('#exRows'), o = DA.$('#exOut'), m = DA.$('#exMeals');
+    const r = DA.$('#exRows'), o = DA.$('#exOut'), m = DA.$('#exMeals'), tb = DA.$('#exTuber');
     if (r) r.innerHTML = rowsHtml();
     if (o) o.innerHTML = outHtml();
     if (m) m.innerHTML = mealsHtml();
+    if (tb) { const open = tb.querySelector('details') && tb.querySelector('details').open; tb.innerHTML = tuberHtml();
+      const d = tb.querySelector('details'); if (d && open) d.open = true; }
   };
   const setCount = (k, n) => { counts()[k] = Math.max(0, Math.round(n * 2) / 2); DA.save(); redraw(); };
 
@@ -283,6 +292,9 @@
     if (isFinite(n)) T[el.name] = Math.max(0, n);
     DA.save();
     const o = DA.$('#exOut'); if (o) o.innerHTML = outHtml();
+    const tb = DA.$('#exTuber');
+    if (tb) { const d0 = tb.querySelector('details'), open = d0 && d0.open; tb.innerHTML = tuberHtml();
+      const d = tb.querySelector('details'); if (d && open) d.open = true; }
   };
 
   DA.actions.exAuto = () => {
