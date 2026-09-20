@@ -21,6 +21,11 @@
       h: '#/hesapla/porsiyon?t=olcu&ara=' + encodeURIComponent(f[0].split(/[ ,(]/)[0]),
       k: f[0] + ' ' + f[1] + ' ' + g.g + ' porsiyon ölçü'
     })));
+    (DA.data.porsiyonBesin ? DA.data.porsiyonBesin.g : []).forEach((g) => g.f.forEach((f) => out.push({
+      g: 'Porsiyon besin değeri', ico: 'apple', t: f[0],
+      s: fmt(f[1], 0) + ' g porsiyon · ' + fmt(f[2], 0) + ' kcal · KH ' + fmt(f[4], 1) + ' · P ' + fmt(f[3], 1) + ' · Y ' + fmt(f[6], 1),
+      h: '#/hesapla/porsiyonbesin', k: f[0] + ' ' + g.g + ' porsiyon besin değeri'
+    })));
     DA.data.ref.forEach((r) => out.push({
       g: 'Referans', ico: 'book', t: r.t, s: 'Klinik referans',
       h: '#/referans?r=' + encodeURIComponent(r.id), k: r.t + ' ' + r.tags + ' ' + r.h.replace(/<[^>]+>/g, ' ')

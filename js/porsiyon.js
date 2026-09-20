@@ -101,6 +101,7 @@
               '" placeholder="örn. ceviz, bulgur, karpuz" data-live="poQ"></label>' +
               '<div id="poList">' + olcuHtml(ui.poQ) + '</div>') +
 
+          '<a class="btn ghost block" href="#/hesapla/porsiyonbesin">' + icon('apple') + ' Bu porsiyonların besin değerleri (Ek 2.3.1)</a>' +
           '<div class="note">Kaynak: ' + esc(p.src) + '</div>'
       };
     }
