@@ -289,9 +289,10 @@
     hesapla: [
       ['Antropometri', ['bki', 'ideal', 'bel', 'kilokaybi']],
       ['Enerji ve makrolar', ['enerji', 'sivi', 'stres']],
-      ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'gy']],
+      ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'khdagilim', 'gy']],
       ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
-      ['Klinik', ['enteral', 'gir', 'diyabetrisk']]
+      ['Tarama', ['nrs', 'must', 'mnasf', 'diyabetrisk']],
+      ['Klinik', ['enteral', 'gir']]
     ],
     referans: [
       ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu']],

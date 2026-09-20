@@ -7,17 +7,23 @@
     id: 'khsayim', title: 'Karbonhidrat sayımı', desc: 'İ:KH oranı (500), düzeltme faktörü (1800), öğün bolusu', ico: 'calc',
     fields: [
       { k: 'gtid', l: 'Günlük toplam insülin dozu (ünite)', t: 'num', ph: 'örn. 40' },
+      { k: 'ikh', l: 'İ:KH oranı (hekim verdiyse; 1 Ü / … g)', t: 'num', ph: '500 kuralından hesaplanır', opt: true },
+      { k: 'idf', l: 'Düzeltme faktörü (hekim verdiyse; mg/dL)', t: 'num', ph: '1800 kuralından hesaplanır', opt: true },
       { k: 'kh', l: 'Öğündeki karbonhidrat (g)', t: 'num', ph: '', opt: true },
       { k: 'bg', l: 'Ölçülen kan şekeri (mg/dL)', t: 'num', ph: '', opt: true },
       { k: 'hedef', l: 'Hedef kan şekeri (mg/dL)', t: 'num', ph: '100', opt: true }
     ],
-    req: ['gtid'],
+    req: [],
     run(v) {
-      if (!(v.gtid > 0)) return { err: 'Günlük toplam insülin dozu 0’dan büyük olmalı.' };
-      const ikh = 500 / v.gtid, idf = 1800 / v.gtid;
+      const elle = (v.ikh > 0) || (v.idf > 0);
+      if (!(v.gtid > 0) && !elle) return { err: 'Günlük toplam insülin dozunu ya da hekimin verdiği İ:KH oranını gir.' };
+      const ikh = v.ikh > 0 ? v.ikh : 500 / v.gtid;
+      const idf = v.idf > 0 ? v.idf : 1800 / v.gtid;
       const rows = [
-        { l: 'İ:KH oranı (500 kuralı)', v: '1 Ü / ' + fmt(ikh, 1) + ' g KH', s: '500 ÷ ' + fmt(v.gtid, 0) + ' — 1 ünite hızlı etkili insülin bu kadar karbonhidratı karşılar', hl: true },
-        { l: 'Düzeltme faktörü (1800 kuralı)', v: fmt(idf, 0) + ' mg/dL', s: '1800 ÷ ' + fmt(v.gtid, 0) + ' — 1 ünite kan şekerini bu kadar düşürür', hl: true }
+        { l: 'İ:KH oranı' + (v.ikh > 0 ? '' : ' (500 kuralı)'), v: '1 Ü / ' + fmt(ikh, 1) + ' g KH',
+          s: v.ikh > 0 ? 'Hekimin verdiği değer kullanıldı' : '500 ÷ ' + fmt(v.gtid, 0) + ' — 1 ünite hızlı etkili insülin bu kadar karbonhidratı karşılar', hl: true },
+        { l: 'Düzeltme faktörü' + (v.idf > 0 ? '' : ' (1800 kuralı)'), v: fmt(idf, 0) + ' mg/dL',
+          s: v.idf > 0 ? 'Hekimin verdiği değer kullanıldı' : '1800 ÷ ' + fmt(v.gtid, 0) + ' — 1 ünite kan şekerini bu kadar düşürür', hl: true }
       ];
 
       let ogun = NaN, duzeltme = NaN;
