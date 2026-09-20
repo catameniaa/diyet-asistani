@@ -140,11 +140,12 @@
         ['— Çoklu doymamış yağ', '%6–10'],
         ['— Tekli doymamış yağ', '%10–15']
       ]) +
+      '<div class="note">Yaşa ve cinsiyete göre tam tablo için <a href="#/hesapla/tuber">TÜBER referans değerleri</a> hesaplayıcısı — makro aralıkları, protein g/kg, posa, su, vitamin ve mineraller.</div>' +
       '<div class="sect">Lif, tuz ve su</div>' +
       tbl(['Besin ögesi', 'Öneri'], [
-        ['Lif (posa)', '25–30 g/gün ya da her 1000 kcal için 14 g'],
+        ['Lif (posa)', 'Yetişkinde <b>25 g/gün</b> (AI, Ek 1.4.1). 25–30 g ve 14 g/1000 kcal yaygın kullanılan diğer ifadelerdir.'],
         ['Tuz', '<5 g/gün (≈1 silme tatlı kaşığı; sodyum <2000 mg). Diyabetli hipertansiflerde daha da kısıtlanabilir.'],
-        ['Su', 'Kadın en az 2,0 L/gün, erkek en az 2,5 L/gün (ya da 30–35 ml/kg/gün)']
+        ['Su', 'Kadın 2,0 L/gün, erkek 2,5 L/gün (AI, Ek 1.4.1); çocukta yaşa göre 1,3–2,5 L. 30–35 ml/kg/gün pratik bir yaklaşımdır.']
       ]) },
     { id: 'tuberenerji2', t: 'TÜBER: Henry 2005 eşitlikleri ve faktöriyel yöntem', tags: 'tüber henry deh bmh dinlenme enerji faktöriyel pal bazal metabolizma', h:
       '<p class="muted small">TÜBER 2022, Türkiye referans enerji değerlerini bu yöntemle hesaplar (Tablo 10.2–10.3, s. 225–226). Bazal (BEH) yerine <b>dinlenme enerji harcaması (DEH)</b> terimi kullanılır.</p>' +

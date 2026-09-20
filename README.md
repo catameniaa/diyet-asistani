@@ -18,8 +18,8 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Danışan takibi (ölçümler, grafik, notlar), 0–19 yaş için otomatik WHO büyüme persentili izlemi,
   hesapları dosyaya işleme ve tek sayfalık danışan raporu (PDF / paylaş)
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
-- TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre vitamin-mineral önerisi (PRI/AI), ortalama
-  gereksinim (EAR) ve tolere edilebilir üst sınır (UL)
+- TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre makro aralıkları, protein (g/kg ve g/gün),
+  posa, su, vitamin-mineral önerisi (PRI/AI), ortalama gereksinim (EAR) ve üst sınır (UL)
 - Enerji hesabında Henry 2005 eşitlikleri (TÜBER'in kullandığı yöntem) seçeneği
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
