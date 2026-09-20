@@ -16,6 +16,7 @@
 
   DA.calcs.push({
     id: 'gebelik', title: 'Gebelik ve laktasyon', desc: 'Ek enerji, protein ve önerilen ağırlık kazanımı', ico: 'heart',
+    help: () => (DA.gebe ? DA.gebe.helpHtml() : ''),
     fields: [
       { k: 'durum', l: 'Durum', t: 'sel', def: 't2', o: [
         ['t1', 'Gebelik — 1. trimester'], ['t2', 'Gebelik — 2. trimester'], ['t3', 'Gebelik — 3. trimester'],

@@ -115,7 +115,8 @@
     req: ['age'],
     run(v) {
       const age = v.age;
-      if (!(age >= 2)) return { err: 'TÜBER Ek 1.5 tabloları 2 yaş ve üzeri içindir. 0–2 yaş için Tablo 7.6–7.7 gerekir.' };
+      if (!(age >= 2)) return { err: 'TÜBER Ek 1.5 tabloları 2 yaş ve üzeri içindir.',
+        html: '<a class="btn block" href="#/hesapla/bebek">' + DA.icon('baby') + ' 6–24 ay referansları (Tablo 7.4–7.7)</a>' };
       if (age > 120) return { err: 'Geçerli bir yaş gir.' };
 
       const vit = merged(v.sex, age, 'vit'), min = merged(v.sex, age, 'min');

@@ -273,6 +273,13 @@ table.t tr.gh td{background:var(--pri-soft);color:var(--pri);font-size:12.5px;te
 table.t td.sub2{padding-left:16px;color:var(--mute)}
 table.t th.on,table.t td.on{background:var(--pri-soft);color:var(--ink);font-weight:700}
 table.t thead th.on{color:var(--pri)}
+table.t tr.on>td{background:var(--pri-soft);color:var(--ink);font-weight:650}
+
+/* anket seçenekleri */
+.li.opt{width:100%;text-align:left;font-family:inherit;font-size:inherit;color:inherit;border:0;cursor:pointer}
+.li.opt.on{background:var(--pri-soft)}
+.li.opt.on .t{color:var(--pri);font-weight:700}
+.li.opt.on .end{color:var(--pri);font-weight:700}
 
 /* boş durum */
 .empty{text-align:center;color:var(--mute);padding:34px 18px;font-size:14.5px}

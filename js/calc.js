@@ -233,7 +233,7 @@
     const missing = c.req.filter((k) => !isFinite(v[k]));
     if (missing.length) return '<div class="muted center small" style="padding:18px 6px">Sonucu görmek için gerekli değerleri gir.</div>';
     const r = c.run(v);
-    if (r.err) return '<div class="note bad">' + esc(r.err) + '</div>';
+    if (r.err) return '<div class="note bad">' + esc(r.err) + '</div>' + (r.html || '');
     const warn = rangeWarnings(c, v);
     let h = warn.length ? '<div class="note warn"><b>Girdiyi kontrol et:</b><br>' + warn.map(esc).join('<br>') + '</div>' : '';
     h += (r.badge ? '<div class="mb"><span class="badge ' + r.badge[1] + '">' + esc(r.badge[0]) + '</span></div>' : '');
@@ -253,7 +253,7 @@
     const v = readValues(form, c);
     // ortak profili hatırla
     const p = DA.state().profile;
-    ['sex', 'age', 'h', 'w'].forEach((k) => { if (v[k] != null && (k === 'sex' || isFinite(v[k]))) p[k] = v[k]; });
+    ['sex', 'age', 'h', 'w', 'waist'].forEach((k) => { if (v[k] != null && (k === 'sex' || isFinite(v[k]))) p[k] = v[k]; });
     DA.save();
     DA.$('#calcOut').innerHTML = resultHtml(c, v);
   };
