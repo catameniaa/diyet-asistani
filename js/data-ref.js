@@ -42,7 +42,8 @@
         'Sıvı: yetişkinde genelde 30–35 ml/kg/gün (ya da ~1 ml/kcal).'
       ]) },
     { id: 'vitmin', t: 'Vitamin ve mineral RDA/AI (yetişkin 19–50 yaş)', tags: 'vitamin mineral rda dri demir kalsiyum çinko', h:
-      '<p class="muted small">ABD/Kanada DRI değerleri (E = erkek, K = kadın). Türkiye için TÜBER ile karşılaştırın.</p>' +
+      '<div class="note"><b>Türkiye değerleri için:</b> <a href="#/hesapla/tuber">TÜBER referans değerleri</a> hesaplayıcısı — yaş ve cinsiyete göre PRI/AI, EAR ve üst sınır (UL). Aşağıdaki tablo ABD/Kanada DRI değerleridir, karşılaştırma için bırakılmıştır.</div>' +
+      '<p class="muted small">ABD/Kanada DRI değerleri (E = erkek, K = kadın).</p>' +
       tbl(['Besin ögesi', 'E', 'K'], [
         ['A vitamini (µg RAE)', '900', '700'], ['C vitamini (mg)', '90', '75'], ['D vitamini (µg)', '15', '15'], ['E vitamini (mg)', '15', '15'],
         ['K vitamini (µg, AI)', '120', '90'], ['B1 tiamin (mg)', '1,2', '1,1'], ['B2 riboflavin (mg)', '1,3', '1,1'], ['B3 niasin (mg NE)', '16', '14'],
