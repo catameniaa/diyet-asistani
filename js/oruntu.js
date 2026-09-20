@@ -127,7 +127,7 @@
 
   /* ---- kendi başına referans ekranı ---- */
   DA.calcs.push({
-    id: 'oruntu', title: 'Beslenme örüntüleri (TÜBER)', desc: '1000–3200 kkal için besin grubu porsiyonları', ico: 'book',
+    id: 'oruntu', data: ['tuber','hedef'], title: 'Beslenme örüntüleri (TÜBER)', desc: '1000–3200 kkal için besin grubu porsiyonları', ico: 'book',
     view() {
       const ui = DA.state().ui;
       const kcal = num(ui.oruntuK) || (DA.state().targets && DA.state().targets.kcal) || 1800;

@@ -105,6 +105,42 @@
   };
   DA.closeSheet = () => { DA.$('#sheet').hidden = true; DA.$('#sheetBody').innerHTML = ''; };
 
+  /* ---- ihtiyaç anında veri yükleme ----
+     Büyük veri dosyaları açılışta değil, ilgili ekran ilk açıldığında yüklenir.
+     Service worker hepsini önbelleğe aldığı için çevrimdışı çalışma bozulmaz. */
+  DA.LAZY = {
+    growth: ['js/data-growth.js'],
+    tuber: ['js/data-tuber.js', 'js/data-oruntu.js'],
+    hedef: ['js/data-hedef.js', 'js/data-icerik.js', 'js/data-karsilama.js', 'js/data-eslestirme.js'],
+    porsiyon: ['js/data-porsiyon.js'],
+    porsiyonBesin: ['js/data-porsiyonbesin.js'],
+    istege: ['js/data-istege.js'],
+    ornekMenu: ['js/data-menu.js'],
+    bebek: ['js/data-bebek.js'],
+    gebe: ['js/data-gebe.js'],
+    pal: ['js/data-pal.js'],
+    gi: ['js/data-gi.js']
+  };
+  const _yuklu = {};
+  function script(src) {
+    if (_yuklu[src]) return _yuklu[src];
+    _yuklu[src] = new Promise((ok, hata) => {
+      const el = document.createElement('script');
+      el.src = src; el.async = false;
+      el.onload = ok; el.onerror = () => hata(new Error(src));
+      document.head.appendChild(el);
+    });
+    return _yuklu[src];
+  }
+  DA.hazir = (keys) => (keys || []).every((k) => DA.data[k]);
+  /* Sırayla yükler: data-oruntu.js, data-tuber.js'in üstüne yazar */
+  DA.need = (keys) => {
+    const src = [];
+    (keys || []).forEach((k) => { if (!DA.data[k]) (DA.LAZY[k] || []).forEach((f) => { if (src.indexOf(f) < 0) src.push(f); }); });
+    return src.reduce((z, f) => z.then(() => script(f)), Promise.resolve());
+  };
+  DA.needAll = () => DA.need(Object.keys(DA.LAZY));
+
   /* ---- yönlendirici ---- */
   function parseHash() {
     const h = location.hash.replace(/^#\/?/, '');

@@ -107,7 +107,7 @@
   }
 
   DA.calcs.push({
-    id: 'tuber', title: 'TÜBER referans değerleri', desc: 'Yaşa ve cinsiyete göre vitamin-mineral önerisi, EAR ve üst sınır', ico: 'book',
+    id: 'tuber', data: ['tuber'], title: 'TÜBER referans değerleri', desc: 'Yaşa ve cinsiyete göre vitamin-mineral önerisi, EAR ve üst sınır', ico: 'book',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
       { k: 'age', l: 'Yaş (yıl)', t: 'num', ph: 'örn. 31', rng: [2, 120, 'yaş'] }

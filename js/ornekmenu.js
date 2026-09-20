@@ -28,7 +28,7 @@
   }
 
   DA.calcs.push({
-    id: 'ornekmenu', title: 'Örnek menü planları (TÜBER)', desc: 'Çocuktan yaşlıya, gebe ve emzirenler için 8 günlük menü', ico: 'menu',
+    id: 'ornekmenu', data: ['ornekMenu','hedef'], title: 'Örnek menü planları (TÜBER)', desc: 'Çocuktan yaşlıya, gebe ve emzirenler için 8 günlük menü', ico: 'menu',
     view(parts, q) {
       const d = M(), ui = S();
       if (q && q.get('m')) ui.omSec = q.get('m');

@@ -73,7 +73,7 @@
   };
 
   DA.calcs.push({
-    id: 'pal', title: 'Fiziksel aktivite düzeyi (PAL)', desc: 'Yaşam biçimi sınıflaması, Türkiye ortalamaları, egzersiz önerileri', ico: 'heart',
+    id: 'pal', data: ['pal'], title: 'Fiziksel aktivite düzeyi (PAL)', desc: 'Yaşam biçimi sınıflaması, Türkiye ortalamaları, egzersiz önerileri', ico: 'heart',
     view() {
       const p = P();
       return {

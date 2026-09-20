@@ -58,7 +58,7 @@
   };
 
   DA.calcs.push({
-    id: 'gebe', title: 'Gebelik ve emzirme referansları', desc: 'Ağırlık kazanımı, besin ögesi ve porsiyon önerileri', ico: 'heart',
+    id: 'gebe', data: ['gebe'], title: 'Gebelik ve emzirme referansları', desc: 'Ağırlık kazanımı, besin ögesi ve porsiyon önerileri', ico: 'heart',
     view() {
       const p = DA.state().profile || {};
       const bki = (p.h > 0 && p.w > 0) ? p.w / Math.pow(p.h / 100, 2) : 0;

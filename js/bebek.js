@@ -68,7 +68,7 @@
   }
 
   DA.calcs.push({
-    id: 'bebek', title: 'Tamamlayıcı beslenme (6–24 ay)', desc: 'Öğün yapısı, enerji-protein, vitamin ve mineral referansları', ico: 'baby',
+    id: 'bebek', data: ['bebek'], title: 'Tamamlayıcı beslenme (6–24 ay)', desc: 'Öğün yapısı, enerji-protein, vitamin ve mineral referansları', ico: 'baby',
     view() {
       const b = B();
       return {

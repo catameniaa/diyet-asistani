@@ -88,7 +88,7 @@
   }
 
   DA.calcs.push({
-    id: 'porsiyonbesin', title: 'Porsiyon besin değerleri', desc: '97 besinin standart porsiyonunda 19 besin ögesi', ico: 'apple',
+    id: 'porsiyonbesin', data: ['porsiyonBesin'], title: 'Porsiyon besin değerleri', desc: '97 besinin standart porsiyonunda 19 besin ögesi', ico: 'apple',
     view() {
       const s = S();
       return {

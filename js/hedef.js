@@ -141,7 +141,7 @@
   }
 
   DA.calcs.push({
-    id: 'hedef', title: 'Yaşa göre besin ögesi hedefleri', desc: 'TÜBER Ek 3.4 — enerji, makro ve mikro hedefleri', ico: 'book',
+    id: 'hedef', data: ['hedef','tuber'], title: 'Yaşa göre besin ögesi hedefleri', desc: 'TÜBER Ek 3.4 — enerji, makro ve mikro hedefleri', ico: 'book',
     view() {
       const { sex, T, i, pi } = sel();
       setTimeout(() => { const c = DA.$('.chips .chip.on'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' }); }, 0);

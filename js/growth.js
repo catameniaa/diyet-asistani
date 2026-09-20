@@ -9,7 +9,7 @@
     bmi: { t: 'BKİ / yaş', unit: 'kg/m²', src: 'bmi', wt: true }
   };
 
-  const tbl = (ind, sex) => DA.data.growth[ind + '_' + (sex === 'K' ? 'f' : 'm')];
+  const tbl = (ind, sex) => (DA.data.growth || {})[ind + '_' + (sex === 'K' ? 'f' : 'm')];
   function lms(ind, sex, mo) {
     const t = tbl(ind, sex);
     const i = mo - t.a0;
@@ -126,7 +126,7 @@
   }
 
   DA.calcs.push({
-    id: 'cocuk', title: 'Çocuk persentil (WHO)', desc: 'Ağırlık/yaş, boy/yaş, BKİ/yaş — z-skoru ve persentil', ico: 'users',
+    id: 'cocuk', data: ['growth'], title: 'Çocuk persentil (WHO)', desc: 'Ağırlık/yaş, boy/yaş, BKİ/yaş — z-skoru ve persentil', ico: 'users',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
       { k: 'age', l: 'Yaş', t: 'num', ph: 'örn. 30', rng: false },

@@ -67,7 +67,7 @@
   }
 
   DA.calcs.push({
-    id: 'porsiyon', title: 'Porsiyon ölçüleri (TÜBER)', desc: '1 porsiyon ne kadar · yaşa göre kaç porsiyon', ico: 'table',
+    id: 'porsiyon', data: ['porsiyon'], title: 'Porsiyon ölçüleri (TÜBER)', desc: '1 porsiyon ne kadar · yaşa göre kaç porsiyon', ico: 'table',
     view(parts, q) {
       const ui = DA.state().ui;
       if (q && q.get('t')) ui.poTab = q.get('t');

@@ -15,7 +15,7 @@
   ];
 
   DA.calcs.push({
-    id: 'gebelik', title: 'Gebelik ve laktasyon', desc: 'Ek enerji, protein ve önerilen ağırlık kazanımı', ico: 'heart',
+    id: 'gebelik', data: ['gebe'], title: 'Gebelik ve laktasyon', desc: 'Ek enerji, protein ve önerilen ağırlık kazanımı', ico: 'heart',
     help: () => (DA.gebe ? DA.gebe.helpHtml() : ''),
     fields: [
       { k: 'durum', l: 'Durum', t: 'sel', def: 't2', o: [
@@ -111,7 +111,7 @@
   }
 
   DA.calcs.push({
-    id: 'cocukenerji', title: 'Çocuk enerji ve protein', desc: 'DRI tahmini enerji gereksinimi (EER) ve protein RDA', ico: 'baby',
+    id: 'cocukenerji', data: ['growth'], title: 'Çocuk enerji ve protein', desc: 'DRI tahmini enerji gereksinimi (EER) ve protein RDA', ico: 'baby',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
       Object.assign(num_('age', 'Yaş (yıl; bebekte ondalık, örn. 0,5)'), { rng: [0, 18, 'yaş'] }),
@@ -151,16 +151,16 @@
 
   /* ---------- Glisemik yük ---------- */
   DA.calcs.push({
-    id: 'gy', title: 'Glisemik indeks ve yük', desc: 'GI listesinden seç ya da elle gir, porsiyonun glisemik yükü', ico: 'apple',
+    id: 'gy', data: ['gi'], title: 'Glisemik indeks ve yük', desc: 'GI listesinden seç ya da elle gir, porsiyonun glisemik yükü', ico: 'apple',
     fields: [
-      { k: 'f', l: 'Besin', t: 'sel', def: '', o: [['', 'Elle gir']].concat(DA.data.gi.map((g, i) => [String(i), g[0] + ' (GI ' + g[1] + ')'])) },
+      { k: 'f', l: 'Besin', t: 'sel', def: '', o: () => [['', 'Elle gir']].concat((DA.data.gi || []).map((g, i) => [String(i), g[0] + ' (GI ' + g[1] + ')'])) },
       num_('gi', 'Glisemik indeks (elle değiştirilebilir)', '', true),
       num_('g', 'Porsiyon (g)', '100', true),
       num_('kh', 'Porsiyondaki karbonhidrat (g)', '', true)
     ],
     req: [],
     run(v) {
-      const sel = v.f !== '' ? DA.data.gi[parseInt(v.f, 10)] : null;
+      const sel = v.f !== '' ? (DA.data.gi || [])[parseInt(v.f, 10)] : null;
       const gi = isFinite(v.gi) ? v.gi : (sel ? sel[1] : NaN);
       if (!isFinite(gi)) return { rows: [R('Glisemik yük', '—', 'Besin seç ya da GI değerini gir')], html: giTable(),
         note: 'Listeden besin seçtiğinde GI ve karbonhidrat otomatik gelir; istersen üzerine yazabilirsin.', tone: 'info' };
@@ -190,7 +190,7 @@
   function giTable() {
     return '<details class="acc mt"><summary>Glisemik indeks tablosu</summary><div class="body">' +
       '<div class="scrollx"><table class="t"><thead><tr><th>Besin</th><th class="n">GI</th><th>Sınıf</th></tr></thead><tbody>' +
-      DA.data.gi.map((g) => '<tr><td>' + esc(g[0]) + '</td><td class="n">' + g[1] + '</td><td>' +
+      (DA.data.gi || []).map((g) => '<tr><td>' + esc(g[0]) + '</td><td class="n">' + g[1] + '</td><td>' +
         (g[1] <= 55 ? 'Düşük' : g[1] <= 69 ? 'Orta' : 'Yüksek') + '</td></tr>').join('') +
       '</tbody></table></div><p class="muted tiny" style="margin-bottom:0">Glukoz = 100 referanslı yaklaşık değerler.</p></div></details>';
   }

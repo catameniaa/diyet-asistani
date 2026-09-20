@@ -1,5 +1,5 @@
 /* Çevrimdışı çalışma: önce ağ (3 sn), olmazsa önbellek */
-const CACHE = 'diyet-asistani-v18';
+const CACHE = 'diyet-asistani-v19';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/core.js', 'js/data-foods.js', 'js/data-cards.js', 'js/data-ref.js', 'js/data-growth.js', 'js/data-gi.js', 'js/data-tuber.js', 'js/data-oruntu.js', 'js/data-porsiyon.js', 'js/data-pal.js', 'js/data-menu.js', 'js/data-bebek.js', 'js/data-gebe.js', 'js/data-hedef.js', 'js/data-istege.js', 'js/data-icerik.js', 'js/data-porsiyonbesin.js', 'js/data-karsilama.js', 'js/data-eslestirme.js', 'js/calc.js', 'js/growth.js', 'js/exchange.js', 'js/carbcount.js', 'js/calc-extra.js', 'js/tuber.js', 'js/oruntu.js', 'js/porsiyon.js', 'js/pal.js', 'js/ornekmenu.js', 'js/bebek.js', 'js/gebe.js', 'js/diyabetrisk.js', 'js/hedef.js', 'js/istege.js', 'js/porsiyonbesin.js', 'js/search.js', 'js/foods.js',

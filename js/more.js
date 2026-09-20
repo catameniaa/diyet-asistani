@@ -30,6 +30,57 @@
     return h;
   }
 
+  /* Son düzenlenen danışanlar — en çok yapılan iş buradan başlar */
+  function sonDanisanlar() {
+    const cl = (DA.state().clients || []).slice();
+    if (!cl.length) return '';
+    const sonOlcum = (c) => (c.meas || []).reduce((a, m) => (m.d > a ? m.d : a), c.upd || '');
+    cl.sort((a, b) => sonOlcum(b).localeCompare(sonOlcum(a)));
+    return '<div class="sect">Son danışanlar</div><div class="list mb">' +
+      cl.slice(0, 4).map((c) => {
+        const m = (c.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).pop();
+        return '<a class="li chev" href="#/danisan/' + esc(c.id) + '"><span class="ic">' + icon('users') + '</span>' +
+          '<span class="grow"><div class="t">' + esc(c.name) + '</div><div class="s">' +
+          (m ? DA.fdate(m.d) + (m.w ? ' · ' + DA.fmt(m.w, 1) + ' kg' : '') : 'ölçüm yok') + '</div></span></a>';
+      }).join('') + '</div>' +
+      (cl.length > 4 ? '<a class="btn ghost block mb" href="#/danisan">Tüm danışanlar (' + cl.length + ')</a>' : '');
+  }
+
+  /* Hızlı hesap: boy-kilo girince anında BKİ ve tahmini enerji */
+  const HQ = () => (DA.state().ui.hq = DA.state().ui.hq || {});
+  function hizliHtml() {
+    const q = HQ(), p = DA.state().profile || {};
+    const boy = DA.num(q.h) || p.h, kilo = DA.num(q.w) || p.w;
+    let out = '<p class="muted tiny" style="margin-bottom:0">Boy ve kiloyu gir, BKİ ve kabaca enerji ihtiyacın çıksın.</p>';
+    if (boy > 50 && kilo > 2) {
+      const bki = kilo / Math.pow(boy / 100, 2);
+      const sinif = bki < 18.5 ? ['Zayıf', 'warn'] : bki < 25 ? ['Normal', 'ok'] : bki < 30 ? ['Fazla kilolu', 'warn'] : ['Obez', 'bad'];
+      const yas = p.age || 30, erkek = p.sex !== 'K';
+      const bmh = 10 * kilo + 6.25 * boy - 5 * yas + (erkek ? 5 : -161);
+      out = '<div class="res hl"><span class="l">BKİ</span><span class="v">' + DA.fmt(bki, 1) +
+        '<span class="sub">kg/m²</span></span></div>' +
+        '<div class="row gap mt-s"><span class="badge ' + sinif[1] + '">' + sinif[0] + '</span>' +
+        '<span class="muted small">Az aktif (PAL 1,375) ≈ <b>' + DA.fmt(bmh * 1.375, 0) + ' kcal/gün</b></span></div>' +
+        '<p class="muted tiny">Mifflin–St Jeor, ' + yas + ' yaş ' + (erkek ? 'erkek' : 'kadın') +
+        ' varsayımıyla. Ayrıntı için enerji hesaplayıcısını aç.</p>';
+    }
+    return out;
+  }
+  function quickCalc() {
+    const q = HQ(), p = DA.state().profile || {};
+    return '<div class="card"><div class="sect" style="margin-top:0">Hızlı hesap</div>' +
+      '<div class="grid2"><label class="fld"><span>Boy (cm)</span><input type="text" inputmode="decimal" name="h" value="' +
+      esc(q.h != null ? q.h : (p.h || '')) + '" data-live="hq"></label>' +
+      '<label class="fld"><span>Kilo (kg)</span><input type="text" inputmode="decimal" name="w" value="' +
+      esc(q.w != null ? q.w : (p.w || '')) + '" data-live="hq"></label></div>' +
+      '<div id="hqOut">' + hizliHtml() + '</div>' +
+      '<a class="btn ghost block mt-s" href="#/hesapla/enerji">' + icon('heart') + ' Enerji ve makro hesabı</a></div>';
+  }
+  DA.live.hq = (el) => {
+    HQ()[el.name] = el.value; DA.save();
+    const o = DA.$('#hqOut'); if (o) o.innerHTML = hizliHtml();
+  };
+
   DA.views.ana = () => {
     const due = DA.dueCount ? DA.dueCount() : 0, S = DA.state();
     const hint = (!standalone() && !S.ui.hideInstall) ?
@@ -52,7 +103,7 @@
 
     return {
       title: DA.APP, tab: 'ana',
-      html: hero + yedek + hint + quickRow() +
+      html: hero + yedek + hint + quickRow() + sonDanisanlar() + quickCalc() +
         '<div class="grid2 mb"><button class="btn sec block" data-act="quickMeas">' + icon('plus') + ' Ölçüm ekle</button>' +
         '<a class="btn sec block" href="#/staj">' + icon('note') + ' Staj notu</a></div>' +
         '<div class="sect">Araçlar</div>' +

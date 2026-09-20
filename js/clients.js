@@ -12,6 +12,8 @@
   /* ---- pediatrik izlem: her ölçüm için WHO z-skoru ve büyüme eğrisinde seyir ---- */
   function pediatric(c, m) {
     if (!c.bdate || !DA.growth) return '';
+    if (!DA.data.growth) { DA.need(['growth']).then(() => DA.render(true)).catch(() => {});
+      return '<div class="card"><div class="empty">' + icon('baby') + '<div>Büyüme eğrileri yükleniyor…</div></div></div>'; }
     const G = DA.growth;
     const pts = m.map((x) => {
       const mo = G.months(c.bdate, x.d);

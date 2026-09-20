@@ -200,7 +200,7 @@
 
   /* TÜBER Ek 3.1.1 karşılaştırması — hedef enerjiye en yakın örüntü */
   function tuberHtml() {
-    if (!DA.oruntu) return '';
+    if (!DA.oruntu || !DA.data.tuber || !DA.data.tuber.oruntu) return '';
     return DA.oruntu.panel(target().kcal, counts());
   }
 
@@ -229,7 +229,7 @@
 
   /* ---- görünüm ---- */
   DA.calcs.push({
-    id: 'degisim', title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'table',
+    id: 'degisim', data: ['tuber','hedef'], title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'table',
     view() {
       const T = target();
       return {

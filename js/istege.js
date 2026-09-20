@@ -97,7 +97,7 @@
   }
 
   DA.calcs.push({
-    id: 'istege', title: 'İsteğe bağlı besinler', desc: 'Tatlı, hamur işi, cips — 75 kkal katları ve günlük pay', ico: 'apple',
+    id: 'istege', data: ['istege','tuber'], title: 'İsteğe bağlı besinler', desc: 'Tatlı, hamur işi, cips — 75 kkal katları ve günlük pay', ico: 'apple',
     view() {
       const s = S(), O = DA.data.tuber.oruntu;
       const kcal = s.kcal || (DA.state().targets && DA.state().targets.kcal) || 1800;

@@ -46,7 +46,7 @@
   ];
 
   DA.calcs = [
-    { id: 'enerji', title: 'Enerji ihtiyacı & makrolar', desc: 'BMH, TEH, hedef kcal, KH/protein/yağ gramı', ico: 'heart',
+    { id: 'enerji', data: ['pal'], title: 'Enerji ihtiyacı & makrolar', desc: 'BMH, TEH, hedef kcal, KH/protein/yağ gramı', ico: 'heart',
       fields: [SEX, num_('age', 'Yaş'), num_('h', 'Boy (cm)'), num_('w', 'Kilo (kg)'),
         { k: 'formula', l: 'Formül', t: 'sel', o: [['mifflin', 'Mifflin–St Jeor (önerilen)'], ['henry', 'Henry 2005 (TÜBER 2022)'], ['hb', 'Harris–Benedict (revize)'], ['katch', 'Katch–McArdle (yağ % gerekli)']], def: 'mifflin' },
         num_('fat', 'Vücut yağ % (Katch için)', '', true),
@@ -189,7 +189,7 @@
   function fieldHtml(f, val) {
     const v = val == null ? '' : val;
     if (f.t === 'sex') return '<div class="fld"><span>Cinsiyet</span><div class="seg"><label><input type="radio" name="sex" value="K" data-live="calc"' + (v === 'K' ? ' checked' : '') + '><span>Kadın</span></label><label><input type="radio" name="sex" value="E" data-live="calc"' + (v !== 'K' ? ' checked' : '') + '><span>Erkek</span></label></div></div>';
-    if (f.t === 'sel') return '<label class="fld"><span>' + esc(f.l) + '</span><select name="' + f.k + '" data-live="calc">' + f.o.map((o) => '<option value="' + o[0] + '"' + (String(v || f.def) === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label>';
+    if (f.t === 'sel') return '<label class="fld"><span>' + esc(f.l) + '</span><select name="' + f.k + '" data-live="calc">' + (typeof f.o === 'function' ? f.o() : f.o).map((o) => '<option value="' + o[0] + '"' + (String(v || f.def) === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label>';
     return '<label class="fld"><span>' + esc(f.l) + '</span><input type="text" inputmode="decimal" autocomplete="off" name="' + f.k + '" placeholder="' + esc(f.ph) + '" value="' + esc(v) + '" data-live="calc"></label>';
   }
 
@@ -268,23 +268,79 @@
     DA.toast('Kaydedildi: ' + c._last.kcal + ' kcal · menü planlayıcıda hedef olarak kullanılacak');
   };
 
+  /* ---- Bilgi mimarisi ----
+     Her hesaplayıcı bir bölüme (hesapla / referans) ve bir gruba yazılır.
+     Listede sıralama buradaki sıraya göredir; burada olmayan yeni bir hesaplayıcı
+     Hesapla sekmesinin sonundaki "Diğer" grubuna düşer. */
+  DA.IA = {
+    hesapla: [
+      ['Antropometri', ['bki', 'ideal', 'bel', 'kilokaybi']],
+      ['Enerji ve makrolar', ['enerji', 'sivi', 'stres']],
+      ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'gy']],
+      ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
+      ['Klinik', ['enteral', 'gir', 'diyabetrisk']]
+    ],
+    referans: [
+      ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu']],
+      ['Porsiyon ve besin değerleri', ['porsiyon', 'porsiyonbesin', 'istege']],
+      ['Yaşam dönemleri', ['bebek', 'gebe', 'pal']],
+      ['Örnek planlar', ['ornekmenu']]
+    ]
+  };
+  /* id → bölüm */
+  DA.calcSection = (id) => {
+    let sec = 'hesapla';
+    Object.keys(DA.IA).forEach((k) => DA.IA[k].forEach((g) => { if (g[1].indexOf(id) >= 0) sec = k; }));
+    return sec;
+  };
+  /* Bir bölümün grupları; listede olmayan hesaplayıcılar Hesapla'nın sonuna eklenir */
+  function groupsOf(sec) {
+    const yerlesik = {};
+    Object.keys(DA.IA).forEach((k) => DA.IA[k].forEach((g) => g[1].forEach((id) => { yerlesik[id] = 1; })));
+    const out = DA.IA[sec].map((g) => [g[0], g[1].map(byId).filter(Boolean)]).filter((g) => g[1].length);
+    if (sec === 'hesapla') {
+      const kalan = DA.calcs.filter((c) => !yerlesik[c.id]);
+      if (kalan.length) out.push(['Diğer', kalan]);
+    }
+    return out;
+  }
+  DA.calcGroups = groupsOf;
+
+  DA.calcListHtml = (sec) => groupsOf(sec).map((g) =>
+    '<div class="sect">' + esc(g[0]) + '</div><div class="list">' + g[1].map((c) =>
+      '<a class="li chev" href="#/hesapla/' + c.id + '"><span class="ic">' + DA.icon(c.ico) + '</span>' +
+      '<span class="grow"><div class="t">' + esc(c.title) + '</div><div class="s">' + esc(c.desc) + '</div></span></a>').join('') +
+    '</div>').join('');
+
   DA.views.hesapla = (parts, q) => {
     const id = parts[0];
     if (!id) {
       curClient = null;
-      return { title: 'Hesaplayıcılar', tab: 'hesapla', html: '<div class="list">' + DA.calcs.map((c) =>
-        '<a class="li chev" href="#/hesapla/' + c.id + '"><span class="ic">' + DA.icon(c.ico) + '</span><span class="grow"><div class="t">' + esc(c.title) + '</div><div class="s">' + esc(c.desc) + '</div></span></a>').join('') + '</div>' +
-        '<p class="muted small center">Girdiğin boy, kilo, yaş ve cinsiyet hesaplayıcılar arasında hatırlanır.</p>' };
+      return { title: 'Hesaplayıcılar', tab: 'hesapla',
+        html: DA.calcListHtml('hesapla') +
+          '<p class="muted small center">Girdiğin boy, kilo, yaş ve cinsiyet hesaplayıcılar arasında hatırlanır.</p>' +
+          '<a class="btn ghost block" href="#/referans">' + DA.icon('book') + ' TÜBER referans tabloları</a>' };
     }
     const c = byId(id);
     if (!c) return { title: 'Bulunamadı', back: 'hesapla', html: '<div class="card">Hesaplayıcı bulunamadı.</div>' };
-    if (c.view) return c.view(parts.slice(1), q); // kendi arayüzünü çizen hesaplayıcı
+    /* Ekranın ihtiyaç duyduğu veri henüz yüklenmediyse yükle ve yeniden çiz */
+    if (c.data && !DA.hazir(c.data)) {
+      DA.need(c.data).then(() => DA.render(true)).catch(() => DA.toast('Veri yüklenemedi'));
+      return { title: c.title, tab: DA.calcSection(c.id), back: DA.calcSection(c.id), ico: c.ico,
+        html: '<div class="card"><div class="empty">' + DA.icon(c.ico || 'calc') + '<div>Yükleniyor…</div></div></div>' };
+    }
+    if (c.view) {
+      /* kendi arayüzünü çizen hesaplayıcı; sekme ve geri hedefi merkezden belirlenir */
+      const out = c.view(parts.slice(1), q), sec = DA.calcSection(c.id);
+      out.tab = sec; if (out.back === 'hesapla' || !out.back) out.back = sec;
+      return out;
+    }
     curClient = q.get('c') || null; lastRes = null;
     const pf = prefill(c, q);
     let clientLine = '';
     if (q.get('c')) { const cl = DA.state().clients.find((x) => x.id === q.get('c')); if (cl) clientLine = '<div class="note ok">Danışan bilgileri dolduruldu: ' + esc(cl.name) + '</div>'; }
     return {
-      title: c.title, tab: 'hesapla', back: q.get('c') ? 'danisan/' + q.get('c') : 'hesapla',
+      title: c.title, tab: DA.calcSection(c.id), back: q.get('c') ? 'danisan/' + q.get('c') : DA.calcSection(c.id),
       ico: c.ico, fav: { h: '#/hesapla/' + c.id, t: c.title, ico: c.ico },
       html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut"></div>' +
         (typeof c.help === 'function' ? c.help() : (c.help || '')),
