@@ -227,6 +227,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box
 .gchart .trail{fill:none;stroke:var(--acc);stroke-width:2;stroke-dasharray:4 3}
 .gchart .tdot{fill:var(--acc);stroke:var(--card);stroke-width:1.5}
 
+/* PAL çubuk grafiği (TÜBER Ek 4.8.1–4.8.2) */
+.palchart{margin:6px 0 2px;min-width:320px;font-size:7px}
+.palchart .gl{stroke:var(--line);stroke-width:.7}
+.palchart .ax{fill:var(--mute);font-size:7px}
+.palchart .esik{stroke:var(--acc);stroke-width:1.6;stroke-dasharray:5 3}
+.palchart .pb.E{fill:var(--pri)} .palchart .pb.K{fill:var(--pri-2);opacity:.65}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.sw.E{background:var(--pri)} .sw.K{background:var(--pri-2);opacity:.65}
+.sw.L{height:0;border-top:2px dashed var(--acc);border-radius:0;vertical-align:3px}
+.row.gap{flex-wrap:wrap;gap:6px 16px}
+ul.tight{margin:2px 0 10px;padding-left:20px}
+ul.tight li{margin:3px 0}
+
 /* bilgi kartı */
 .fc{min-height:220px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:22px;cursor:pointer;user-select:none}
 .fc .q{font-size:19px;font-weight:650} .fc .a{font-size:17px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);width:100%}

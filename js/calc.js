@@ -30,7 +30,20 @@
   const henryBand = (age) => age < 3 ? '0–3' : age < 10 ? '3–10' : age < 18 ? '10–18' :
     age < 30 ? '18–30' : age < 60 ? '30–60' : '>60';
 
-  const PAL = [['1.2', 'Hareketsiz (1,2)'], ['1.375', 'Hafif aktif (1,375)'], ['1.55', 'Orta aktif (1,55)'], ['1.725', 'Çok aktif (1,725)'], ['1.9', 'Aşırı aktif (1,9)']];
+  /* İlk grup TÜBER 2022 Ek 4.8.3 (EFSA/FAO-WHO-UNU) yaşam biçimi sınıflaması,
+     ikinci grup yaygın kullanılan klasik aktivite katsayıları. */
+  const PAL = [
+    ['1.3', 'Yatağa/sandalyeye bağımlı · 1,2–1,39'],
+    ['1.4', 'Az aktif · evde, ulaşımda taşıt · 1,4'],
+    ['1.5', 'Az aktif · masa başı iş · 1,5'],
+    ['1.7', 'Orta aktif · günde ~1 saat yürüyüş · 1,6–1,79'],
+    ['1.9', 'Aktif · ayakta çalışma veya düzenli egzersiz · 1,8–1,99'],
+    ['2.1', 'Çok aktif · sporcu, ağır beden işi · ≥2,0'],
+    ['1.2', 'Klasik: Hareketsiz (1,2)'],
+    ['1.375', 'Klasik: Hafif aktif (1,375)'],
+    ['1.55', 'Klasik: Orta aktif (1,55)'],
+    ['1.725', 'Klasik: Çok aktif (1,725)']
+  ];
 
   DA.calcs = [
     { id: 'enerji', title: 'Enerji ihtiyacı & makrolar', desc: 'BMH, TEH, hedef kcal, KH/protein/yağ gramı', ico: 'heart',
@@ -41,6 +54,7 @@
         { k: 'goal', l: 'Hedef', t: 'sel', o: [['-750', 'Hızlı kilo ver (−750 kcal)'], ['-500', 'Kilo ver (−500 kcal)'], ['-250', 'Yavaş kilo ver (−250 kcal)'], ['0', 'Kilo koru'], ['250', 'Yavaş kilo al (+250 kcal)'], ['500', 'Kilo al (+500 kcal)']], def: '0' },
         num_('cho', 'Karbonhidrat %', '50'), num_('pro', 'Protein %', '20')],
       req: ['age', 'h', 'w'],
+      help: () => (DA.pal ? DA.pal.helpHtml() : ''),
       run(v) {
         const mif = 10 * v.w + 6.25 * v.h - 5 * v.age + (v.sex === 'E' ? 5 : -161);
         const hb = v.sex === 'E' ? 88.362 + 13.397 * v.w + 4.799 * v.h - 5.677 * v.age : 447.593 + 9.247 * v.w + 3.098 * v.h - 4.33 * v.age;
@@ -272,7 +286,8 @@
     return {
       title: c.title, tab: 'hesapla', back: q.get('c') ? 'danisan/' + q.get('c') : 'hesapla',
       ico: c.ico, fav: { h: '#/hesapla/' + c.id, t: c.title, ico: c.ico },
-      html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut"></div>',
+      html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut"></div>' +
+        (typeof c.help === 'function' ? c.help() : (c.help || '')),
       mount(app) { const form = DA.$('form[data-calc]', app); DA.$('#calcOut').innerHTML = resultHtml(c, readValues(form, c)); }
     };
   };
