@@ -146,6 +146,30 @@
         ['Tuz', '<5 g/gün (≈1 silme tatlı kaşığı; sodyum <2000 mg). Diyabetli hipertansiflerde daha da kısıtlanabilir.'],
         ['Su', 'Kadın en az 2,0 L/gün, erkek en az 2,5 L/gün (ya da 30–35 ml/kg/gün)']
       ]) },
+    { id: 'tuberenerji2', t: 'TÜBER: Henry 2005 eşitlikleri ve faktöriyel yöntem', tags: 'tüber henry deh bmh dinlenme enerji faktöriyel pal bazal metabolizma', h:
+      '<p class="muted small">TÜBER 2022, Türkiye referans enerji değerlerini bu yöntemle hesaplar (Tablo 10.2–10.3, s. 225–226). Bazal (BEH) yerine <b>dinlenme enerji harcaması (DEH)</b> terimi kullanılır.</p>' +
+      '<div class="sect">Faktöriyel yöntem</div>' +
+      ul([
+        '<b>Yetişkin:</b> Toplam enerji harcaması = DEH × PAL',
+        '<b>Çocuk ve adolesan:</b> Toplam enerji harcaması = DEH × PAL × büyüme çarpanı (%1)'
+      ]) +
+      '<div class="sect">Henry 2005 — DEH (kkal/gün)</div>' +
+      '<p class="muted small">Ağırlık kg, boy <b>metre</b> cinsindendir.</p>' +
+      tbl(['Yaş', 'Erkek', 'Kadın / Kız'], [
+        ['0–3', '28,2 × kg + 859 × m − 371', '30,4 × kg + 703 × m − 287'],
+        ['3–10', '15,1 × kg + 74,2 × m + 306', '15,9 × kg + 210 × m + 349'],
+        ['10–18', '15,6 × kg + 266 × m + 299', '9,40 × kg + 249 × m + 462'],
+        ['18–30', '14,4 × kg + 313 × m + 113', '10,4 × kg + 615 × m − 282'],
+        ['30–60', '11,4 × kg + 541 × m − 137', '8,18 × kg + 502 × m − 11,6'],
+        ['>60', '11,4 × kg + 541 × m − 256', '8,52 × kg + 421 × m + 10,7']
+      ]) +
+      ul([
+        'Yaş sınırları çakışmasın diye kaynakta şöyle tanımlanmıştır: 0–<3, 3–<10, 10–<18, 18–<30, 30–59, ≥60.',
+        'Yaşlıda PAL: 60–69 yaş erkek ve kadın 1,71; 70–79 yaş erkek 1,64, kadın 1,62 (orta aktif).',
+        'TÜBER’in yetişkin referans değerleri, ölçülmüş boy ve <b>BKİ 22 kg/m²’ye göre düzeltilmiş ağırlık</b> ile hesaplanmıştır; bireysel hesapta kişinin kendi ağırlığı kullanılır.'
+      ]) +
+      '<div class="note"><b>Kaynaktaki dizgi hatası:</b> Tablo 10.2’de büyüme çarpanı “× 0,01” yazılmıştır; bu toplam enerjiyi yüze bölerdi. EFSA ve FAO/WHO/UNU’da çocuklarda büyüme payı enerjinin %1’idir, yani <b>× 1,01</b>. Hesaplayıcı 1,01 kullanır.</div>' +
+      '<div class="note"><a href="#/hesapla/enerji">Enerji hesaplayıcısında</a> formül olarak “Henry 2005 (TÜBER 2022)” seçilebilir.</div>' },
     { id: 'tuberenerji', t: 'TÜBER: yaşa ve cinsiyete göre enerji ve sıvı', tags: 'tüber enerji ihtiyacı sıvı yaş cinsiyet sedanter', h:
       '<p class="muted small">Sedanter / hafif aktif yetişkin için yaklaşık değerler. Bireysel hesap için enerji hesaplayıcısını kullanın.</p>' +
       tbl(['Yaş', 'Cinsiyet', 'Enerji (kcal/gün)', 'Sıvı (L/gün)'], [

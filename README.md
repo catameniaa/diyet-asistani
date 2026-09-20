@@ -20,6 +20,7 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre vitamin-mineral önerisi (PRI/AI), ortalama
   gereksinim (EAR) ve tolere edilebilir üst sınır (UL)
+- Enerji hesabında Henry 2005 eşitlikleri (TÜBER'in kullandığı yöntem) seçeneği
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
 Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.
