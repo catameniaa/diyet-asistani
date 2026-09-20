@@ -123,6 +123,7 @@
           '<div class="card">' + columnHtml(i) + '</div>' +
           '<details class="acc"><summary>Tüm enerji düzeyleri (1000–3200 kkal)</summary><div class="body">' +
           gridHtml(i) + '</div></details>' +
+          '<a class="btn ghost block mt" href="#/hesapla/porsiyon">' + DA.icon('table') + ' Yaş ve cinsiyete göre porsiyon önerileri</a>' +
           '<div class="note">Kaynak: ' + esc(DA.data.tuber.oruntu.src) + '. ' +
           'Hangi enerji düzeyinin hangi yaş ve aktivite grubuna denk geldiği için Ek 1.1.1–1.1.4’e bakın.</div>' +
           '<div class="card">' + notesHtml() + '</div>'

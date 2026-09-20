@@ -182,7 +182,8 @@
     return '<details class="acc"><summary>Porsiyon örnekleri (1 değişim)</summary><div class="body">' +
       '<table class="t"><tbody>' + GROUPS.map((g) =>
         '<tr><td style="width:38%"><b>' + esc(g.l) + '</b></td><td>' + esc(g.ex) + '</td></tr>').join('') +
-      '</tbody></table><p class="muted tiny" style="margin-bottom:0">Porsiyonlar yaklaşıktır; besinin cinsine ve pişirme yöntemine göre değişir.</p></div></details>';
+      '</tbody></table><p class="muted tiny">Porsiyonlar yaklaşıktır; besinin cinsine ve pişirme yöntemine göre değişir.</p>' +
+      '<a class="btn ghost block" href="#/hesapla/porsiyon?t=olcu">' + icon('table') + ' TÜBER standart porsiyon ölçüleri</a></div></details>';
   }
 
   function planText() {

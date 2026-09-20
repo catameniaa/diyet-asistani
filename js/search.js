@@ -16,6 +16,11 @@
       g: 'Besin', ico: 'apple', t: f.n, s: fmt(f.kcal, 0) + ' kcal/100 g · KH ' + fmt(f.c, 1) + ' · P ' + fmt(f.p, 1) + ' · Y ' + fmt(f.f, 1),
       h: '#/besin?f=' + encodeURIComponent(f.id), k: f.n + ' ' + (f.cat || '')
     }));
+    (DA.data.porsiyon ? DA.data.porsiyon.olcu : []).forEach((g) => g.f.forEach((f) => out.push({
+      g: 'Porsiyon ölçüsü', ico: 'table', t: f[0], s: '1 porsiyon: ' + f[1],
+      h: '#/hesapla/porsiyon?t=olcu&ara=' + encodeURIComponent(f[0].split(/[ ,(]/)[0]),
+      k: f[0] + ' ' + f[1] + ' ' + g.g + ' porsiyon ölçü'
+    })));
     DA.data.ref.forEach((r) => out.push({
       g: 'Referans', ico: 'book', t: r.t, s: 'Klinik referans',
       h: '#/referans?r=' + encodeURIComponent(r.id), k: r.t + ' ' + r.tags + ' ' + r.h.replace(/<[^>]+>/g, ' ')

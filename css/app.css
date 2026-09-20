@@ -132,6 +132,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box
 .seg input{position:absolute;opacity:0;pointer-events:none}
 .seg span{display:block;text-align:center;padding:9px 6px;border-radius:9px;font-weight:600;font-size:14px;color:var(--mute);cursor:pointer;transition:background .12s,color .12s}
 .seg input:checked+span{background:var(--card);color:var(--pri);box-shadow:var(--sh-1)}
+.seg button{flex:1;border:0;background:none;padding:9px 6px;border-radius:9px;font-weight:600;font-size:14px;color:var(--mute);cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--card);color:var(--pri);box-shadow:var(--sh-1)}
 
 /* düğmeler */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:var(--r-s);border:0;background:var(--pri);color:var(--pri-ink);font-weight:650;cursor:pointer;text-decoration:none;font-size:16px;box-shadow:var(--sh-1);transition:transform .1s ease,filter .1s ease}
