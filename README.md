@@ -21,6 +21,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre makro aralıkları, protein (g/kg ve g/gün),
   posa, su, vitamin-mineral önerisi (PRI/AI), ortalama gereksinim (EAR) ve üst sınır (UL)
 - Enerji hesabında Henry 2005 eşitlikleri (TÜBER'in kullandığı yöntem) seçeneği
+- TÜBER enerji referans değerleri (Ek 1.1.1–1.1.4): yaş, boy persentili ve PAL'e göre
+  Türkiye gereksinimi; hesaplayıcının çıktısıyla yan yana
+- Yöntem ve tanımlar: PRI/AI/EAR/RI/UL ne demek, faktöriyel yöntem, amino asit puanlama örüntüsü
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
 Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.

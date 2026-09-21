@@ -125,7 +125,9 @@
     bebek: ['js/data-bebek.js'],
     gebe: ['js/data-gebe.js'],
     pal: ['js/data-pal.js'],
-    gi: ['js/data-gi.js']
+    gi: ['js/data-gi.js'],
+    enerjiRef: ['js/data-enerji.js'],
+    yontem: ['js/data-yontem.js']
   };
   const _yuklu = {};
   function script(src) {

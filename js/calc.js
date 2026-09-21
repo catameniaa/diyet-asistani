@@ -64,17 +64,18 @@
         let bmh = v.formula === 'hb' ? hb : v.formula === 'katch' ? kat : v.formula === 'henry' ? hen : mif;
         if (!isFinite(bmh)) return { err: 'Katch–McArdle için vücut yağ yüzdesi gerekli.' };
         const pal = parseFloat(v.pal), goal = parseFloat(v.goal);
-        /* TÜBER faktöriyel yöntem (Tablo 10.2): 18 yaş altında büyüme için %1 eklenir */
-        const buyume = (v.formula === 'henry' && v.age < 18) ? 1.01 : 1;
-        const teh = bmh * pal * buyume, hedef = teh + goal;
+        /* TÜBER faktöriyel yöntem (Tablo 10.2): çocuk ve adolesanda büyüme çarpanı
+           PAL'e EKLENİR — TEH = DEH × (PAL + 0,01); PAL ile çarpılmaz. */
+        const buyume = (v.formula === 'henry' && v.age < 18) ? 0.01 : 0;
+        const teh = bmh * (pal + buyume), hedef = teh + goal;
         const cho = isFinite(v.cho) ? v.cho : 50, pro = isFinite(v.pro) ? v.pro : 20, fat = 100 - cho - pro;
         const isHenry = v.formula === 'henry';
         const rows = [
           R(isHenry ? 'DEH (Henry 2005)' : 'BMH (seçili formül)', fmt(bmh, 0) + ' kcal',
             'Mifflin ' + fmt(mif, 0) + ' · Henry ' + fmt(hen, 0) + ' · Harris-Benedict ' + fmt(hb, 0) + (isFinite(kat) ? ' · Katch ' + fmt(kat, 0) : '') +
             (isHenry ? ' · eşitlik: ' + henryBand(v.age) + ' yaş' : '')),
-          R('TEH' + (buyume > 1 ? ' (DEH × PAL × 1,01)' : isHenry ? ' (DEH × PAL)' : ' (BMH × PAL)'), fmt(teh, 0) + ' kcal',
-            buyume > 1 ? 'Çocuk ve adolesanda büyüme payı %1 (TÜBER Tablo 10.2)' : ''),
+          R('TEH' + (buyume ? ' (DEH × (PAL + 0,01))' : isHenry ? ' (DEH × PAL)' : ' (BMH × PAL)'), fmt(teh, 0) + ' kcal',
+            buyume ? 'Çocuk ve adolesanda büyüme çarpanı PAL’e eklenir (TÜBER Tablo 10.2)' : ''),
           R('Hedef enerji', fmt(hedef, 0) + ' kcal/gün', '', true)];
         let note = '', tone = 'info';
         if (fat < 0 || fat > 100) { note = 'Karbonhidrat + protein yüzdesi 100’ü aşıyor.'; tone = 'bad'; }
@@ -85,7 +86,7 @@
           rows.push(R('Yağ (%' + fmt(fat, 0) + ')', fmt(g.f, 0) + ' g', fmt(g.f / v.w, 2) + ' g/kg'));
           this._last = { kcal: Math.round(hedef), p: Math.round(g.p), c: Math.round(g.c), f: Math.round(g.f) };
         }
-        if (isHenry && !note) note = 'Henry 2005 eşitlikleri TÜBER 2022’de (Tablo 10.3) Türkiye referans değerlerinin hesaplanmasında kullanılan yöntemdir; bazal (BEH) yerine dinlenme enerji harcaması (DEH) verir.';
+        if (isHenry && !note) note = 'Henry 2005 eşitlikleri TÜBER 2022’de (Tablo 10.3) Türkiye referans değerlerinin hesaplanmasında kullanılan yöntemdir; bazal (BEH) yerine dinlenme enerji harcaması (DEH) verir. Kaynağın yayımlanmış tablosu için Enerji referans değerleri ekranına bakabilirsin.';
         const low = v.sex === 'E' ? 1500 : 1200;
         if (hedef < low) { note = 'Hedef enerji ' + low + ' kcal altında. Klinik gözetim olmadan çok düşük enerjili plan önerilmez.'; tone = 'warn'; }
         return { rows, note, tone, actions: [{ label: 'Menü hedefi olarak kaydet', act: 'saveTargets' }] };
@@ -295,10 +296,11 @@
       ['Klinik', ['enteral', 'gir']]
     ],
     referans: [
-      ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu']],
+      ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu', 'enerjiref']],
       ['Porsiyon ve besin değerleri', ['porsiyon', 'porsiyonbesin', 'istege']],
       ['Yaşam dönemleri', ['bebek', 'gebe', 'pal']],
-      ['Örnek planlar', ['ornekmenu']]
+      ['Örnek planlar', ['ornekmenu']],
+      ['Yöntem', ['yontem']]
     ]
   };
   /* id → bölüm */

@@ -31,10 +31,13 @@
       n: '“Balık (porsiyon/hafta)” satırının 1000 ve 1400 kkal hücreleri kesir yerine <b>yüzde işaretiyle</b> basılmış; ' +
          '“Yeşil yapraklı sebzeler” satırının 1600 kkal hücresi paydası olmayan “1/” şeklinde. ' +
          'Üç hücre tahmin edilmedi, tabloda <b>?</b> olarak bırakıldı.' },
-    { id: 'buyume', ek: 'Tablo 10.2', t: 'Çocukta büyüme payı',
-      tip: 'Yorum', ekran: ['enerji'],
-      n: 'Kaynakta büyüme payı “× 0,01” yazılmıştır; bu çarpan toplam enerjiyi yüze böler. ' +
-         'EFSA, FAO/WHO/UNU uygulamasına uyularak <b>× 1,01</b> (yani %1 ekleme) olarak hesaplandı.' },
+    { id: 'buyume', ek: 'Tablo 10.2', t: 'Çocukta büyüme çarpanı',
+      tip: 'Çözüldü', ekran: ['enerji', 'enerjiref'],
+      n: 'Kaynakta çocuk satırı “DEH × PAL 0,01 (büyüme çarpanı)” diye basılmış, PAL ile büyüme çarpanı ' +
+         'arasındaki işlem <b>eksik</b>. Önce EFSA uygulamasına bakarak × 1,01 varsaymıştık. ' +
+         'Ek 1.1.1–1.1.2 içeri alınınca doğrusu sayısal olarak belirlendi: 68 çocuk satırının tamamında ' +
+         '<b>TEH = DEH × (PAL + 0,01)</b> tutuyor, × 1,01 tutmuyor. Örnek: erkek 10 yaş medyan, DEH 1150 → ' +
+         'orta aktif 1851 = 1150 × 1,61 (× 1,01 olsaydı 1859 çıkardı). Hesaplayıcı buna göre düzeltildi.' },
     { id: 'ek232', ek: 'Ek 2.3.2', t: 'İsteğe bağlı besinlerin mikro besin sütunları',
       tip: 'Alınmadı', ekran: ['istege'],
       n: 'Tablonun mikro besin sütunları kaynakta büyük ölçüde boştur (dipnot: “(-) Analiz edilmemiştir”) ve ' +

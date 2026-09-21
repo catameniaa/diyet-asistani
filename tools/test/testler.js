@@ -82,9 +82,13 @@
        Henry 10–18 y erkek: 15,6 × 32 + 266 × 1,40 + 299 = 1170,6 → × 1,6 × 1,01 */
     r = calistir('enerji', { sex: 'E', age: 10, h: 140, w: 32, formula: 'henry', pal: '1.6', goal: '0', cho: 50, pro: 20 });
     ekle(G, 'Henry çocuk DEH (E, 10 y, 140 cm, 32 kg)', '1171 kcal', deger(r, 'DEH (Henry 2005)'));
-    ekle(G, 'Çocukta TEH büyüme payı ×1,01', '1892 kcal', deger(r, 'TEH'));
-    kosul(G, 'Çocukta TEH etiketinde büyüme payı görünür',
-      (r.rows.find((x) => x.l.indexOf('TEH') === 0) || {}).l === 'TEH (DEH × PAL × 1,01)');
+    /* TÜBER Tablo 10.2: TEH = DEH × (PAL + 0,01) — 1170,6 × 1,61 = 1884,7 */
+    ekle(G, 'Çocukta TEH = DEH × (PAL + 0,01)', '1885 kcal', deger(r, 'TEH'));
+    kosul(G, 'Çocukta TEH etiketinde büyüme çarpanı görünür',
+      (r.rows.find((x) => x.l.indexOf('TEH') === 0) || {}).l === 'TEH (DEH × (PAL + 0,01))');
+    /* Yetişkinde büyüme çarpanı uygulanmaz: 11,4 × 70 + 541 × 1,75 − 137 = 1607,75; × 1,6 = 2572,4 */
+    ekle(G, 'Yetişkinde TEH = DEH × PAL (büyüme çarpanı yok)', '2572 kcal',
+      deger(calistir('enerji', { sex: 'E', age: 35, h: 175, w: 70, formula: 'henry', pal: '1.6', goal: '0', cho: 50, pro: 20 }), 'TEH'));
     /* Katch–McArdle yağ yüzdesi olmadan hata vermeli */
     kosul(G, 'Katch–McArdle yağ % olmadan hata verir',
       !!calistir('enerji', { sex: 'E', age: 30, h: 180, w: 80, formula: 'katch', pal: '1.2', goal: '0', cho: 50, pro: 20 }).err);
@@ -186,6 +190,28 @@
     r = calistir('gy', { f: '', gi: 50, g: 100, kh: 15 });
     ekle(G, 'Glisemik yük 50 × 15 ÷ 100', '7,5', deger(r, 'Glisemik yük'));
     ekle(G, 'GL 7,5 sınıfı', 'Düşük glisemik yük', (r.badge || [])[0]);
+
+    /* --- Enerji referans tablosu (Ek 1.1.x) hesaplayıcıyla uyumlu mu? ---
+       Kaynak DEH'i yuvarlayarak yayımladığı için %1,5 tolerans bırakılıyor. */
+    if (DA.data.enerjiRef) {
+      const ER = DA.data.enerjiRef;
+      const ornek = [
+        ['Erkek 10 yaş medyan, orta aktif', 'cocuk', 'E', (r2) => r2.y === 10 && r2.p === 'M', 1, 10, 'henry', '1.6'],
+        ['Kız 14 yaş medyan, aktif', 'cocuk', 'K', (r2) => r2.y === 14 && r2.p === 'M', 2, 14, 'henry', '1.8'],
+        ['Yetişkin erkek 30-39, 50. persentil, orta aktif', 'yetiskin', 'E', (r2) => r2.y === '30-39' && r2.p === 50, 1, 35, 'henry', '1.6'],
+        ['Yetişkin kadın 40-49, 50. persentil, az aktif', 'yetiskin', 'K', (r2) => r2.y === '40-49' && r2.p === 50, 0, 45, 'henry', '1.4']
+      ];
+      ornek.forEach((o) => {
+        const row = ER[o[1]][o[2]].find(o[3]);
+        if (!row) { kosul(G, 'Enerji referans satırı bulundu: ' + o[0], false); return; }
+        const res = calistir('enerji', { sex: o[2], age: o[5], h: row.b, w: row.w,
+          formula: o[6], pal: o[7], goal: '0', cho: 50, pro: 20 });
+        const hes = parseFloat(String(deger(res, 'TEH')).replace(/[^0-9]/g, ''));
+        const fark = Math.abs(hes - row.teh[o[4]]) / row.teh[o[4]];
+        kosul(G, 'Hesaplayıcı Ek 1.1.x ile uyumlu — ' + o[0],
+          fark < 0.015, 'tablo ' + row.teh[o[4]] + ' · hesap ' + hes + ' (%' + (fark * 100).toFixed(1) + ')');
+      });
+    }
 
     /* --- Çocuk persentil: WHO medyanında z = 0 --- */
     if (DA.growth) {
@@ -340,6 +366,77 @@
         return typeof k === 'number' && typeof e === 'number' && e < k;
       });
       kosul(G, 'Tablo 7.4 erkek enerjisi kızdan düşük değil', ters.length === 0, ters.length + ' satır');
+    }
+
+    /* --- Ek 1.1.1-1.1.4 enerji referans değerleri --- */
+    if (D.enerjiRef) {
+      const ER = D.enerjiRef, PALS = ER.pal.map((p) => p[0]);
+      ekle(G, 'Ek 1.1.1 erkek çocuk satır sayısı', 34, ER.cocuk.E.length);
+      ekle(G, 'Ek 1.1.2 kız çocuk satır sayısı', 34, ER.cocuk.K.length);
+      ekle(G, 'Ek 1.1.3 yetişkin erkek satır sayısı', 30, ER.yetiskin.E.length);
+      ekle(G, 'Ek 1.1.4 yetişkin kadın satır sayısı', 30, ER.yetiskin.K.length);
+      /* Faktöriyel yöntem (Tablo 10.2): yetişkin DEH×PAL, çocuk DEH×(PAL+0,01) */
+      let sapan = 0, bakilan = 0;
+      [['cocuk', ER.buyume], ['yetiskin', 0]].forEach((g) => ['E', 'K'].forEach((s) => {
+        ER[g[0]][s].forEach((row) => {
+          row.teh.forEach((t, i) => {
+            bakilan++;
+            if (Math.abs(row.deh * (PALS[i] + g[1]) - t) > 2.5) sapan++;
+          });
+        });
+      }));
+      kosul(G, 'Ek 1.1.x: TEH = DEH × PAL bağıntısı (' + bakilan + ' hücre)', sapan === 0, sapan + ' hücre sapıyor');
+      /* Her satırda boy, ağırlık, DEH makul aralıkta ve TEH artan sırada */
+      const bozuk = [].concat(ER.cocuk.E, ER.cocuk.K, ER.yetiskin.E, ER.yetiskin.K).filter((r) =>
+        !(r.b > 50 && r.b < 210) || !(r.w > 5 && r.w < 150) || !(r.deh > 400 && r.deh < 3000) ||
+        r.teh.some((t, i) => i && t <= r.teh[i - 1]));
+      kosul(G, 'Ek 1.1.x: değerler makul ve TEH sütunları artan', bozuk.length === 0, bozuk.length + ' satır');
+      ekle(G, 'Ek 1.1.4 gebelik/emzirme ek enerji satırı', 4, ER.ek.r.length);
+      /* Yetişkinde her yaş grubunda tam olarak 5/25/50/75/95 persentilleri olmalı */
+      const bozukPct = [];
+      ['E', 'K'].forEach((s) => {
+        const grup = {};
+        ER.yetiskin[s].forEach((r) => { (grup[r.y] = grup[r.y] || []).push(r.p); });
+        Object.keys(grup).forEach((k) => {
+          if (grup[k].join(',') !== '5,25,50,75,95') bozukPct.push(s + ' ' + k + ' → ' + grup[k].join(','));
+        });
+      });
+      kosul(G, 'Ek 1.1.3/1.1.4: her yaş grubunda 5/25/50/75/95 persentili',
+        bozukPct.length === 0, bozukPct.join(' · '));
+      /* Çocukta her yaşta medyan ve 85. persentil satırı */
+      const bozukCocuk = [];
+      ['E', 'K'].forEach((s) => {
+        const grup = {};
+        ER.cocuk[s].forEach((r) => { (grup[r.y] = grup[r.y] || []).push(r.p); });
+        Object.keys(grup).forEach((k) => {
+          if (grup[k].join(',') !== 'M,P85') bozukCocuk.push(s + ' ' + k + ' yaş → ' + grup[k].join(','));
+        });
+      });
+      kosul(G, 'Ek 1.1.1/1.1.2: her yaşta medyan ve 85. persentil',
+        bozukCocuk.length === 0, bozukCocuk.join(' · '));
+    }
+
+    /* --- Tablo 10.1 / 10.2 ve Ek 1.2.2 --- */
+    if (D.yontem) {
+      const Y = D.yontem;
+      ekle(G, 'Tablo 10.1 referans değer türü sayısı', 5, Y.drv.r.length);
+      kosul(G, 'Tablo 10.1: her türde IOM, EFSA karşılığı ve tanım var',
+        Y.drv.r.every((x) => x.k && x.iom && x.efsa && x.ad && x.d && x.kullan));
+      const kk = Y.drv.r.map((x) => x.k);
+      kosul(G, 'Tablo 10.1 kısaltmaları benzersiz', new Set(kk).size === kk.length);
+      ekle(G, 'Tablo 10.2 faktöriyel yöntem satırı', 2, Y.faktoriyel.r.length);
+      ekle(G, 'Ek 1.2.2 amino asit sütunu', 9, Y.aminoasit.c.length);
+      const ba = Y.aminoasit.r.filter((r) => r.v.length !== Y.aminoasit.c.length);
+      kosul(G, 'Ek 1.2.2 her satırda 9 amino asit', ba.length === 0, ba.length + ' satır');
+      /* Örüntü yaşla azalır: bebek > 6 ay-3 yıl > 3 yaş üstü */
+      const azalan = Y.aminoasit.c.every((c, i) =>
+        Y.aminoasit.r[0].v[i] >= Y.aminoasit.r[1].v[i] && Y.aminoasit.r[1].v[i] >= Y.aminoasit.r[2].v[i]);
+      kosul(G, 'Ek 1.2.2: amino asit gereksinimi yaşla azalıyor', azalan);
+      kosul(G, 'Kısaltma listesi dolu ve ikili', Y.kisalt.length > 25 && Y.kisalt.every((k) => k.length === 2 && k[0] && k[1]));
+      /* Tablo 10.1'deki kısaltmalar kısaltma listesinde de geçiyor mu */
+      const liste = Y.kisalt.map((k) => k[0]);
+      const eksik = kk.filter((k) => liste.indexOf(k) < 0);
+      kosul(G, 'Tablo 10.1 kısaltmaları listede de tanımlı', eksik.length === 0, 'eksik: ' + eksik.join(', '));
     }
 
     /* --- Glisemik indeks listesi --- */
