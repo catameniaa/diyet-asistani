@@ -164,6 +164,9 @@
         '<div class="res"><span class="l">Son yedek</span><span class="v" style="font-size:15px">' +
         (DA.state().ui.lastBackup ? esc(DA.fdate(DA.state().ui.lastBackup)) + '<span class="sub">' + DA.daysSinceBackup() + ' gün önce</span>' : 'Hiç alınmadı') + '</span></div>' +
         '<button class="btn block" data-act="backup">' + icon('save') + ' Yedeği indir / paylaş</button>' +
+        '<button class="btn ghost block mt-s" data-act="backupSifreli">' + icon('save') + ' Şifreli yedek al</button>' +
+        '<p class="muted tiny">Yedeği buluta (iCloud, Drive) ya da e-postaya koyacaksan şifreli al: ' +
+        'danışan bilgileri parola olmadan okunamaz.</p>' +
         '<label class="btn ghost block mt-s" style="cursor:pointer">Yedeği yükle<input type="file" accept="application/json,.json" data-change="restore" hidden></label>' +
         '<button class="btn danger block mt-s" data-act="wipe">Tüm verileri sil</button></div>' +
 
@@ -279,6 +282,49 @@
     DA.toast('Yedeklendi: ' + S.clients.length + ' danışan, ' + S.menus.length + ' menü, ' + S.journal.length + ' staj kaydı');
   }
 
+  /* Dosyayı paylaş ya da indir. iOS'ta paylaşım sayfasından "Dosyalara Kaydet"
+     ile iCloud Drive'a atılabilir; cihaz dışı kopya böyle çıkar. */
+  async function dosyaVer(metin, name, tip) {
+    try {
+      const file = new File([metin], name, { type: tip });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+        return true;
+      }
+    } catch (e) { if (e && e.name === 'AbortError') return false; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([metin], { type: tip }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    return true;
+  }
+
+  DA.actions.backupSifreli = () => {
+    if (!DA.kriptoVar || !DA.kriptoVar()) return DA.toast('Bu tarayıcıda şifreleme desteklenmiyor');
+    DA.sheet('Şifreli yedek',
+      '<p class="small">Yedek dosyası parolayla şifrelenir. Dosya iCloud, Drive ya da e-postaya ' +
+      'çıksa bile danışan bilgileri parola olmadan okunamaz.</p>' +
+      '<form data-form="sifreliYedek" onsubmit="return false">' +
+      '<label class="fld"><span>Parola</span><input type="password" name="p1" autocomplete="new-password" required></label>' +
+      '<label class="fld"><span>Parola (tekrar)</span><input type="password" name="p2" autocomplete="new-password" required></label>' +
+      '<button class="btn block" type="submit">' + icon('save') + ' Şifrele ve kaydet</button></form>' +
+      '<div class="note bad" style="margin-bottom:0"><b>Parolayı kaybedersen yedek açılamaz.</b> ' +
+      'Kurtarma yolu yoktur — parolayı güvenli bir yerde sakla.</div>');
+  };
+
+  DA.forms.sifreliYedek = async (f) => {
+    const d = DA.formData(f);
+    if (!d.p1) return DA.toast('Parola gerekli');
+    if (d.p1 !== d.p2) return DA.toast('Parolalar aynı değil');
+    if (d.p1.length < 8) return DA.toast('Parola en az 8 karakter olmalı');
+    DA.toast('Şifreleniyor…');
+    try {
+      const zarf = await DA.sifrele(JSON.stringify(DA.state()), d.p1);
+      const ad = 'diyet-asistani-yedek-' + DA.today() + '.sifreli.json';
+      if (await dosyaVer(zarf, ad, 'application/json')) { DA.closeSheet(); markBackup(); }
+    } catch (e) { DA.toast(e.message || 'Şifrelenemedi'); }
+  };
+
   DA.actions.backup = async () => {
     const json = JSON.stringify(DA.state(), null, 1), name = 'diyet-asistani-yedek-' + DA.today() + '.json';
     try {
@@ -293,17 +339,50 @@
   const sayi = (o) => ({ danisan: (o.clients || []).length, menu: (o.menus || []).length,
     staj: (o.journal || []).length, besin: (o.customFoods || []).length });
 
+  /* Şifreli dosya geldiğinde metin burada bekletilir, parola alınınca çözülür. */
+  let _sifreliMetin = '', _sifreliAd = '';
+
+  DA.forms.yedekCoz = async (f) => {
+    const d = DA.formData(f);
+    if (!d.p) return DA.toast('Parola gerekli');
+    DA.toast('Çözülüyor…');
+    try {
+      const duz = await DA.coz(_sifreliMetin, d.p);
+      DA.closeSheet();
+      yedekGoster(duz, _sifreliAd.replace(/\.sifreli\.json$/, '') + ' (şifreli)');
+      _sifreliMetin = '';
+    } catch (e) { DA.toast(e.message || 'Çözülemedi'); }
+  };
+
   DA.live.restore = (el) => {
     const f = el.files[0]; if (!f) return;
     const r = new FileReader();
     r.onload = () => {
+      if (DA.sifreliMi && DA.sifreliMi(r.result)) {
+        _sifreliMetin = r.result; _sifreliAd = f.name;
+        DA.sheet('Şifreli yedek',
+          '<p class="muted small">' + esc(f.name) + '</p>' +
+          '<p class="small">Bu dosya şifreli. Açmak için yedeği alırken kullandığın parolayı gir.</p>' +
+          '<form data-form="yedekCoz" onsubmit="return false">' +
+          '<label class="fld"><span>Parola</span><input type="password" name="p" autocomplete="current-password" required></label>' +
+          '<button class="btn block" type="submit">Çöz ve göster</button></form>');
+        return;
+      }
+      yedekGoster(r.result, f.name);
+    };
+    r.readAsText(f); el.value = '';
+  };
+
+  /* Düz metin yedeği özetleyip birleştir/üzerine yaz seçeneklerini sunar. */
+  function yedekGoster(metin, ad) {
+    {
       try {
-        const o = JSON.parse(r.result);
+        const o = JSON.parse(metin);
         if (!o || typeof o !== 'object' || !Array.isArray(o.clients)) throw new Error('bad');
         _yedek = o;
         const y = sayi(o), m = sayi(DA.state());
         const sat = (l, a, b) => '<tr><td>' + l + '</td><td class="n">' + a + '</td><td class="n muted">' + b + '</td></tr>';
-        DA.sheet('Yedek dosyası', '<p class="muted small">' + esc(f.name) + '</p>' +
+        DA.sheet('Yedek dosyası', '<p class="muted small">' + esc(ad) + '</p>' +
           '<table class="t"><thead><tr><th></th><th class="n">Dosyada</th><th class="n">Şu an</th></tr></thead><tbody>' +
           sat('Danışan', y.danisan, m.danisan) + sat('Menü', y.menu, m.menu) +
           sat('Staj kaydı', y.staj, m.staj) + sat('Eklenen besin', y.besin, m.besin) +
@@ -313,9 +392,8 @@
           '<button class="btn danger block mt-s" data-act="restoreReplace">Üzerine yaz (mevcut veriler silinir)</button>' +
           '<p class="muted tiny" style="margin-bottom:0">Birleştirmede aynı kimlikli kayıtlar atlanır; iki cihaz kullanıyorsan bunu seç.</p>');
       } catch (e) { DA.toast('Geçersiz yedek dosyası'); }
-    };
-    r.readAsText(f); el.value = '';
-  };
+    }
+  }
 
   DA.actions.restoreReplace = () => {
     if (!_yedek) return;

@@ -37,6 +37,11 @@ metin indirilebilir kalır. Her kayıtta IndexedDB'de ayrı bir depoya anlık ko
 dönülebilir. Anlık kopyalar cihazda durur; cihaz kaybı ve site verilerini temizleme için
 dosya yedeği şarttır.
 
+Şifreli yedek: yedek dosyası parolayla şifrelenebilir (WebCrypto AES-GCM 256,
+PBKDF2-SHA256 310 000 tur, her dosyada yeni tuz ve IV). Dosya iCloud, Drive ya da
+e-postaya çıksa bile danışan bilgileri parola olmadan okunamaz. Parola kaybolursa
+yedek açılamaz; kurtarma yolu yoktur.
+
 ## Yayınlama (GitHub Pages)
 
 Repo → Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `(root)`.

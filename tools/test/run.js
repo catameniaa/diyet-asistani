@@ -86,6 +86,7 @@ function ornekDurum(tema) {
   };
 
   const sayfa = await tarayici.newPage({ viewport: { width: 430, height: 930 } });
+  sayfa.on('dialog', (d) => d.accept());   /* confirm() başsız tarayıcıda varsayılan olarak reddeder */
   const hatalar = [];
   sayfa.on('console', (m) => { if (m.type() === 'error') hatalar.push(m.text()); });
   sayfa.on('pageerror', (e) => hatalar.push('PAGEERROR: ' + e.message));
@@ -246,6 +247,85 @@ function ornekDurum(tema) {
     return DA.state().clients.length;
   });
   uiEkle('Anlık kopyadan geri yükleme çalışıyor', 1, geri);
+
+  /* ---- Şifreli yedek ---- */
+  const kr = await sayfa.evaluate(async () => {
+    const out = {};
+    out.destek = DA.kriptoVar();
+    const duz = JSON.stringify({ clients: [{ id: 'c1', name: 'Ayşe Yılmaz' }], menus: [] });
+    const zarf = await DA.sifrele(duz, 'parola12345');
+    out.zarfJson = (() => { try { return !!JSON.parse(zarf); } catch (e) { return false; } })();
+    out.taniniyor = DA.sifreliMi(zarf);
+    out.duzTaninmiyor = DA.sifreliMi(duz);
+    /* Şifreli metinde danışan adı açıkça geçmemeli */
+    out.adSizmiyor = zarf.indexOf('Ayşe') < 0 && zarf.indexOf('Yılmaz') < 0;
+    const z = JSON.parse(zarf);
+    out.alanlar = !!(z.format && z.kdf && z.iter && z.salt && z.iv && z.data);
+    out.tur = z.iter;
+    /* Doğru parola: birebir geri gelmeli */
+    out.gidisDonus = (await DA.coz(zarf, 'parola12345')) === duz;
+    /* Yanlış parola */
+    try { await DA.coz(zarf, 'yanlis'); out.yanlisParola = 'hata vermedi'; }
+    catch (e) { out.yanlisParola = e.message; }
+    /* Kurcalanmış dosya: tek karakter değiştir */
+    const bozuk = JSON.parse(zarf);
+    bozuk.data = (bozuk.data[0] === 'A' ? 'B' : 'A') + bozuk.data.slice(1);
+    try { await DA.coz(JSON.stringify(bozuk), 'parola12345'); out.kurcalama = 'hata vermedi'; }
+    catch (e) { out.kurcalama = e.message; }
+    /* Aynı içerik iki kez şifrelenince tuz da IV de yeniden üretilmeli.
+       Yalnızca "zarf farklı mı" bakmak yetmez: IV rastgele kaldığı sürece
+       tuz sabitlense bile zarf farklı çıkar ve hata gözden kaçar. */
+    const z2 = JSON.parse(await DA.sifrele(duz, 'parola12345'));
+    out.farkliTuz = z2.salt !== z.salt;
+    out.farkliIv = z2.iv !== z.iv;
+    out.farkliCikti = JSON.stringify(z2) !== zarf;
+    out.tuzUzunluk = atob(z.salt).length;
+    out.ivUzunluk = atob(z.iv).length;
+    return out;
+  });
+  uiEkle('WebCrypto destekleniyor', true, kr.destek);
+  uiEkle('Şifreli zarf geçerli JSON', true, kr.zarfJson);
+  uiEkle('Zarfta gerekli alanlar var', true, kr.alanlar);
+  uiEkle('PBKDF2 tur sayısı', 310000, kr.tur);
+  uiEkle('Şifreli dosya tanınıyor', true, kr.taniniyor);
+  uiEkle('Düz yedek şifreli sanılmıyor', false, kr.duzTaninmiyor);
+  uiEkle('Danışan adı şifreli dosyaya sızmıyor', true, kr.adSizmiyor);
+  uiEkle('Doğru parolada veri birebir dönüyor', true, kr.gidisDonus);
+  uiEkle('Yanlış parola reddediliyor', 'Parola yanlış ya da dosya bozulmuş', kr.yanlisParola);
+  uiEkle('Kurcalanmış dosya reddediliyor', 'Parola yanlış ya da dosya bozulmuş', kr.kurcalama);
+  uiEkle('Aynı veri her seferinde farklı şifreleniyor', true, kr.farkliCikti);
+  uiEkle('Her şifrelemede yeni tuz üretiliyor', true, kr.farkliTuz);
+  uiEkle('Her şifrelemede yeni IV üretiliyor', true, kr.farkliIv);
+  uiEkle('Tuz uzunluğu 16 bayt', 16, kr.tuzUzunluk);
+  uiEkle('IV uzunluğu 12 bayt', 12, kr.ivUzunluk);
+
+  /* Şifreli yedek: arayüzden uçtan uca (şifrele → veriyi sil → dosyayı yükle → parola → geri yükle) */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.clients = [{ id: 'c1', name: 'Ayşe Yılmaz', meas: [] }, { id: 'c2', name: 'Mehmet Kaya', meas: [] }];
+    S.menus = [{ id: 'm1', title: 'Menü', meals: {} }];
+    S.journal = []; S.customFoods = [];
+    DA.save();
+  });
+  const zarfMetin = await sayfa.evaluate(() => DA.sifrele(JSON.stringify(DA.state()), 'parola12345'));
+  await sayfa.evaluate(() => { DA.replaceState({}); DA.save(); });
+  await git('#/daha', '[data-act=backupSifreli]');   /* dosya girdisi gizli, görünür bir düğmeyi bekle */
+  await sayfa.setInputFiles('input[data-change=restore]',
+    { name: 'yedek.sifreli.json', mimeType: 'application/json', buffer: Buffer.from(zarfMetin, 'utf8') });
+  await sayfa.waitForSelector('form[data-form=yedekCoz]', { timeout: 10000 });
+  uiEkle('Şifreli dosya yüklenince parola isteniyor', true, true);
+  await sayfa.fill('[name=p]', 'parola12345');
+  await sayfa.click('form[data-form=yedekCoz] button[type=submit]');
+  await sayfa.waitForSelector('[data-act=restoreReplace]', { timeout: 10000 });
+  await sayfa.click('[data-act=restoreReplace]');
+  await sayfa.waitForTimeout(400);
+  const geriYukleme = await sayfa.evaluate(() => ({
+    d: DA.state().clients.length, ad: (DA.state().clients[0] || {}).name, m: DA.state().menus.length
+  }));
+  uiEkle('Şifreli yedekten danışan sayısı geri geldi', 2, geriYukleme.d);
+  uiEkle('Şifreli yedekten danışan adı doğru', 'Ayşe Yılmaz', geriYukleme.ad);
+  uiEkle('Şifreli yedekten menü geri geldi', 1, geriYukleme.m);
 
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
