@@ -9,13 +9,40 @@
     cardProgress: {}, targets: { kcal: 2000, p: 100, c: 250, f: 67 }, profile: {}, ui: {}
   });
   let state;
-  try { const raw = localStorage.getItem(KEY); state = Object.assign(defaults(), raw ? JSON.parse(raw) : {}); }
-  catch (e) { state = defaults(); }
+  /* Kayıt okunamazsa (bozuk ya da yarım yazılmış JSON) ham metnin üzerine YAZMAYIZ.
+     Boş durumla açılıp ilk kayıtta veriyi silmek, kurtarılabilir bir kaydı yok eder.
+     Bunun yerine kaydetme kilitlenir; kullanıcı ham metni indirip karar verene kadar
+     diskteki veri olduğu gibi durur. */
+  let _kilit = '', _ham = '';
+  try {
+    const raw = localStorage.getItem(KEY);
+    state = Object.assign(defaults(), raw ? JSON.parse(raw) : {});
+  } catch (e) {
+    state = defaults();
+    try { _ham = localStorage.getItem(KEY) || ''; } catch (e2) { _ham = ''; }
+    _kilit = _ham
+      ? 'Kayıtlı veri okunamadı; bozuk olabilir. Üzerine yazmamak için kaydetme durduruldu.'
+      : 'Tarayıcı depolaması okunamıyor.';
+  }
 
   DA.state = () => state;
+  /* Kilit durumu: '' ise sorun yok. Ham metin kurtarma için saklanır. */
+  DA.depoKilit = () => _kilit;
+  DA.depoHam = () => _ham;
+  /* Kullanıcı bilerek sıfırdan başlamayı seçerse kilit kalkar. */
+  DA.depoKilitAc = () => { _kilit = ''; _ham = ''; DA.save(); };
   DA.save = () => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch (e) { DA.toast('Kaydedilemedi: tarayıcı depolaması kapalı ya da dolu'); }
+    if (_kilit) return false;          /* bozuk kaydın üzerine yazma */
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      if (DA.depoAnlik) DA.depoAnlik();   /* arka planda anlık kopya (js/depo.js) */
+      return true;
+    } catch (e) {
+      _kilit = 'Kaydedilemedi: tarayıcı depolaması dolu ya da kapalı. Değişiklikler saklanmıyor.';
+      if (DA.toast) DA.toast(_kilit);
+      if (DA.render) setTimeout(() => DA.render(true), 0);
+      return false;
+    }
   };
   DA.replaceState = (o) => { state = Object.assign(defaults(), o); DA.save(); DA.applyTheme(); };
 
@@ -168,7 +195,9 @@
     catch (e) { console.error(e); out = { title: 'Hata', html: '<div class="card"><b>Bir şeyler ters gitti.</b><p class="muted small">' + DA.esc(e.message) + '</p><a class="btn" href="#/ana">Ana sayfa</a></div>' }; }
     const app = DA.$('#app');
     const y = window.scrollY;
-    app.innerHTML = out.html;
+    /* Depolama kilitliyse her ekranın başında uyar: sessizce çalışmaya devam etmek,
+       kullanıcının kaydedildiğini sanıp veri kaybetmesine yol açar. */
+    app.innerHTML = (_kilit ? kilitHtml() : '') + out.html;
     DA.$('#title').textContent = out.title || 'Diyet Asistanı';
     const back = DA.$('#backBtn');
     back.hidden = !out.back;
@@ -197,6 +226,27 @@
     window.scrollTo(0, keepScroll ? y : 0);
     DA.$('#top').style.display = out.noHeader ? 'none' : '';
   };
+  function kilitHtml() {
+    return '<div class="note bad"><b>Veriler kaydedilmiyor.</b> ' + DA.esc(_kilit) +
+      (_ham ? ' Diskteki ham kayıt (' + _ham.length + ' karakter) olduğu gibi duruyor; ' +
+        'önce indir, sonra karar ver.' : '') +
+      '<div class="row gap" style="margin-top:10px">' +
+      (_ham ? '<button class="btn sm" data-act="hamIndir">Ham kaydı indir</button>' : '') +
+      '<button class="btn ghost sm" data-act="kilitAc">Sıfırdan başla</button></div></div>';
+  }
+  DA.actions = DA.actions || {};
+  DA.actions.hamIndir = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([_ham], { type: 'text/plain' }));
+    a.download = 'diyet-asistani-ham-kayit-' + DA.today() + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  DA.actions.kilitAc = () => {
+    if (!confirm('Okunamayan kayıt silinecek ve boş bir durumla başlanacak. ' +
+      'Ham kaydı indirdiysen sorun yok. Devam edilsin mi?')) return;
+    DA.depoKilitAc(); DA.render();
+  };
+
   DA.refresh = () => DA.render(true);
   window.addEventListener('hashchange', () => { DA.closeSheet(); DA.render(false); });
 

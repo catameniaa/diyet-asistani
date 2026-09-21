@@ -31,6 +31,12 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 
 Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.
 
+Veri dayanıklılığı: kayıt okunamazsa uygulama üzerine yazmaz — kaydetme kilitlenir ve ham
+metin indirilebilir kalır. Her kayıtta IndexedDB'de ayrı bir depoya anlık kopya alınır
+(son 12); yanlış geri yükleme ya da bozulma durumunda Ayarlar → Depolama durumu'ndan
+dönülebilir. Anlık kopyalar cihazda durur; cihaz kaybı ve site verilerini temizleme için
+dosya yedeği şarttır.
+
 ## Yayınlama (GitHub Pages)
 
 Repo → Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `(root)`.

@@ -199,6 +199,59 @@ function ornekDurum(tema) {
   arama = await sayfa.$eval('#gOut', (e) => e.textContent);
   uiEkle('Sonuçsuz aramada boş durum gösteriliyor', true, arama.indexOf('bulunamadı') >= 0 || arama.trim().length > 0);
 
+  /* ---- Depolama dayanıklılığı ---- */
+  /* Bozuk kayıt: uygulama boş açılmalı AMA ham veriyi silmemeli. */
+  await sayfa.evaluate(() => localStorage.setItem('dyt.v1', '{"clients":[{"id":"c1","name":"Ayşe"},{"id":"c2","na'));
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  await sayfa.waitForTimeout(300);
+  let dk = await sayfa.evaluate(() => ({
+    kilit: DA.depoKilit(), ham: (DA.depoHam() || '').length,
+    disk: (localStorage.getItem('dyt.v1') || '').length,
+    danisan: DA.state().clients.length
+  }));
+  uiEkle('Bozuk kayıtta kaydetme kilitleniyor', true, !!dk.kilit);
+  uiEkle('Bozuk kayıtta ham metin korunuyor', 52, dk.ham);
+  uiEkle('Bozuk kayıtta boş durumla açılıyor', 0, dk.danisan);
+  /* Asıl kontrol: veri değiştirip kaydetmeyi denesek bile disk bozulmamalı */
+  await sayfa.evaluate(() => { DA.state().clients.push({ id: 'x', name: 'Yeni' }); DA.save(); });
+  dk = await sayfa.evaluate(() => ({ disk: (localStorage.getItem('dyt.v1') || '').length }));
+  uiEkle('Kilitliyken DA.save() diski değiştirmiyor', 52, dk.disk);
+  uiEkle('Kilit uyarısı ekranda gösteriliyor', true,
+    (await sayfa.$eval('#app', (e) => e.textContent)).indexOf('Veriler kaydedilmiyor') >= 0);
+  /* Kullanıcı bilerek sıfırdan başlarsa kilit kalkar ve kayıt çalışır */
+  await sayfa.evaluate(() => { DA.depoKilitAc(); DA.state().clients.push({ id: 'y', name: 'Test' }); DA.save(); });
+  dk = await sayfa.evaluate(() => ({
+    kilit: DA.depoKilit(), danisan: JSON.parse(localStorage.getItem('dyt.v1')).clients.length
+  }));
+  uiEkle('Kilit açılınca kaydetme çalışıyor', '', dk.kilit);
+  /* Kilitliyken bellekteki çalışma sürüyordu (x), kilit açılınca o da yazılır: x + y = 2 */
+  uiEkle('Kilit açıldıktan sonra oturumdaki veri diske yazılıyor', 2, dk.danisan);
+
+  /* Anlık kopyalar: IndexedDB'de tutuluyor ve geri yüklenebiliyor */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  await sayfa.evaluate(ornekDurum, 'light');
+  const anlik = await sayfa.evaluate(async () => {
+    await DA.depoAnlik(true);
+    const l = await DA.depoListe();
+    return { adet: l.length, danisan: l[0] && l[0].ozet.danisan, json: !!(l[0] && l[0].json) };
+  });
+  uiEkle('Anlık kopya alınıyor', true, anlik.adet > 0);
+  uiEkle('Anlık kopyada danışan sayısı doğru', 1, anlik.danisan);
+  uiEkle('Anlık kopya tam veriyi taşıyor', true, anlik.json);
+  const geri = await sayfa.evaluate(async () => {
+    DA.state().clients = [];             /* veriyi kaybet */
+    DA.save();
+    const l = await DA.depoListe();
+    DA.replaceState(JSON.parse(l[0].json));
+    return DA.state().clients.length;
+  });
+  uiEkle('Anlık kopyadan geri yükleme çalışıyor', 1, geri);
+
+  /* Depolama teşhisi okunabiliyor */
+  const durum = await sayfa.evaluate(() => DA.depoDurum());
+  uiEkle('Depolama durumu raporlanıyor', true,
+    durum && typeof durum.anlik === 'number' && durum.ls > 0);
+
   yaz('Arayüz: ' + ui.filter((t) => t.ok).length + '/' + ui.length);
   ui.forEach(bildir);
 

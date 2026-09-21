@@ -167,12 +167,94 @@
         '<label class="btn ghost block mt-s" style="cursor:pointer">Yedeği yükle<input type="file" accept="application/json,.json" data-change="restore" hidden></label>' +
         '<button class="btn danger block mt-s" data-act="wipe">Tüm verileri sil</button></div>' +
 
+        '<div class="sect">Depolama durumu</div>' +
+        '<div class="card" id="depoDurum"><div class="empty">' + icon('save') + '<div>Okunuyor…</div></div></div>' +
+
         '<div class="sect">Hakkında</div><div class="card small muted">' +
         '<p style="margin-top:0"><b style="color:var(--ink)">' + esc(DA.APP) + '</b> — ücretsiz, reklamsız, çevrimdışı çalışır.</p>' +
         '<p>Hazırlayan: <b style="color:var(--ink)">' + esc(DA.dyt()) + '</b></p>' +
         '<p style="margin-bottom:0">Hesaplayıcılar yaygın kullanılan formüllere dayanır; besin değerleri yaklaşık ortalamalardır. Eğitim ve yardımcı araç amaçlıdır, bireysel tıbbi tavsiye yerine geçmez; klinik kararlar için güncel kılavuzlara ve kurum protokollerine bakın.</p></div>' +
-        '<div class="brandline"><span class="r"></span><b>' + esc(DA.dyt()) + '</b></div>'
+        '<div class="brandline"><span class="r"></span><b>' + esc(DA.dyt()) + '</b></div>',
+      mount() { depoCiz(); }
     };
+  };
+
+  /* ---- Depolama durumu paneli ---- */
+  const mb = (n) => (n == null ? '—'
+    : n < 1024 ? n + ' bayt'
+    : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB'
+    : (n / 1048576).toFixed(1) + ' MB');
+  const saat = (ts) => { const d = new Date(ts); return isNaN(d) ? '—' :
+    d.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+
+  async function depoCiz() {
+    const el = DA.$('#depoDurum');
+    if (!el || !DA.depoDurum) return;
+    const d = await DA.depoDurum();
+    const S = DA.state();
+    const kaliciRozet = d.kalici === true ? '<span class="badge ok">Kalıcı</span>'
+      : d.kalici === false ? '<span class="badge warn">Kalıcı değil</span>'
+      : '<span class="badge info">Bilinmiyor</span>';
+    el.innerHTML =
+      '<div class="res"><span class="l">Kalıcı depolama</span><span class="v" style="font-size:15px">' + kaliciRozet + '</span></div>' +
+      (d.kalici === false
+        ? '<p class="muted tiny">Tarayıcı, yer darlığında bu verileri silebilir. İzni yeniden istemeyi dene; ' +
+          'uygulamayı ana ekrana eklemek izin alma ihtimalini artırır.</p>' +
+          '<button class="btn ghost sm block" data-act="depoIste">Kalıcı depolama izni iste</button>' : '') +
+      '<div class="res"><span class="l">Bu cihazdaki veri</span><span class="v" style="font-size:15px">' +
+        S.clients.length + ' danışan<span class="sub">' + S.menus.length + ' menü · ' + S.journal.length +
+        ' staj kaydı · ' + mb(d.ls) + '</span></span></div>' +
+      (d.kullanim != null ? '<div class="res"><span class="l">Tarayıcı kullanımı</span><span class="v" style="font-size:15px">' +
+        mb(d.kullanim) + '<span class="sub">ayrılan: ' + mb(d.kota) + '</span></span></div>' : '') +
+      '<div class="sect">Anlık kopyalar</div>' +
+      '<p class="muted tiny" style="margin-top:0">Uygulama, kaydettikçe cihazda ayrı bir depoda (IndexedDB) ' +
+      'son ' + (d.anlik || 0) + ' anlık kopyayı tutar. Yanlış geri yükleme ya da bozulma durumunda buradan dönebilirsin. ' +
+      '<b>Cihazı kaybedersen ya da site verilerini temizlersen bunlar da gider</b> — dosya yedeğinin yerini tutmaz.</p>' +
+      (d.anlik
+        ? '<div class="res"><span class="l">En yeni kopya</span><span class="v" style="font-size:15px">' +
+          saat(d.sonAnlik.ts) + '<span class="sub">' + d.sonAnlik.ozet.danisan + ' danışan · ' +
+          mb(d.sonAnlik.boyut) + '</span></span></div>' +
+          '<button class="btn ghost block mt-s" data-act="depoAc">Kopyaları göster</button>'
+        : '<p class="muted tiny">Henüz kopya alınmadı.</p>') +
+      '<button class="btn ghost sm block mt-s" data-act="depoSimdi">Şimdi kopya al</button>';
+  }
+
+  DA.actions.depoIste = async () => {
+    const ok = await DA.depoKaliciIste();
+    DA.toast(ok === true ? 'Kalıcı depolama izni verildi' : ok === false ? 'Tarayıcı izin vermedi' : 'Bu tarayıcıda desteklenmiyor');
+    depoCiz();
+  };
+  DA.actions.depoSimdi = async () => {
+    const ok = await DA.depoAnlik(true);
+    DA.toast(ok ? 'Anlık kopya alındı' : 'Kopya alınamadı');
+    depoCiz();
+  };
+  DA.actions.depoAc = async () => {
+    const liste = await DA.depoListe();
+    if (!liste.length) return DA.toast('Kopya yok');
+    DA.sheet('Anlık kopyalar',
+      '<p class="muted small">Bir kopyaya dokunursan o andaki veriye dönersin. Şu anki veri önce ' +
+      'yeni bir kopyaya alınır, yani bu işlem geri alınabilir.</p><div class="list">' +
+      liste.map((x) =>
+        '<button class="li" data-act="depoGeri" data-ts="' + x.ts + '"><span class="grow">' +
+        '<div class="t">' + esc(saat(x.ts)) + '</div>' +
+        '<div class="s">' + x.ozet.danisan + ' danışan · ' + x.ozet.menu + ' menü · ' +
+        x.ozet.staj + ' staj · ' + mb(x.boyut) + '</div></span></button>').join('') +
+      '</div><button class="btn ghost block mt-s" data-act="depoTemizle">Tüm kopyaları sil</button>');
+  };
+  DA.actions.depoGeri = async (el) => {
+    const ts = +el.dataset.ts;
+    const liste = await DA.depoListe();
+    const k = liste.find((x) => x.ts === ts);
+    if (!k) return DA.toast('Kopya bulunamadı');
+    if (!confirm(saat(ts) + ' tarihli kopyaya dönülecek. Şu anki veri önce kopyaya alınır. Devam?')) return;
+    await DA.depoAnlik(true);
+    try { DA.replaceState(JSON.parse(k.json)); } catch (e) { return DA.toast('Kopya okunamadı'); }
+    DA.closeSheet(); DA.render(); DA.toast('Geri yüklendi: ' + k.ozet.danisan + ' danışan');
+  };
+  DA.actions.depoTemizle = async () => {
+    if (!confirm('Tüm anlık kopyalar silinecek. Dosya yedeğin varsa sorun yok. Devam?')) return;
+    await DA.depoTemizle(); DA.closeSheet(); DA.render(true); DA.toast('Kopyalar silindi');
   };
 
   DA.live.theme = (el) => { DA.setTheme(el.value); DA.toast('Tema: ' + (DA.THEMES.find((t) => t[0] === el.value) || [, ''])[1]); };
