@@ -219,11 +219,67 @@ class Food:
     name: str
     url: str
     group: str = ""                 # gıda grubu (biliniyorsa)
+    code: str = ""                  # TürKomp gıda kodu (liste sayfasından)
+    groups: list[str] = field(default_factory=list)   # gıda birden çok gruba ait olabilir
     scientific: str = ""
     components: list[Component] = field(default_factory=list)
 
     def by_name(self) -> dict[str, Component]:
         return {c.name.lower(): c for c in self.components}
+
+
+# ----------------------------------------------------------------------------
+# Liste (index) sayfası ayrıştırma
+# ----------------------------------------------------------------------------
+
+# /database?type=foods listesinin yapısı (2026-09 itibarıyla doğrulandı):
+#   <table id="mydatalist"> <tbody> <tr class="line line0">
+#     <td><a href="food-<slug>-<id>">Ad</a></td>
+#     <td>08.01.0001</td>                         <- TürKomp gıda kodu
+#     <td><a href="?type=foods&group=8">» Sebze ve sebze ürünleri</a>...</td>
+#   Bir gıda birden çok gruba ait olabilir (örn. "Afyon pastırması": Et + Geleneksel).
+INDEX_TABLE_SELECTORS = ["table#mydatalist", "table.tablelist", "table"]
+TURKOMP_CODE_RE = re.compile(r"^\d{2}\.\d{2}\.\d{4}$")
+
+
+def parse_index(html: str, page_url: str) -> list[dict[str, Any]]:
+    """
+    Liste sayfasındaki tabloyu satır satır çözer. Her satır için gıda kimliği,
+    adı, TürKomp kodu ve grupları döner. Detay sayfasına hiç gitmeden elde
+    edilebilen bu bilgiler sonradan gıda kaydına işlenir.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    table = None
+    for sel in INDEX_TABLE_SELECTORS:
+        table = soup.select_one(sel)
+        if table:
+            break
+    if not table:
+        return []
+
+    out: list[dict[str, Any]] = []
+    for tr in table.find_all("tr"):
+        cells = tr.find_all("td")
+        if len(cells) < 2:
+            continue                      # başlık satırı
+        link = cells[0].find("a", href=True)
+        if not link:
+            continue
+        url = urllib.parse.urljoin(page_url, link["href"].strip())
+        m = FOOD_URL_RE.search(urllib.parse.urlparse(url).path)
+        if not m:
+            continue
+        kod = clean(cells[1].get_text())
+        gruplar = [clean(a.get_text()).lstrip("» ").strip()
+                   for a in cells[2].find_all("a")] if len(cells) > 2 else []
+        out.append({
+            "id": m.group(1),
+            "name": clean(link.get_text()),
+            "url": url,
+            "code": kod if TURKOMP_CODE_RE.match(kod) else "",
+            "groups": [g for g in gruplar if g],
+        })
+    return out
 
 
 # ----------------------------------------------------------------------------
@@ -237,6 +293,7 @@ class TurKompScraper:
         self.cache_dir = os.path.join(out_dir, "cache")
         os.makedirs(self.cache_dir, exist_ok=True)
         self.delay = delay
+        self.index_meta: dict[str, dict[str, Any]] = {}   # id -> liste sayfasından gelen bilgiler
         self.session = requests.Session()
         ua = random.choice(USER_AGENTS)
         if contact:
@@ -373,6 +430,9 @@ class TurKompScraper:
             html = self.get(url, record_failure=False)
             if not html:
                 continue
+
+            for satir in parse_index(html, url):
+                self.index_meta.setdefault(satir["id"], satir)
 
             soup = BeautifulSoup(html, "html.parser")
             for a in soup.find_all("a", href=True):
@@ -746,6 +806,59 @@ def export_app_js(foods: list[Food], path: str) -> None:
 # CLI
 # ----------------------------------------------------------------------------
 
+BEKLENEN_INDEX = [
+    # (id, ad, TürKomp kodu, grup sayısı) — örnek dosyadaki gerçek satırlardan
+    ("204", "Acur", "08.01.0001", 1),
+    ("518", "Afyon pastırması", "12.02.0073", 2),
+    ("700", "ayran, tam yağlı", "01.02.0022", 1),
+    ("129", "Buğday, un, ekmeklik, tip 550 (kül, kuru maddede \u2264 % 0.55)", "06.02.0010", 1),
+    ("651", "Bisküvi, glutensiz", "13.02.0001", 1),
+]
+
+
+def selftest() -> int:
+    """
+    Ağa hiç çıkmadan, kayıtlı örnek HTML üzerinde liste ayrıştırıcısını doğrular.
+    Site yapısı değişirse bu test kırılır ve nereye bakılacağını söyler.
+    """
+    fx = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                      "test", "fixtures", "turkomp-index.html")
+    if not os.path.exists(fx):
+        print("Örnek dosya yok:", fx)
+        return 2
+
+    rows = parse_index(open(fx, encoding="utf-8").read(), BASE + "/database?type=foods")
+    by_id = {r["id"]: r for r in rows}
+    hata = 0
+
+    def kontrol(ad, bek, bul):
+        nonlocal hata
+        if bek == bul:
+            print("  \u2713 " + ad)
+        else:
+            hata += 1
+            print("  \u2717 %s\n      beklenen: %r\n      bulunan : %r" % (ad, bek, bul))
+
+    print("TürKomp liste ayrıştırıcısı — örnek dosya üzerinde")
+    kontrol("satır sayısı", 12, len(rows))
+    for fid, ad, kod, ngrup in BEKLENEN_INDEX:
+        r = by_id.get(fid)
+        if not r:
+            hata += 1
+            print("  \u2717 %s bulunamadı" % fid)
+            continue
+        kontrol(fid + " adı", ad, r["name"])
+        kontrol(fid + " kodu", kod, r["code"])
+        kontrol(fid + " grup sayısı", ngrup, len(r["groups"]))
+    kontrol("çoklu grup okunuyor", ["Et ve et ürünleri", "Geleneksel gıdalar"],
+            by_id.get("518", {}).get("groups"))
+    kontrol("her satırda kod var", 12, sum(1 for r in rows if r["code"]))
+    kontrol("her satırda mutlak adres", 12, sum(1 for r in rows if r["url"].startswith("http")))
+
+    print("\nHATA: %d" % hata if hata else "\nTümü geçti \u2713")
+    return 1 if hata else 0
+
+
 def main() -> int:
     global BASE
     ap = argparse.ArgumentParser(
@@ -755,6 +868,8 @@ def main() -> int:
     )
     ap.add_argument("--out", default="turkomp_out", help="çıktı klasörü")
     ap.add_argument("--base", default=BASE, help="site kök adresi (alan adı değişirse ya da test için)")
+    ap.add_argument("--selftest", action="store_true",
+                    help="ağa çıkmadan, kayıtlı örnek HTML üzerinde ayrıştırıcıyı doğrula")
     ap.add_argument("--limit", type=int, help="yalnızca ilk N gıda (deneme için)")
     ap.add_argument("--delay", type=float, nargs=2, metavar=("MIN", "MAX"),
                     default=list(DELAY_RANGE), help="istekler arası rastgele gecikme (sn)")
@@ -769,6 +884,9 @@ def main() -> int:
 
     setup_logging(args.out, args.verbose)
     BASE = args.base.rstrip("/")
+
+    if args.selftest:
+        return selftest()
     scraper = TurKompScraper(args.out, tuple(args.delay), not args.no_robots, args.contact)
 
     if args.inspect:
