@@ -75,8 +75,17 @@
     DA.save(); DA.closeSheet(); DA.render(true);
   };
   DA.actions.cardDelete = (el) => {
-    if (!confirm('Kart silinsin mi?')) return;
-    const S = DA.state(); S.customCards = S.customCards.filter((c) => c.id !== el.dataset.id); delete S.cardProgress[el.dataset.id]; DA.save(); DA.closeSheet(); DA.render(true);
+    const S = DA.state(), id = el.dataset.id;
+    const i = S.customCards.findIndex((c) => c.id === id);
+    if (i < 0) return;
+    const silinen = S.customCards[i], ilerleme = S.cardProgress[id];
+    S.customCards.splice(i, 1); delete S.cardProgress[id];
+    DA.save(); DA.closeSheet(); DA.render(true);
+    DA.silGeriAl('Kart silindi', () => {
+      const T = DA.state();
+      T.customCards.splice(i, 0, silinen);
+      if (ilerleme !== undefined) T.cardProgress[id] = ilerleme;
+    });
   };
   DA.actions.cardImport = () => {
     DA.sheet('Toplu kart ekle', '<form data-form="cardImport"><p class="muted small">Her satıra bir kart yaz: <b>soru ; cevap</b><br>Notlarından kopyala-yapıştır yapabilirsin.</p>' +

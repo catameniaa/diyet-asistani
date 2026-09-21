@@ -51,6 +51,12 @@ iPhone'da Safari ile aç → Paylaş → Ana Ekrana Ekle.
 
 Derleme adımı yoktur; saf HTML/CSS/JS.
 
+Erişilebilirlik: dokunma hedefleri en az 44x44 px (iOS kılavuzu / WCAG 2.2), sayfalarda
+Escape ile kapatma, odak tuzağı ve kapanınca odağın geri dönmesi, hesap ve arama
+sonuçlarında `aria-live`. Silme işlemleri onay sormak yerine geri alınabilir: kayıt
+silinir ve birkaç saniye "Geri al" sunulur; yalnızca tüm veriyi silmek gibi genel
+işlemler onay sorar.
+
 ## Testler
 
 ```

@@ -65,7 +65,7 @@
           esc(st.ikh || '') + '" placeholder="1 Ü / … g" data-live="khd"></label></div>' +
           '<p class="muted tiny" style="margin-bottom:0">İ:KH oranını girersen her öğünün bolus karşılığı da çıkar. ' +
           'Oranı bilmiyorsan karbonhidrat sayımı ekranından hesaplayabilirsin.</p></div>' +
-          '<div id="khdOut">' + tabloHtml() + '</div>' +
+          '<div id="khdOut" aria-live="polite" aria-label="Öğün dağılımı">' + tabloHtml() + '</div>' +
           payHtml() +
           '<div class="row between mb"><a class="btn ghost sm" href="#/hesapla/khsayim">' + icon('calc') + ' Karbonhidrat sayımı</a>' +
           '<button class="btn ghost sm" data-act="khdShare">' + icon('share') + ' Planı paylaş</button></div>' +

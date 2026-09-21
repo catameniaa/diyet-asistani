@@ -359,7 +359,7 @@
     return {
       title: c.title, tab: DA.calcSection(c.id), back: q.get('c') ? 'danisan/' + q.get('c') : DA.calcSection(c.id),
       ico: c.ico, fav: { h: '#/hesapla/' + c.id, t: c.title, ico: c.ico },
-      html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut"></div>' +
+      html: clientLine + '<form class="card" data-calc="' + c.id + '" onsubmit="return false">' + c.fields.map((f) => fieldHtml(f, pf[f.k])).join('') + '</form><div class="card" id="calcOut" role="region" aria-live="polite" aria-label="Hesap sonucu"></div>' +
         (typeof c.help === 'function' ? c.help() : (c.help || '')),
       mount(app) { const form = DA.$('form[data-calc]', app); DA.$('#calcOut').innerHTML = resultHtml(c, readValues(form, c)); }
     };

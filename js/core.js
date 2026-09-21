@@ -126,17 +126,68 @@
   let toastT;
   DA.toast = (msg) => {
     const t = DA.$('#toast'); t.textContent = msg; t.hidden = false;
+    t.removeAttribute('role');
     clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600);
   };
+
+  /* Geri alınabilir silme.
+     Silmeden önce onay sormak yerine siliyoruz ve birkaç saniye "Geri al"
+     sunuyoruz. Yanlış dokunma maliyeti tek dokunuşa iner; doğru dokunmada
+     ise hiç engel çıkmaz. Sil/geri al dışındaki yıkıcı işlemler (tüm veriyi
+     silmek, yedeğin üzerine yazmak) onay sormaya devam eder. */
+  let _geriAl = null;
+  DA.silGeriAl = (mesaj, geriAlFn, sure) => {
+    _geriAl = geriAlFn;
+    const t = DA.$('#toast');
+    t.innerHTML = '<span class="gmsg"></span>' +
+      '<button class="gbtn" data-act="geriAl">Geri al</button>';
+    DA.$('.gmsg', t).textContent = mesaj;
+    t.hidden = false;
+    t.setAttribute('role', 'status');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => { t.hidden = true; _geriAl = null; }, sure || 6000);
+  };
+  /* Sayfa (sheet) açıkken odak içeride kalmalı, Escape kapatmalı ve kapanınca
+     odak onu açan öğeye dönmeli. Aksi hâlde klavyeyle kullanan biri sayfanın
+     arkasındaki ekranda kaybolur. */
+  const ODAKLANIR = 'a[href],button:not([disabled]),input:not([type=hidden]):not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
+  let _acan = null;
+
   DA.sheet = (title, html, mount) => {
+    _acan = document.activeElement;
     DA.$('#sheetTitle').textContent = title;
     const b = DA.$('#sheetBody'); b.innerHTML = html; b.scrollTop = 0;
     DA.$('#sheet').hidden = false;
     if (mount) mount(b);
     const f = DA.$('input:not([type=radio]):not([type=hidden]),textarea', b);
     if (f && !f.dataset.nofocus) setTimeout(() => { try { f.focus(); } catch (e) { /* yok say */ } }, 60);
+    else setTimeout(() => { const ilk = DA.$(ODAKLANIR, DA.$('#sheet')); if (ilk) try { ilk.focus(); } catch (e) { /* yok say */ } }, 60);
   };
-  DA.closeSheet = () => { DA.$('#sheet').hidden = true; DA.$('#sheetBody').innerHTML = ''; };
+  DA.closeSheet = () => {
+    const s = DA.$('#sheet');
+    if (s.hidden) return;
+    s.hidden = true; DA.$('#sheetBody').innerHTML = '';
+    if (_acan && document.contains(_acan)) { try { _acan.focus(); } catch (e) { /* yok say */ } }
+    _acan = null;
+  };
+  DA.sheetAcik = () => !DA.$('#sheet').hidden;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (DA.sheetAcik()) { e.preventDefault(); DA.closeSheet(); return; }
+      /* Sayfa kapalıyken Escape aramayı temizler ya da bir üst ekrana döner */
+      const geri = DA.$('#backBtn');
+      if (geri && !geri.hidden) { e.preventDefault(); DA.actions.back(geri); }
+      return;
+    }
+    if (e.key !== 'Tab' || !DA.sheetAcik()) return;
+    /* Odak tuzağı: Tab sırası sayfanın içinde döner */
+    const alan = DA.$$(ODAKLANIR, DA.$('#sheet')).filter((el) => el.offsetParent !== null);
+    if (!alan.length) return;
+    const ilk = alan[0], son = alan[alan.length - 1];
+    if (e.shiftKey && document.activeElement === ilk) { e.preventDefault(); son.focus(); }
+    else if (!e.shiftKey && document.activeElement === son) { e.preventDefault(); ilk.focus(); }
+  });
 
   /* ---- ihtiyaç anında veri yükleme ----
      Büyük veri dosyaları açılışta değil, ilgili ekran ilk açıldığında yüklenir.
@@ -270,6 +321,13 @@
     if (el && DA.live[el.dataset.change]) DA.live[el.dataset.change](el, e);
   });
 
+  DA.actions.geriAl = () => {
+    const fn = _geriAl; _geriAl = null;
+    DA.$('#toast').hidden = true; clearTimeout(toastT);
+    if (!fn) return;
+    fn();
+    DA.save(); DA.render(true); DA.toast('Geri alındı');
+  };
   DA.actions.back = (el) => { if (el.dataset.to) DA.go(el.dataset.to); else history.back(); };
   DA.actions.closeSheet = () => DA.closeSheet();
 

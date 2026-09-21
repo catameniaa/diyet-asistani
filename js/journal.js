@@ -49,8 +49,11 @@
     DA.save(); DA.closeSheet(); DA.render(true);
   };
   DA.actions.jDelete = (el) => {
-    if (!confirm('Kayıt silinsin mi?')) return;
-    const S = DA.state(); S.journal = S.journal.filter((e) => e.id !== el.dataset.id); DA.save(); DA.closeSheet(); DA.render(true);
+    const S = DA.state(), i = S.journal.findIndex((e) => e.id === el.dataset.id);
+    if (i < 0) return;
+    const silinen = S.journal[i];
+    S.journal.splice(i, 1); DA.save(); DA.closeSheet(); DA.render(true);
+    DA.silGeriAl('Staj kaydı silindi', () => { DA.state().journal.splice(i, 0, silinen); });
   };
 
   function journalText() {

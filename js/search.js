@@ -90,7 +90,7 @@
   DA.views.ara = () => ({
     title: 'Ara', tab: 'ana', back: 'ana', noRecent: true,
     html: '<input type="search" placeholder="Ara: yulaf, BKİ, demir, danışan adı…" value="' + esc(q) + '" data-live="gSearch" class="mb" autocomplete="off">' +
-      '<div id="gOut">' + listHtml() + '</div>',
+      '<div id="gOut" aria-live="polite" aria-label="Arama sonuçları">' + listHtml() + '</div>',
     mount(app) {
       const i = DA.$('input[data-live=gSearch]', app);
       if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }

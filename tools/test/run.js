@@ -107,6 +107,7 @@ function ornekDurum(tema) {
   /* ---- 2. arayüz davranış testleri ---- */
   const ui = [];
   const uiEkle = (ad, bek, bul) => ui.push({ grup: 'arayüz', ad, bek: String(bek), bul: String(bul), ok: String(bek) === String(bul) });
+  const kosulUi = (ad, k, ayrinti) => ui.push({ grup: 'arayüz', ad, bek: 'doğru', bul: k ? 'doğru' : (ayrinti || 'yanlış'), ok: !!k });
   /* Sabit bekleme yarışa açıktı: ekran ağır açıldığında $eval öğeyi bulamıyordu.
      Artık beklenen öğe görünene kadar beklenir. */
   const git = async (yol, secici) => {
@@ -326,6 +327,98 @@ function ornekDurum(tema) {
   uiEkle('Şifreli yedekten danışan sayısı geri geldi', 2, geriYukleme.d);
   uiEkle('Şifreli yedekten danışan adı doğru', 'Ayşe Yılmaz', geriYukleme.ad);
   uiEkle('Şifreli yedekten menü geri geldi', 1, geriYukleme.m);
+
+  /* ---- Erişilebilirlik ---- */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  await sayfa.evaluate(ornekDurum, 'light');
+  await sayfa.evaluate(() => DA.needAll());   /* tembel ekranlar gerçek içerikle çizilsin */
+  const a11y = await sayfa.evaluate(() => {
+    const kucuk = [];
+    const say = (yol) => {
+      location.hash = yol; DA.render(false);
+      document.querySelectorAll('button,a,input,select,textarea').forEach((el) => {
+        const b = el.getBoundingClientRect();
+        if (!b.width || !b.height) return;
+        /* satır içi metin bağlantıları ve onay kutuları standartta muaf/asgari */
+        if (el.tagName === 'A' && getComputedStyle(el).display.indexOf('inline') === 0) return;
+        if (el.type === 'checkbox' || el.type === 'radio') return;
+        if (b.width < 44 || b.height < 44) kucuk.push(yol + ' ' + el.tagName + '.' +
+          (el.className || '').toString().split(' ')[0] + ' ' + Math.round(b.width) + 'x' + Math.round(b.height));
+      });
+    };
+    /* chip, stepper, kilit ve segment düğmelerinin hepsinin görüldüğü rota kümesi */
+    ['ana', 'hesapla', 'hesapla/degisim', 'hesapla/vejetaryen', 'hesapla/enerjiref',
+      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha'].forEach(say);
+    return kucuk;
+  });
+  kosulUi('Dokunma hedefleri en az 44 px', a11y.length === 0, a11y.slice(0, 3).join(' · '));
+
+  const canli = await sayfa.evaluate(() => {
+    location.hash = 'hesapla/bki'; DA.render(false);
+    const c = document.querySelector('#calcOut');
+    return c ? c.getAttribute('aria-live') : null;
+  });
+  uiEkle('Hesap sonucu aria-live ile duyuruluyor', 'polite', canli);
+
+  /* Escape sayfayı kapatır, odak açan öğeye döner */
+  await sayfa.goto(B + '#/danisan', { waitUntil: 'networkidle' });
+  await sayfa.waitForTimeout(300);
+  const klavye = await sayfa.evaluate(async () => {
+    const dug = document.querySelector('[data-act=clientNew]') || document.querySelector('#app button');
+    dug.focus();
+    const oncesi = document.activeElement === dug;
+    DA.sheet('Test', '<p>içerik</p><button id="tb">Düğme</button>');
+    await new Promise((r) => setTimeout(r, 120));
+    const acik = DA.sheetAcik();
+    const icerde = document.querySelector('#sheet').contains(document.activeElement);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 60));
+    return { oncesi, acik, icerde, kapandi: !DA.sheetAcik(), odakDondu: document.activeElement === dug };
+  });
+  uiEkle('Sayfa açılınca odak içeri giriyor', true, klavye.icerde);
+  uiEkle('Escape sayfayı kapatıyor', true, klavye.kapandi);
+  uiEkle('Kapanınca odak açan öğeye dönüyor', true, klavye.odakDondu);
+
+  /* ---- Geri alınabilir silme ---- */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  const silGeri = await sayfa.evaluate(async () => {
+    const S = DA.state();
+    S.clients = [{ id: 'a', name: 'Bir', meas: [] }, { id: 'b', name: 'İki', meas: [] }, { id: 'c', name: 'Üç', meas: [] }];
+    DA.save();
+    DA.actions.clientDelete({ dataset: { id: 'b' } });
+    const silindi = DA.state().clients.map((c) => c.id).join(',');
+    const toastVar = !document.querySelector('#toast').hidden &&
+      !!document.querySelector('#toast .gbtn');
+    DA.actions.geriAl();
+    return { silindi, toastVar, sonra: DA.state().clients.map((c) => c.id).join(',') };
+  });
+  uiEkle('Danışan silindi', 'a,c', silGeri.silindi);
+  uiEkle('Geri al düğmeli bildirim çıkıyor', true, silGeri.toastVar);
+  uiEkle('Geri alınca aynı sıraya dönüyor', 'a,b,c', silGeri.sonra);
+
+  const olcGeri = await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.clients = [{ id: 'a', name: 'Bir', meas: [
+      { id: 'm1', d: '2026-01-01', w: 70 }, { id: 'm2', d: '2026-02-01', w: 69 }] }];
+    DA.save();
+    DA.actions.measDelete({ dataset: { id: 'a', mid: 'm1' } });
+    const sonra = DA.state().clients[0].meas.map((m) => m.id).join(',');
+    DA.actions.geriAl();
+    return { sonra, geri: DA.state().clients[0].meas.map((m) => m.id).join(',') };
+  });
+  uiEkle('Ölçüm silindi', 'm2', olcGeri.sonra);
+  uiEkle('Ölçüm geri alınca sırasında dönüyor', 'm1,m2', olcGeri.geri);
+
+  /* Yıkıcı genel işlemler hâlâ onay soruyor */
+  const onaylar = await sayfa.evaluate(() => {
+    let soruldu = 0;
+    const eski = window.confirm;
+    window.confirm = () => { soruldu++; return false; };
+    try { DA.actions.wipe(); } catch (e) { /* yok say */ }
+    window.confirm = eski;
+    return soruldu;
+  });
+  uiEkle('Tüm veriyi silmek hâlâ onay soruyor', 1, onaylar);
 
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());

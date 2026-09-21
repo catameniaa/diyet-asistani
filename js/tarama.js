@@ -69,7 +69,7 @@
           fav: { h: '#/hesapla/' + T.id, t: T.kisa, ico: T.ico },
           html:
             (T.ust ? T.ust() : '') +
-            '<div id="taraOut">' + sonucHtml(T) + '</div>' +
+            '<div id="taraOut" role="region" aria-live="polite" aria-label="Tarama sonucu">' + sonucHtml(T) + '</div>' +
             sorularHtml(T, st) +
             '<div class="row between mb"><button class="btn ghost sm" data-act="taraReset" data-t="' + T.id + '">Sıfırla</button>' +
             '<button class="btn ghost sm" data-act="taraShare" data-t="' + T.id + '">' + icon('share') + ' Sonucu paylaş</button></div>' +

@@ -213,8 +213,13 @@
     DA.save(); DA.closeSheet(); DA.toast('“' + m.title + '” menüsüne eklendi');
   };
   DA.actions.foodDelete = (el) => {
-    if (!confirm('Bu besin silinsin mi?')) return;
-    const S = DA.state(); S.customFoods = S.customFoods.filter((f) => f.id !== el.dataset.id); DA.foodsInvalidate(); DA.save(); DA.closeSheet(); DA.render(true);
+    const S = DA.state(), i = S.customFoods.findIndex((f) => f.id === el.dataset.id);
+    if (i < 0) return;
+    const silinen = S.customFoods[i];
+    S.customFoods.splice(i, 1); DA.foodsInvalidate(); DA.save(); DA.closeSheet(); DA.render(true);
+    DA.silGeriAl(DA.esc(silinen.n) + ' silindi', () => {
+      DA.state().customFoods.splice(i, 0, silinen); DA.foodsInvalidate();
+    });
   };
   DA.actions.foodNew = () => {
     DA.sheet('Yeni besin (100 g için)', '<form data-form="foodNew"><label class="fld"><span>Ad</span><input type="text" name="n" required></label>' +
@@ -318,11 +323,18 @@
   };
   DA.actions.menuNew = () => { const m = newMenu(); DA.state().menus.unshift(m); DA.save(); DA.go('menu/' + m.id); };
   DA.actions.menuDelete = (el) => {
-    if (!confirm('Menü silinsin mi?')) return;
-    const S = DA.state(); S.menus = S.menus.filter((m) => m.id !== el.dataset.m); DA.save(); DA.go('menu');
+    const S = DA.state(), i = S.menus.findIndex((m) => m.id === el.dataset.m);
+    if (i < 0) return;
+    const silinen = S.menus[i];
+    S.menus.splice(i, 1); DA.save(); DA.go('menu');
+    DA.silGeriAl((silinen.title || 'Menü') + ' silindi', () => { DA.state().menus.splice(i, 0, silinen); });
   };
   DA.actions.menuDelItem = (el) => {
-    const m = DA.state().menus.find((x) => x.id === el.dataset.m); m.meals[el.dataset.k].splice(parseInt(el.dataset.i, 10), 1); DA.save(); DA.render(true);
+    const m = DA.state().menus.find((x) => x.id === el.dataset.m);
+    const k = el.dataset.k, i = parseInt(el.dataset.i, 10);
+    const silinen = m.meals[k][i];
+    m.meals[k].splice(i, 1); DA.save(); DA.render(true);
+    DA.silGeriAl('Besin çıkarıldı', () => { m.meals[k].splice(i, 0, silinen); });
   };
   DA.actions.menuCopy = (el) => {
     const S = DA.state(), m = S.menus.find((x) => x.id === el.dataset.m), c = JSON.parse(JSON.stringify(m));

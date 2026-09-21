@@ -14,7 +14,7 @@
     title: 'Referans', tab: 'referans',
     html: (DA.calcListHtml ? DA.calcListHtml('referans') : '') +
       '<div class="sect">Klinik hızlı referans</div>' +
-      '<input type="search" placeholder="Ara: örn. demir, diyabet, lif…" value="' + esc(q) + '" data-live="refSearch" class="mb"><div id="refList">' + listHtml(par && par.get('r')) + '</div>' +
+      '<input type="search" placeholder="Ara: örn. demir, diyabet, lif…" value="' + esc(q) + '" data-live="refSearch" class="mb"><div id="refList" aria-live="polite" aria-label="Referans sonuçları">' + listHtml(par && par.get('r')) + '</div>' +
       '<p class="muted tiny center">Genel bilgilendirme amaçlıdır; kılavuzlar güncellenir. Hasta kararı için güncel kılavuza ve kurum protokollerine bakın.</p>'
   });
 })();

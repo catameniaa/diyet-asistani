@@ -258,8 +258,11 @@
     }
   };
   DA.actions.clientDelete = (el) => {
-    if (!confirm('Danışan ve tüm ölçümleri silinsin mi?')) return;
-    const S = DA.state(); S.clients = S.clients.filter((c) => c.id !== el.dataset.id); DA.save(); DA.closeSheet(); DA.go('danisan');
+    const S = DA.state(), i = S.clients.findIndex((c) => c.id === el.dataset.id);
+    if (i < 0) return;
+    const silinen = S.clients[i];
+    S.clients.splice(i, 1); DA.save(); DA.closeSheet(); DA.go('danisan');
+    DA.silGeriAl(esc(silinen.name) + ' silindi', () => { DA.state().clients.splice(i, 0, silinen); });
   };
 
   function measForm(cid, x) {
@@ -331,7 +334,11 @@
   };
 
   DA.actions.measDelete = (el) => {
-    if (!confirm('Ölçüm silinsin mi?')) return;
-    const c = clients().find((x) => x.id === el.dataset.id); c.meas = c.meas.filter((m) => m.id !== el.dataset.mid); DA.save(); DA.closeSheet(); DA.render(true);
+    const c = clients().find((x) => x.id === el.dataset.id);
+    const i = c.meas.findIndex((m) => m.id === el.dataset.mid);
+    if (i < 0) return;
+    const silinen = c.meas[i];
+    c.meas.splice(i, 1); DA.save(); DA.closeSheet(); DA.render(true);
+    DA.silGeriAl(DA.fdate(silinen.d) + ' ölçümü silindi', () => { c.meas.splice(i, 0, silinen); });
   };
 })();
