@@ -106,6 +106,13 @@ function ornekDurum(tema) {
   /* ---- 2. arayüz davranış testleri ---- */
   const ui = [];
   const uiEkle = (ad, bek, bul) => ui.push({ grup: 'arayüz', ad, bek: String(bek), bul: String(bul), ok: String(bek) === String(bul) });
+  /* Sabit bekleme yarışa açıktı: ekran ağır açıldığında $eval öğeyi bulamıyordu.
+     Artık beklenen öğe görünene kadar beklenir. */
+  const git = async (yol, secici) => {
+    await sayfa.goto(B + yol, { waitUntil: 'domcontentloaded' });
+    if (secici) await sayfa.waitForSelector(secici, { timeout: 10000 });
+    await sayfa.waitForTimeout(60);
+  };
 
   /* NRS-2002: beslenme 3 + hastalık 2 + yaş ≥70 için 1 = 6 puan, "Beslenme riski var" */
   await sayfa.evaluate(() => {
@@ -114,8 +121,7 @@ function ornekDurum(tema) {
     S.ui.tara = { nrs: { bes: 3, hst: 2 } };
     DA.save();
   });
-  await sayfa.goto(B + '#/hesapla/nrs', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await git('#/hesapla/nrs', '#taraOut');
   let m = await sayfa.$eval('#taraOut', (e) => e.textContent);
   uiEkle('NRS-2002 3+2 puan, 75 yaş → toplam 6', true, /Toplam puan\s*6/.test(m.replace(/\s+/g, ' ')));
   uiEkle('NRS-2002 6 puan değerlendirmesi', true, m.indexOf('Beslenme riski var') >= 0);
@@ -123,15 +129,13 @@ function ornekDurum(tema) {
 
   /* MUST: BKİ 0 + kilo kaybı 1 + akut 0 = 1 puan → orta risk */
   await sayfa.evaluate(() => { DA.state().ui.tara = { must: { bki: 0, kilo: 1, akut: 0 } }; DA.save(); });
-  await sayfa.goto(B + '#/hesapla/must', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await git('#/hesapla/must', '#taraOut');
   m = await sayfa.$eval('#taraOut', (e) => e.textContent);
   uiEkle('MUST 0+1+0 → orta risk', true, m.indexOf('Orta risk') >= 0);
 
   /* MNA-SF: 2+3+2+2+2+3 = 14 puan → normal */
   await sayfa.evaluate(() => { DA.state().ui.tara = { mnasf: { a: 2, b: 3, c: 2, d: 2, e: 2, f: 3 } }; DA.save(); });
-  await sayfa.goto(B + '#/hesapla/mnasf', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await git('#/hesapla/mnasf', '#taraOut');
   m = await sayfa.$eval('#taraOut', (e) => e.textContent);
   uiEkle('MNA-SF tam puan → normal beslenme durumu', true, m.indexOf('Normal beslenme durumu') >= 0);
   uiEkle('MNA-SF toplam 14', true, /Toplam puan\s*14/.test(m.replace(/\s+/g, ' ')));
@@ -141,8 +145,7 @@ function ornekDurum(tema) {
     DA.state().ui.dr = { yas: 4, bki: 3, bel: 4, egz: 2, sm: 1, tan: 2, gli: 5, aile: 5 };
     DA.save();
   });
-  await sayfa.goto(B + '#/hesapla/diyabetrisk', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await git('#/hesapla/diyabetrisk', '#app .card');
   m = await sayfa.$eval('#app', (e) => e.textContent).then((t) => t.replace(/\s+/g, ' '));
   uiEkle('FINDRISC en yüksek yanıtlar → 26 puan', true, /26/.test(m));
   uiEkle('FINDRISC 26 puan → çok yüksek risk', true, m.indexOf('Çok yüksek') >= 0);
@@ -152,8 +155,7 @@ function ornekDurum(tema) {
     DA.state().ui.khd = { kh: 200, ikh: 10, pay: { kahvalti: 25, ara1: 10, ogle: 30, ara2: 10, aksam: 20, ara3: 5 } };
     DA.save();
   });
-  await sayfa.goto(B + '#/hesapla/khdagilim', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await git('#/hesapla/khdagilim', '#khdOut table.t tbody tr');
   let hucre = await sayfa.$$eval('#app table.t tbody tr', (rows) =>
     rows.map((r) => Array.from(r.cells).map((c) => c.textContent.trim())));
   uiEkle('KH dağılımı: kahvaltı %25 → 50 g', '50 g', (hucre[0] || [])[2]);
@@ -169,7 +171,7 @@ function ornekDurum(tema) {
   });
   /* Aynı adrese goto tarayıcıyı yeniden yüklemez; yeni durumun görünmesi için reload gerekir */
   await sayfa.reload({ waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(200);
+  await sayfa.waitForSelector('#khdOut table.t tbody tr', { timeout: 10000 });
   hucre = await sayfa.$$eval('#app table.t tbody tr', (rows) =>
     rows.map((r) => Array.from(r.cells).map((c) => c.textContent.trim())));
   const gramlar = hucre.map((r) => parseInt(r[2], 10));
@@ -178,14 +180,12 @@ function ornekDurum(tema) {
     (await sayfa.$eval('#app', (e) => e.textContent)).indexOf('Payların toplamı') >= 0);
 
   /* Çocuk persentil: gerçek ölçümle eğri çiziliyor */
-  await sayfa.goto(B + '#/hesapla/cocuk', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(250);
+  await git('#/hesapla/cocuk', '#app svg');
   const egri = await sayfa.$$eval('#app svg path', (a) => a.length);
   uiEkle('Çocuk persentil ekranında eğri çiziliyor', true, egri > 0);
 
   /* Arama tembel yüklenen kaynakları da kapsıyor */
-  await sayfa.goto(B + '#/ara', { waitUntil: 'domcontentloaded' });
-  await sayfa.waitForTimeout(300);
+  await git('#/ara', 'input[data-live=gSearch]');
   await sayfa.fill('input[data-live=gSearch]', 'persentil');
   await sayfa.waitForTimeout(400);
   let arama = await sayfa.$eval('#gOut', (e) => e.textContent);
