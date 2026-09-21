@@ -24,6 +24,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - TÜBER enerji referans değerleri (Ek 1.1.1–1.1.4): yaş, boy persentili ve PAL'e göre
   Türkiye gereksinimi; hesaplayıcının çıktısıyla yan yana
 - Yöntem ve tanımlar: PRI/AI/EAR/RI/UL ne demek, faktöriyel yöntem, amino asit puanlama örüntüsü
+- Spor beslenmesi (TÜBER Bölüm 8.2): günlük KH/protein/yağ planı, terleme oranı ve rehidrasyon,
+  kullanılabilir enerji (RED-S) taraması
+- Vejetaryen beslenmesi (TÜBER Bölüm 8.3): 7 diyet türü, porsiyon miktarları, türe göre riskli besin ögeleri
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
 Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.

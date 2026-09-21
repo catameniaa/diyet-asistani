@@ -127,7 +127,9 @@
     pal: ['js/data-pal.js'],
     gi: ['js/data-gi.js'],
     enerjiRef: ['js/data-enerji.js'],
-    yontem: ['js/data-yontem.js']
+    yontem: ['js/data-yontem.js'],
+    sporcu: ['js/data-sporcu.js'],
+    vejetaryen: ['js/data-vejetaryen.js']
   };
   const _yuklu = {};
   function script(src) {

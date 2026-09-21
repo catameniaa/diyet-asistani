@@ -121,6 +121,8 @@
     ['Baklava', G, 430, 6, 49, 24, 2, [['1 dilim', 50]]],
     ['Sütlaç', G, 130, 3.3, 22, 3, 0.1, [['1 kase', 150]]],
     // Türk Mutfağı (ev yemeği, yaklaşık ortalama)
+    /* TÜBER 2022 Tablo 9.4 (s. 201) — kuru tarhana, 100 g */
+    ['Tarhana (kuru)', R, 317, 14, 55, 3, 0, [['1 yemek kaşığı', 15], ['1 porsiyon çorbalık', 30]]],
     ['Mercimek çorbası', R, 50, 2.5, 7.5, 1.3, 1.2, [['1 kase', 250], ['1 kepçe', 150]]],
     ['Menemen', R, 130, 7, 4, 9, 0.8, [['1 porsiyon', 200]]],
     ['Kuru fasulye yemeği', R, 110, 5.5, 13, 4, 4, [['1 porsiyon', 200]]],
@@ -140,7 +142,9 @@
     ['Türk kahvesi (şekersiz)', I, 2, 0.1, 0, 0, 0, [['1 fincan', 60]]],
     ['Portakal suyu (taze)', I, 45, 0.7, 10.4, 0.2, 0.2, [['1 su bardağı', 200]]],
     ['Kola', I, 42, 0, 10.6, 0, 0, [['1 kutu', 330]]],
-    ['Su / maden suyu', I, 0, 0, 0, 0, 0, [['1 su bardağı', 200]]]
+    ['Su / maden suyu', I, 0, 0, 0, 0, 0, [['1 su bardağı', 200]]],
+    /* TÜBER 2022 Tablo 9.5 (s. 204) — 100 mL için, TürKomp kaynaklı */
+    ['Boza', I, 74, 0.64, 15.57, 0.6, 1.73, [['1 su bardağı', 200], ['1 kâse', 250]]]
   ];
 
   const slug = (s) => s.toLocaleLowerCase('tr-TR').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

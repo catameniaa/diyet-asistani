@@ -213,6 +213,56 @@
       });
     }
 
+    /* --- Spor beslenmesi (Bölüm 8.2) --- */
+    if (DA.data.sporcu) {
+      /* 70 kg, yoğun antrenman (8-10 g/kg), kuvvet sporu (1,6-1,7 g/kg) */
+      r = calistir('sporcu', { w: 70, yuk: '3', dal: 'kuv', kcal: NaN, sure: NaN });
+      ekle(G, 'Sporcu KH 70 kg × 8–10 g/kg', '560–700 g/gün', deger(r, 'Karbonhidrat'));
+      ekle(G, 'Sporcu protein 70 kg × 1,6–1,7 g/kg', '112–119 g/gün', deger(r, 'Protein'));
+      ekle(G, 'Toparlanma KH 70 kg × 1–1,5 g/kg', '70–105 g', deger(r, 'Toparlanma karbonhidratı'));
+      /* 70 kg, 1 saat antrenman (5-6 g/kg), dayanıklılık (1,2-1,4 g/kg) — kaynaktaki örnek */
+      r = calistir('sporcu', { w: 70, yuk: '1', dal: 'day', kcal: 3000, sure: 120 });
+      ekle(G, 'Sporcu KH 70 kg × 5–6 g/kg (kaynak örneği)', '350–420 g/gün', deger(r, 'Karbonhidrat'));
+      ekle(G, 'Sporcu protein dayanıklılık 70 kg', '84–98 g/gün', deger(r, 'Protein'));
+      /* Yağ: 3000 kkal × %20–35 ÷ 9 = 67–117 g */
+      ekle(G, 'Sporcu yağ 3000 kkal × %20–35', '67–117 g/gün', deger(r, 'Yağ'));
+      ekle(G, '120 dk antrenmanda egzersiz içi KH', '30–60 g', deger(r, 'Egzersiz sırasında karbonhidrat'));
+      ekle(G, '40 dk antrenmanda egzersiz içi KH', 'Gerekmez',
+        deger(calistir('sporcu', { w: 70, yuk: '1', dal: 'day', kcal: NaN, sure: 40 }), 'Egzersiz sırasında karbonhidrat'));
+      ekle(G, '180 dk antrenmanda egzersiz içi KH', '90 g’a kadar',
+        deger(calistir('sporcu', { w: 70, yuk: '3', dal: 'day', kcal: NaN, sure: 180 }), 'Egzersiz sırasında karbonhidrat'));
+
+      /* Terleme oranı — kaynaktaki örnek: 70 → 68 kg, 90 dakika = 1,3 L/saat */
+      r = calistir('terleme', { w1: 70, w2: 68, dk: 90, icilen: NaN });
+      ekle(G, 'Terleme oranı (kaynak örneği: 70→68 kg, 90 dk)', '1,3 L/saat', deger(r, 'Terleme oranı'));
+      ekle(G, 'Kaybın %150’si yerine konur (2 kg)', '3000 mL', deger(r, 'Yerine konacak sıvı'));
+      ekle(G, '%2,9 kayıp dehidrasyon uyarısı', 'bad', r.tone);
+      /* Sayılar Türkçe virgülle yazılmalı (SVG/metin karışmasın diye fmt kullanılıyor) */
+      kosul(G, 'Terleme sonucunda ondalık ayırıcı virgül',
+        !(r.rows || []).some((x) => /\d\.\d/.test(String(x.v) + ' ' + String(x.s || ''))),
+        'noktalı değer var');
+      /* İçilen sıvı ter kaybına eklenir: 1 kg kayıp + 0,5 L içilmiş = 1,5 L / 60 dk */
+      ekle(G, 'İçilen sıvı terleme oranına ekleniyor', '1,5 L/saat',
+        deger(calistir('terleme', { w1: 70, w2: 69, dk: 60, icilen: 500 }), 'Terleme oranı'));
+      ekle(G, '%1 kayıpta uyarı yok', 'ok', calistir('terleme', { w1: 70, w2: 69.3, dk: 60, icilen: NaN }).tone);
+      kosul(G, 'Terleme süresi sıfırsa hata verir', !!calistir('terleme', { w1: 70, w2: 68, dk: 0 }).err);
+
+      /* Kullanılabilir enerji — kaynaktaki örnek: 60 kg, %15 yağ, 2800 − 1500 = 1300 ÷ 51 = 25,5 */
+      r = calistir('sporke', { alim: 2800, egzersiz: 1500, w: 60, yag: 15, h: NaN });
+      ekle(G, 'Yağsız kütle 60 kg × (1 − %15)', '51 kg', deger(r, 'Yağsız vücut kütlesi'));
+      ekle(G, 'KE (kaynak örneği: 1300 ÷ 51)', '25,5 kcal/kg', deger(r, 'Kullanılabilir enerji'));
+      ekle(G, 'KE 25,5 değerlendirmesi', 'Düşük kullanılabilir enerji (DKE)', deger(r, 'Değerlendirme'));
+      ekle(G, 'KE 25,5 tonu', 'bad', r.tone);
+      /* Eşikler: <30 DKE, 30-45 azalmış, ≥45 yeterli */
+      ekle(G, 'KE 40 kcal/kg değerlendirmesi', 'Azalmış kullanılabilir enerji',
+        deger(calistir('sporke', { alim: 3000, egzersiz: 1000, w: 60, yag: 16.67, h: NaN }), 'Değerlendirme'));
+      ekle(G, 'KE 50 kcal/kg değerlendirmesi', 'Yeterli kullanılabilir enerji',
+        deger(calistir('sporke', { alim: 3500, egzersiz: 1000, w: 60, yag: 16.67, h: NaN }), 'Değerlendirme'));
+      ekle(G, 'BKİ 17,5 altında kesin DKE göstergesi', 'bad',
+        calistir('sporke', { alim: 3500, egzersiz: 500, w: 45, yag: 12, h: 165 }).tone);
+      kosul(G, 'Geçersiz yağ oranında hata verir', !!calistir('sporke', { alim: 2800, egzersiz: 1500, w: 60, yag: 0 }).err);
+    }
+
     /* --- Çocuk persentil: WHO medyanında z = 0 --- */
     if (DA.growth) {
       const zMed = DA.growth.z('wfa', 'E', 24, DA.growth.lms('wfa', 'E', 24)[1]);
@@ -437,6 +487,55 @@
       const liste = Y.kisalt.map((k) => k[0]);
       const eksik = kk.filter((k) => liste.indexOf(k) < 0);
       kosul(G, 'Tablo 10.1 kısaltmaları listede de tanımlı', eksik.length === 0, 'eksik: ' + eksik.join(', '));
+    }
+
+    /* --- Bölüm 8.2 spor beslenmesi verisi --- */
+    if (D.sporcu) {
+      const SP = D.sporcu;
+      ekle(G, 'Spor KH yük kademesi', 3, SP.kh.yuk.length);
+      kosul(G, 'KH yük aralıkları artan ve tutarlı',
+        SP.kh.yuk.every((y, i) => y.g[0] < y.g[1] && (!i || y.g[0] >= SP.kh.yuk[i - 1].g[0])));
+      ekle(G, 'Spor dalı protein aralığı', 2, SP.pro.dal.length);
+      kosul(G, 'Kuvvet sporu proteini dayanıklılıktan yüksek',
+        SP.pro.dal[1].g[0] > SP.pro.dal[0].g[0]);
+      ekle(G, 'Kullanılabilir enerji bandı', 3, SP.ke.band.length);
+      kosul(G, 'KE bantları artan sırada',
+        SP.ke.band.every((b, i) => !i || b.max > SP.ke.band[i - 1].max));
+      kosul(G, 'KE bantlarının hepsinde etiket, ton ve açıklama var',
+        SP.ke.band.every((b) => b.l && b.tone && b.ne));
+      ekle(G, 'Spor zamanlama aşaması', 4, SP.zaman.length);
+      kosul(G, 'Her zamanlama aşamasında en az bir öneri', SP.zaman.every((z) => z.r && z.r.length));
+      kosul(G, 'Sıvı eşikleri makul', SP.sivi.dehidrasyonEsik === 2 && SP.sivi.onceMl === 500 &&
+        SP.sivi.sirasindaMl[0] < SP.sivi.sirasindaMl[1] && SP.sivi.sonrasiYuzde === 150);
+      ekle(G, 'İdrar rengi kademesi', 3, SP.sivi.idrar.length);
+      kosul(G, 'Besin desteği listesi ikili ve dolu',
+        SP.destek.length >= 5 && SP.destek.every((d) => d.length === 2 && d[0] && d[1]));
+    }
+
+    /* --- Bölüm 8.3 vejetaryen verisi --- */
+    if (D.vejetaryen) {
+      const VJ = D.vejetaryen;
+      ekle(G, 'Vejetaryen diyet türü sayısı', 7, VJ.tur.length);
+      kosul(G, 'Her türde anahtar, ad, tanım ve risk listesi var',
+        VJ.tur.every((t) => t.k && t.l && t.d && Array.isArray(t.risk)));
+      const tk = VJ.tur.map((t) => t.k);
+      kosul(G, 'Diyet türü anahtarları benzersiz', new Set(tk).size === tk.length);
+      /* Vegan en kısıtlı tür: en çok riskli besin ögesi onda olmalı */
+      const vegan = VJ.tur.find((t) => t.k === 'vegan');
+      kosul(G, 'Vegan en çok riskli besin ögesine sahip',
+        VJ.tur.every((t) => t.risk.length <= vegan.risk.length));
+      ekle(G, 'Tablo 8.5 besin grubu sayısı', 6, VJ.porsiyon.r.length);
+      kosul(G, 'Tablo 8.5 her grupta porsiyon miktarı var', VJ.porsiyon.r.every((x) => x.g && x.p));
+      ekle(G, 'Dikkat edilecek besin ögesi sayısı', 7, VJ.dikkat.length);
+      kosul(G, 'Dikkat listesindeki her madde açıklamalı', VJ.dikkat.every((x) => x.n && x.s));
+      /* Türlerin risk listesindeki her öge, dikkat listesinde de yer almalı */
+      const dikkatAd = VJ.dikkat.map((x) => x.n.split(' ')[0]);
+      const kopuk = [];
+      VJ.tur.forEach((t) => t.risk.forEach((x) => {
+        if (dikkatAd.indexOf(x.split(' ')[0]) < 0) kopuk.push(t.k + ' → ' + x);
+      }));
+      kosul(G, 'Tür risk listeleri dikkat listesiyle eşleşiyor', kopuk.length === 0, kopuk.join(' · '));
+      ekle(G, 'Özel grup sayısı', 4, VJ.ozel.length);
     }
 
     /* --- Glisemik indeks listesi --- */

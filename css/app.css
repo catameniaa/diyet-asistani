@@ -170,6 +170,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--line-2);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:99px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;box-shadow:var(--sh-1)}
 .chip.on{background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent;cursor:default}
+.chips.wrap{flex-wrap:wrap;overflow-x:visible}
 .chip.tag{cursor:pointer;user-select:none}
 .chip.tag input{position:absolute;opacity:0;pointer-events:none}
 .chip.tag:has(input:checked){background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}

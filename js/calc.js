@@ -293,12 +293,13 @@
       ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'khdagilim', 'gy']],
       ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
       ['Tarama', ['nrs', 'must', 'mnasf', 'diyabetrisk']],
+      ['Spor beslenmesi', ['sporcu', 'terleme', 'sporke']],
       ['Klinik', ['enteral', 'gir']]
     ],
     referans: [
       ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu', 'enerjiref']],
       ['Porsiyon ve besin değerleri', ['porsiyon', 'porsiyonbesin', 'istege']],
-      ['Yaşam dönemleri', ['bebek', 'gebe', 'pal']],
+      ['Yaşam dönemleri', ['bebek', 'gebe', 'pal', 'vejetaryen']],
       ['Örnek planlar', ['ornekmenu']],
       ['Yöntem', ['yontem']]
     ]
