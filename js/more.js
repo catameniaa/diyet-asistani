@@ -31,6 +31,25 @@
   }
 
   /* Son düzenlenen danışanlar — en çok yapılan iş buradan başlar */
+  /* Takip listesi: takip aralığını aşmış danışanlar.
+     Ana sayfanın en üstünde durur çünkü "kim geri dönmeli" günlük sorulan sorudur. */
+  function takipHtml() {
+    if (!DA.takipGereken) return '';
+    const t = DA.takipGereken();
+    if (!t.length) return '';
+    const gorunen = t.slice(0, 5);
+    return '<div class="sect"><span>Takip bekleyen <span class="badge warn">' + t.length + '</span></span></div>' +
+      '<div class="list mb">' + gorunen.map((x) => {
+        const g = x.gun;
+        return '<a class="li chev" href="#/danisan/' + esc(x.c.id) + '"><span class="ic warn">' + icon('users') + '</span>' +
+          '<span class="grow"><div class="t">' + esc(x.c.name) + '</div>' +
+          '<div class="s">' + (g == null ? 'Hiç ölçüm girilmemiş'
+            : g + ' gündür ölçüm yok · ' + (x.c.aralik || 21) + ' günlük takip') + '</div></span></a>';
+      }).join('') + '</div>' +
+      (t.length > gorunen.length
+        ? '<a class="btn ghost block mb" href="#/danisan">Kalan ' + (t.length - gorunen.length) + ' danışan</a>' : '');
+  }
+
   function sonDanisanlar() {
     const cl = (DA.state().clients || []).slice();
     if (!cl.length) return '';
@@ -103,7 +122,7 @@
 
     return {
       title: DA.APP, tab: 'ana',
-      html: hero + yedek + hint + quickRow() + sonDanisanlar() + quickCalc() +
+      html: hero + yedek + takipHtml() + hint + quickRow() + sonDanisanlar() + quickCalc() +
         '<div class="grid2 mb"><button class="btn sec block" data-act="quickMeas">' + icon('plus') + ' Ölçüm ekle</button>' +
         '<a class="btn sec block" href="#/staj">' + icon('note') + ' Staj notu</a></div>' +
         '<div class="sect">Araçlar</div>' +

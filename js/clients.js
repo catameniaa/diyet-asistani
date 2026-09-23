@@ -54,10 +54,13 @@
       (shown < trail.length ? ' ' + (trail.length - shown) + ' eski ölçüm bu eğrinin yaş aralığı dışında kaldı.' : '') + '</p></div>';
   }
 
-  function chartSvg(points, unit) {
+  function chartSvg(points, unit, hedef) {
     if (points.length < 2) return '<div class="muted small center" style="padding:14px 0">Grafik için en az 2 ölçüm gerekli.</div>';
     const W = 320, H = 150, pl = 34, pr = 10, pt = 10, pb = 22;
-    const ys = points.map((p) => p.y), lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys), pad = Math.max((hi - lo) * 0.2, 0.5);
+    const ys = points.map((p) => p.y);
+    /* Hedef çizgisi ölçümlerin dışında kalabilir; ölçek onu da kapsamalı. */
+    if (hedef > 0) ys.push(hedef);
+    const lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys), pad = Math.max((hi - lo) * 0.2, 0.5);
     const y0 = lo - pad, y1 = hi + pad, t0 = points[0].t, t1 = points[points.length - 1].t || t0 + 1;
     const X = (t) => pl + (t1 === t0 ? 0 : (t - t0) / (t1 - t0)) * (W - pl - pr), Y = (v) => pt + (1 - (v - y0) / (y1 - y0)) * (H - pt - pb);
     let g = '';
@@ -65,7 +68,13 @@
     const path = points.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ');
     const dots = points.map((p) => '<circle class="dot" cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="3.5"/>').join('');
     const fd = (t) => new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Ölçüm grafiği (' + unit + ')">' + g + '<path class="ln" d="' + path + '"/>' + dots +
+    const hl = hedef > 0
+      ? '<line class="hedef" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(hedef).toFixed(1) + '" y2="' + Y(hedef).toFixed(1) + '"/>' +
+        '<text class="hedefe" x="' + (W - pr) + '" y="' + (Y(hedef) - 4).toFixed(1) + '" text-anchor="end">hedef ' + fmt(hedef, 1) + '</text>'
+      : '';
+    const etiket = 'Ölçüm grafiği (' + unit + ')' + (hedef > 0 ? ', hedef ' + fmt(hedef, 1) + ' ' + unit : '');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(etiket) + '">' + g + hl +
+      '<path class="ln" d="' + path + '"/>' + dots +
       '<text x="' + pl + '" y="' + (H - 6) + '">' + fd(t0) + '</text><text x="' + (W - pr) + '" y="' + (H - 6) + '" text-anchor="end">' + fd(t1) + '</text></svg>';
   }
 
@@ -103,6 +112,80 @@
       (c.avoid ? '<span class="badge warn">Kaçınılan: ' + esc(c.avoid) + '</span>' : '') + '</div>';
   }
 
+  /* Takip aralığı seçenekleri: bu süre geçtiyse danışan "geri dönmeli" sayılır. */
+  const ARALIK = [[7, 'Haftalık'], [14, '2 haftada bir'], [21, '3 haftada bir'], [30, 'Ayda bir'], [60, '2 ayda bir'], [0, 'Hatırlatma yok']];
+
+  /* Son ölçümden bu yana geçen gün. Ölçüm yoksa null. */
+  function gecenGun(c) {
+    const m = sortedMeas(c), son = m[m.length - 1];
+    if (!son) return null;
+    const t = new Date(son.d + 'T00:00');
+    if (isNaN(t)) return null;
+    return Math.floor((Date.now() - t.getTime()) / 86400000);
+  }
+  /* Takip aralığını aşmış danışanlar, en gecikmişten başlayarak.
+     Ana sayfa bunu kullanıyor; hiç ölçümü olmayanlar da listeye girer. */
+  DA.takipGereken = () => clients().map((c) => {
+    const ar = c.aralik == null ? 21 : c.aralik;
+    if (!ar) return null;                       /* hatırlatma kapalı */
+    const g = gecenGun(c);
+    if (g == null) return { c, gun: null, gecikme: 1 };   /* hiç ölçüm yok */
+    return g >= ar ? { c, gun: g, gecikme: g - ar } : null;
+  }).filter(Boolean).sort((a, b) => b.gecikme - a.gecikme);
+  DA.gecenGun = gecenGun;
+
+  /* Yetişkin BKİ sınıfı — hesaplayıcıdaki eşiklerle aynı (WHO). */
+  function bkiSinif(b) {
+    if (b < 16) return ['Ciddi zayıflık', 'bad'];
+    if (b < 18.5) return ['Zayıf', 'warn'];
+    if (b < 25) return ['Normal', 'ok'];
+    if (b < 30) return ['Fazla kilolu', 'warn'];
+    if (b < 35) return ['Obez (evre I)', 'bad'];
+    if (b < 40) return ['Obez (evre II)', 'bad'];
+    return ['Obez (evre III)', 'bad'];
+  }
+
+  /* İstatistik şeridi: boş kutu göstermek yerine dolu olanları gösterir. */
+  function istatistik(c, m, last, first, bmi) {
+    const k = [];
+    if (last.w) k.push(['kilo (kg)', fmt(last.w, 1), '']);
+    if (bmi) {
+      const sn = age(c) != null && age(c) < 18 ? null : bkiSinif(bmi);
+      k.push(['BKİ', fmt(bmi, 1), sn ? sn[0] : 'yaşa göre persentile bak']);
+    }
+    if (first && last && first !== last && first.w && last.w) {
+      const d = last.w - first.w;
+      k.push(['değişim (kg)', (d > 0 ? '+' : '') + fmt(d, 1), 'ilk ölçümden beri']);
+    }
+    if (c.hedef > 0 && last.w) {
+      /* "Değişim" ile aynı işaret düzeni: kilonun ne kadar değişmesi gerektiği.
+         Eksi = verilecek, artı = alınacak. Aynı fmt kullanıldığı için eksi
+         karakteri de iki kutuda aynı olur. */
+      const gerek = c.hedef - last.w;
+      k.push(['hedefe (kg)', Math.abs(gerek) < 0.05 ? '0' : (gerek > 0 ? '+' : '') + fmt(gerek, 1),
+        Math.abs(gerek) < 0.5 ? 'hedefte' : 'hedef ' + fmt(c.hedef, 1)]);
+    }
+    if (last.fat) k.push(['yağ %', fmt(last.fat, 1), '']);
+    if (!k.length) return '';
+    return '<div class="macros mt">' + k.map((x) =>
+      '<div><b>' + x[1] + '</b><small>' + esc(x[0]) + '</small>' +
+      (x[2] ? '<small class="alt">' + esc(x[2]) + '</small>' : '') + '</div>').join('') + '</div>';
+  }
+
+  /* Grafik altındaki hedef özeti: ne kadar yol alındı, ne kadar kaldı. */
+  function hedefOzet(c, last) {
+    if (!(c.hedef > 0) || !last || !last.w) return '';
+    const m = sortedMeas(c).filter((x) => x.w);
+    if (m.length < 2) return '';
+    const bas = m[0].w, simdi = last.w, hedef = c.hedef;
+    const toplam = bas - hedef, alinan = bas - simdi;
+    if (Math.abs(toplam) < 0.1) return '';
+    const yuzde = Math.max(0, Math.min(100, alinan / toplam * 100));
+    return '<div class="bar" style="margin-top:10px"><i style="width:' + Math.round(yuzde) + '%"></i></div>' +
+      '<p class="muted tiny" style="margin:6px 0 0">Başlangıç ' + fmt(bas, 1) + ' → şimdi ' + fmt(simdi, 1) +
+      ' → hedef ' + fmt(hedef, 1) + ' kg · yolun %' + fmt(yuzde, 0) + '’i alındı.</p>';
+  }
+
   DA.views.danisan = (parts) => {
     const id = parts[0];
     if (!id) {
@@ -129,12 +212,12 @@
     return {
       title: c.name, tab: 'danisan', back: 'danisan',
       html: '<div class="card"><div class="row between"><div><b style="font-size:18px">' + esc(c.name) + '</b><div class="muted small">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a ? ' · ' + a + ' yaş' : '') + (c.h ? ' · ' + fmt(c.h, 0) + ' cm' : '') + '</div></div><button class="btn ghost sm" data-act="clientEdit" data-id="' + c.id + '">Düzenle</button></div>' +
-        (last ? '<div class="macros mt"><div><b>' + (last.w ? fmt(last.w, 1) : '—') + '</b><small>kilo (kg)</small></div><div><b>' + (bmi ? fmt(bmi, 1) : '—') + '</b><small>BKİ</small></div><div><b>' + (first && last && first !== last && first.w && last.w ? (last.w - first.w > 0 ? '+' : '') + fmt(last.w - first.w, 1) : '—') + '</b><small>değişim (kg)</small></div><div><b>' + (last.fat ? fmt(last.fat, 1) : '—') + '</b><small>yağ %</small></div></div>' : '') +
+        (last ? istatistik(c, m, last, first, bmi) : '') +
         rozetler(c) + '</div>' +
         '<div class="grid2 mb"><a class="btn sec block" href="#/hesapla/enerji?c=' + c.id + '">Enerji hesapla</a><button class="btn block" data-act="measNew" data-id="' + c.id + '">' + DA.icon('plus') + ' Ölçüm ekle</button></div>' +
         kisayolHtml(c) +
         pediatric(c, m) +
-        '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg') + '</div>' +
+        '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg', c.hedef) + hedefOzet(c, last) + '</div>' +
         '<div class="sect">Ölçümler</div>' +
         (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : '<div class="muted small center mb">Henüz ölçüm yok.</div>') +
         planHtml(c) +
@@ -239,6 +322,12 @@
         esc(t[1]) + '</label>').join('') + '</div></div>' +
       '<label class="fld"><span>Alerji / sevmedikleri</span><input type="text" name="avoid" value="' + esc(c.avoid || '') +
       '" placeholder="örn. fındık, laktoz, kırmızı et"></label>' +
+      '<div class="grid2"><label class="fld"><span>Hedef kilo (kg)</span><input type="text" inputmode="decimal" name="hedef" value="' +
+      esc(c.hedef || '') + '" placeholder="isteğe bağlı"></label>' +
+      '<label class="fld"><span>Takip aralığı</span><select name="aralik">' +
+      ARALIK.map((o) => '<option value="' + o[0] + '"' + (String(c.aralik || 21) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
+      '</select></label></div>' +
+      '<p class="muted tiny">Takip aralığı: bu süre boyunca ölçüm girilmezse ana sayfada hatırlatılır.</p>' +
       '<button class="btn block">Kaydet</button>' + (c.id ? '<button type="button" class="btn danger block mt-s" data-act="clientDelete" data-id="' + c.id + '">Danışanı sil</button>' : '') + '</form>';
   }
   DA.actions.clientNew = () => DA.sheet('Yeni danışan', clientForm());
@@ -249,11 +338,13 @@
     if (f.dataset.id) {
       const c = S.clients.find((x) => x.id === f.dataset.id);
       Object.assign(c, { name: d.name.trim(), sex: d.sex, bdate: d.bdate || null, birth: d.bdate ? parseInt(d.bdate.slice(0, 4), 10) : c.birth,
-        h: num(d.h) || null, pal: d.pal || null, tags: ETIKET.filter((t) => d['tag_' + t[0]]).map((t) => t[0]), avoid: (d.avoid || '').trim() });
+        h: num(d.h) || null, pal: d.pal || null, tags: ETIKET.filter((t) => d['tag_' + t[0]]).map((t) => t[0]), avoid: (d.avoid || '').trim(),
+        hedef: num(d.hedef) || null, aralik: parseInt(d.aralik, 10) || 21 });
       DA.save(); DA.closeSheet(); DA.render(true);
     } else {
       const c = { id: uid(), name: d.name.trim(), sex: d.sex, bdate: d.bdate || null, birth: d.bdate ? parseInt(d.bdate.slice(0, 4), 10) : null,
-        h: num(d.h) || null, pal: d.pal || null, tags: ETIKET.filter((t) => d['tag_' + t[0]]).map((t) => t[0]), avoid: (d.avoid || '').trim(), note: '', meas: [] };
+        h: num(d.h) || null, pal: d.pal || null, tags: ETIKET.filter((t) => d['tag_' + t[0]]).map((t) => t[0]), avoid: (d.avoid || '').trim(),
+        hedef: num(d.hedef) || null, aralik: parseInt(d.aralik, 10) || 21, note: '', meas: [] };
       S.clients.push(c); DA.save(); DA.closeSheet(); DA.go('danisan/' + c.id);
     }
   };

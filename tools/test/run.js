@@ -420,6 +420,83 @@ function ornekDurum(tema) {
   });
   uiEkle('Tüm veriyi silmek hâlâ onay soruyor', 1, onaylar);
 
+  /* ---- Takip paketi ---- */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  const bugun = await sayfa.evaluate(() => {
+    const g = (n) => { const d = new Date(Date.now() - n * 86400000); return d.toISOString().slice(0, 10); };
+    const S = DA.state();
+    S.clients = [
+      /* 30 gün önce ölçülmüş, 21 günlük takip → gecikmiş 9 gün */
+      { id: 'a', name: 'Gecikmiş', aralik: 21, meas: [{ id: 'm', d: g(30), w: 70 }] },
+      /* 5 gün önce ölçülmüş, 21 günlük takip → zamanında */
+      { id: 'b', name: 'Zamanında', aralik: 21, meas: [{ id: 'm', d: g(5), w: 70 }] },
+      /* hiç ölçüm yok → listede */
+      { id: 'c', name: 'Ölçümsüz', aralik: 21, meas: [] },
+      /* hatırlatma kapalı → listede olmamalı */
+      { id: 'd', name: 'Kapalı', aralik: 0, meas: [{ id: 'm', d: g(200), w: 70 }] },
+      /* 100 gün gecikmiş → en üstte olmalı */
+      { id: 'e', name: 'Çok gecikmiş', aralik: 14, meas: [{ id: 'm', d: g(114), w: 70 }] }
+    ];
+    DA.save();
+    const t = DA.takipGereken();
+    return { adet: t.length, kimler: t.map((x) => x.c.id).join(','), ilk: t[0].c.id,
+      gecikmisGun: (t.find((x) => x.c.id === 'a') || {}).gun };
+  });
+  /* gecikmiş: a (30>21), c (ölçümsüz), e (114>14) = 3; b zamanında, d kapalı */
+  uiEkle('Takip listesi doğru danışanları seçiyor', 3, bugun.adet);
+  uiEkle('Hatırlatması kapalı danışan listede yok', false, bugun.kimler.indexOf('d') >= 0);
+  uiEkle('Zamanında olan danışan listede yok', false, bugun.kimler.indexOf('b') >= 0);
+  uiEkle('En çok gecikmiş en üstte', 'e', bugun.ilk);
+  uiEkle('Gecikme gün sayısı doğru', 30, bugun.gecikmisGun);
+  await sayfa.evaluate(() => { location.hash = 'ana'; DA.render(false); });
+  await sayfa.waitForTimeout(250);
+  const anaMetin = await sayfa.$eval('#app', (e) => e.textContent);
+  uiEkle('Ana sayfada takip bölümü çıkıyor', true, anaMetin.indexOf('Takip bekleyen') >= 0);
+  uiEkle('Ölçümsüz danışan ayrı belirtiliyor', true, anaMetin.indexOf('Hiç ölçüm girilmemiş') >= 0);
+
+  /* Hedef kilo: grafik çizgisi, hedefe kalan, ilerleme */
+  const hedef = await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.clients = [{ id: 'h', name: 'Hedefli', sex: 'K', h: 165, hedef: 65, aralik: 0,
+      meas: [{ id: 'm1', d: '2026-01-10', w: 75 }, { id: 'm2', d: '2026-03-10', w: 70 }] }];
+    DA.save();
+    location.hash = 'danisan/h'; DA.render(false);
+    const t = document.querySelector('#app').textContent;
+    const hc = document.querySelector('.chart .hedef');
+    /* Çizginin var olması yetmez: ölçek hedefi kapsamazsa çizgi görünür
+       alanın dışına düşer. viewBox 0..150 içinde olmalı. */
+    const hy = hc ? parseFloat(hc.getAttribute('y1')) : null;
+    return {
+      cizgi: !!hc,
+      cizgiIcerde: hy != null && hy > 0 && hy < 150,
+      etiket: !!document.querySelector('.chart text.hedefe'),
+      hedefeKalan: t.indexOf('hedefe (kg)') >= 0,
+      bes: /hedefe \(kg\)/.test(t) && t.indexOf('-5') >= 0,   /* 65 − 70 = -5: 5 kg verilecek */
+      ilerleme: t.indexOf('yolun %50') >= 0,          /* 75→70, hedef 65: yarısı */
+      bki: t.indexOf('Normal') >= 0                   /* 70/1.65² = 25,7 → Fazla kilolu */
+        || t.indexOf('Fazla kilolu') >= 0
+    };
+  });
+  uiEkle('Grafikte hedef çizgisi var', true, hedef.cizgi);
+  uiEkle('Hedef çizgisi görünür alanda (ölçek hedefi kapsıyor)', true, hedef.cizgiIcerde);
+  uiEkle('Hedef çizgisinde etiket var', true, hedef.etiket);
+  uiEkle('Hedefe kalan gösteriliyor', true, hedef.hedefeKalan);
+  uiEkle('Hedefe kalan miktarı doğru', true, hedef.bes);
+  uiEkle('Hedef ilerlemesi doğru hesaplanıyor', true, hedef.ilerleme);
+  uiEkle('BKİ sınıfı gösteriliyor', true, hedef.bki);
+
+  /* Boş istatistik kutusu gösterilmiyor */
+  const bos = await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.clients = [{ id: 'z', name: 'Sade', sex: 'K', h: 165, aralik: 0,
+      meas: [{ id: 'm1', d: '2026-03-10', w: 60 }] }];
+    DA.save();
+    location.hash = 'danisan/z'; DA.render(false);
+    const t = document.querySelector('#app').textContent;
+    return { yagVar: t.indexOf('yağ %') >= 0, tire: (t.match(/—/g) || []).length };
+  });
+  uiEkle('Yağ yüzdesi girilmemişse kutu gösterilmiyor', false, bos.yagVar);
+
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
   uiEkle('Depolama durumu raporlanıyor', true,

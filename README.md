@@ -15,7 +15,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Yedek hatırlatması (son yedekten 14 gün geçince uyarır) ve yeni sürüm bildirimi
 - 74 çalışma kartı (aralıklı tekrar): TEMD, TÜBER, değişim listesi, WHO persentil eşikleri
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
-- Danışan takibi (ölçümler, grafik, notlar), 0–19 yaş için otomatik WHO büyüme persentili izlemi,
+- Danışan takibi (ölçümler, grafik, notlar), hedef kilo ve grafikte hedef çizgisi,
+  takip aralığı dolan danışanların ana sayfada hatırlatılması,
+  0–19 yaş için otomatik WHO büyüme persentili izlemi,
   hesapları dosyaya işleme ve tek sayfalık danışan raporu (PDF / paylaş)
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre makro aralıkları, protein (g/kg ve g/gün),
