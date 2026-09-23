@@ -10,7 +10,9 @@
   function listHtml() {
     const s = DA.trLower(q);
     const list = entries().filter((e) => (filter === 'Tümü' || e.type === filter) && (!s || DA.trLower([e.title, e.place, e.text].join(' ')).includes(s)));
-    if (!list.length) return DA.emptyState('note', 'Kayıt yok.<br><span class="small">+ ile ilk staj notunu ekle.</span>');
+    if (!list.length) return DA.emptyState('note', { baslik: 'Staj günlüğü boş',
+        aciklama: 'Vaka notları ve saatler burada birikir; dönem sonunda tek dosya olarak dışa aktarabilirsin.',
+        eylem: { act: 'jNew', etiket: 'İlk notu ekle', ico: 'plus' } });
     return '<div class="list">' + list.map((e) => '<button class="li" data-act="jEdit" data-id="' + e.id + '"><span class="grow"><div class="t">' + esc(e.title || e.type) + '</div><div class="s">' + esc(DA.fdate(e.d)) + ' · ' + esc(e.type) + (e.place ? ' · ' + esc(e.place) : '') + '</div></span>' + (e.hours ? '<span class="end">' + fmt(e.hours, 1) + ' sa</span>' : '') + '</button>').join('') + '</div>';
   }
   DA.live.jSearch = (el) => { q = el.value; DA.$('#jList').innerHTML = listHtml(); };
@@ -64,8 +66,12 @@
     return {
       title: 'Staj günlüğü — PDF', back: 'staj',
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="jShare">Metin olarak paylaş</button></div>' +
-        '<div class="printdoc">' + DA.antet() + '<h2>Staj günlüğü</h2><div style="color:#555;font-size:13px">Toplam ' + fmt(total, 1) + ' saat · ' + list.length + ' kayıt</div>' +
-        list.map((e) => '<div style="margin:14px 0;border-top:1px solid #ddd;padding-top:8px"><b>' + esc(DA.fdate(e.d)) + '</b> · ' + esc(e.type) + (e.place ? ' · ' + esc(e.place) : '') + (e.hours ? ' · ' + fmt(e.hours, 1) + ' sa' : '') + (e.title ? '<div><b>' + esc(e.title) + '</b></div>' : '') + '<div>' + esc(e.text || '').replace(/\n/g, '<br>') + '</div></div>').join('') + '</div>'
+        '<div class="printdoc">' + DA.antet() + '<h2>Staj günlüğü</h2><div class="alt">Toplam ' + fmt(total, 1) + ' saat · ' + list.length + ' kayıt</div>' +
+        list.map((e) => '<div class="blok kayit"><h3>' + esc(DA.fdate(e.d)) + ' · ' + esc(e.type) +
+          (e.place ? ' · ' + esc(e.place) : '') + (e.hours ? ' <span class="ince">' + fmt(e.hours, 1) + ' saat</span>' : '') + '</h3>' +
+          (e.title ? '<div class="sat"><b>' + esc(e.title) + '</b></div>' : '') +
+          '<div>' + esc(e.text || '').replace(/\n/g, '<br>') + '</div></div>').join('') +
+        DA.dipnot('staj kayıtları öğrencinin kendi beyanıdır.') + '</div>'
     };
   };
   DA.actions.jShare = () => DA.shareText('Staj günlüğü', journalText());

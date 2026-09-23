@@ -9,7 +9,10 @@
   function tile(href, ico, t, d, acc) {
     return '<a class="tile' + (acc ? ' acc-t' : '') + '" href="' + href + '"><span class="ic">' + icon(ico) + '</span><b>' + esc(t) + '</b><span class="d">' + esc(d) + '</span></a>';
   }
-  const stat = (href, n, l) => '<a class="stat" href="' + href + '"><b>' + esc(String(n)) + '</b><span>' + esc(l) + '</span></a>';
+  /* Hero kutusu: değer büyük, etiket küçük; tamamı dokunulabilir bağlantı.
+     ton = '' | 'uyari' | 'iyi' — sıfır olmayan iş yükü göze çarpsın diye. */
+  const stat = (href, n, l, ton) => '<a class="stat' + (ton ? ' ' + ton : '') + '" href="' + href + '">' +
+    '<b>' + esc(String(n)) + '</b><span>' + esc(l) + '</span></a>';
 
   function greeting() {
     const h = new Date().getHours();
@@ -112,12 +115,17 @@
       'Veriler yalnızca bu cihazda; tarayıcı verilerini temizlersen ya da telefon değişirse kaybolur.' +
       '<button class="btn sm block" style="margin-top:10px" data-act="backup">' + icon('save') + ' Şimdi yedek al</button></div>' : '';
 
+    const takip = DA.takipGereken ? DA.takipGereken().length : 0;
+    const hafta = DA.sonGunOlcum ? DA.sonGunOlcum(7) : 0;
     const hero = '<div class="hero"><div class="hi">' + esc(greeting()) + '</div><h2>' + esc(DA.APP) + '</h2>' +
       '<div class="by">' + esc(DA.dyt()) + '</div>' +
       '<div class="stats">' +
-        stat('#/danisan', S.clients.length, S.clients.length === 1 ? 'danışan' : 'danışan') +
-        stat('#/menu', S.menus.length, 'menü') +
-        stat('#/kart', due, due ? 'kart bekliyor' : 'kart günü') +
+        /* Envanter sayıları ("23 danışan") her gün aynıydı; hiçbir şey
+           söylemiyordu. Kutular artık bugün yapılacak işi gösteriyor.
+           Toplam sayılar aşağıdaki araç kutularına taşındı. */
+        stat('#/danisan', takip, 'takip bekliyor', takip ? 'uyari' : '') +
+        stat('#/danisan', hafta, 'bu hafta ölçüm', hafta ? 'iyi' : '') +
+        stat('#/kart', due, due ? 'kart bekliyor' : 'kart günü', due ? 'uyari' : '') +
       '</div></div>';
 
     return {
@@ -130,8 +138,8 @@
         tile('#/hesapla', 'calc', 'Hesaplayıcılar', DA.calcs.length + ' hesaplayıcı') +
         tile('#/hesapla/degisim', 'table', 'Değişim listesi', 'Otomatik dağıtım, porsiyonlar', true) +
         tile('#/besin', 'apple', 'Besinler', DA.data.foods.length + ' besin ve porsiyonlar') +
-        tile('#/menu', 'menu', 'Menü planlayıcı', 'Öğün öğün planla, PDF yap') +
-        tile('#/danisan', 'users', 'Danışanlar', 'Ölçüm, persentil, grafik', true) +
+        tile('#/menu', 'menu', 'Menü planlayıcı', S.menus.length ? S.menus.length + ' menü · öğün öğün planla' : 'Öğün öğün planla, PDF yap') +
+        tile('#/danisan', 'users', 'Danışanlar', S.clients.length ? S.clients.length + ' danışan · ölçüm, persentil' : 'Ölçüm, persentil, grafik', true) +
         tile('#/referans', 'book', 'Klinik referans', 'TEMD, TÜBER, lab değerleri') +
         tile('#/kart', 'cards', 'Çalışma kartları', due ? due + ' kart bugün seni bekliyor' : 'Sınav ve staj için tekrar') +
         tile('#/staj', 'note', 'Staj günlüğü', 'Vaka notları ve saatler') +

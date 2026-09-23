@@ -246,7 +246,7 @@
     const warn = rangeWarnings(c, v);
     let h = warn.length ? '<div class="note warn"><b>Girdiyi kontrol et:</b><br>' + warn.map(esc).join('<br>') + '</div>' : '';
     h += (r.badge ? '<div class="mb"><span class="badge ' + r.badge[1] + '">' + esc(r.badge[0]) + '</span></div>' : '');
-    h += r.rows.map((x) => '<div class="res' + (x.hl ? ' hl' : '') + '"><span class="l">' + esc(x.l) + '</span><span class="v">' + esc(x.v) + (x.s ? '<span class="sub">' + esc(x.s) + '</span>' : '') + '</span></div>').join('');
+    h += r.rows.map((x) => '<div class="res' + (x.hl ? ' hl' : '') + '"><span class="l">' + esc(x.l) + '</span><span class="v">' + DA.sayiVurgu(x.v) + (x.s ? '<span class="sub">' + esc(x.s) + '</span>' : '') + '</span></div>').join('');
     if (r.html) h += r.html; // hesaplayıcının kendi ürettiği blok (tablo, grafik)
     if (r.note) h += '<div class="note ' + (r.tone === 'info' ? '' : r.tone) + '">' + esc(r.note) + '</div>';
     if (r.actions) h += r.actions.map((a) => '<button class="btn sec block mt-s" data-act="' + a.act + '">' + esc(a.label) + '</button>').join('');
@@ -344,7 +344,7 @@
     if (c.data && !DA.hazir(c.data)) {
       DA.need(c.data).then(() => DA.render(true)).catch(() => DA.toast('Veri yüklenemedi'));
       return { title: c.title, tab: DA.calcSection(c.id), back: DA.calcSection(c.id), ico: c.ico,
-        html: '<div class="card"><div class="empty">' + DA.icon(c.ico || 'calc') + '<div>Yükleniyor…</div></div></div>' };
+        html: DA.iskelet('form', c.title + ' hazırlanıyor') };
     }
     if (c.view) {
       /* kendi arayüzünü çizen hesaplayıcı; sekme ve geri hedefi merkezden belirlenir */

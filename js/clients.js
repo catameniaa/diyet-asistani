@@ -13,7 +13,7 @@
   function pediatric(c, m) {
     if (!c.bdate || !DA.growth) return '';
     if (!DA.data.growth) { DA.need(['growth']).then(() => DA.render(true)).catch(() => {});
-      return '<div class="card"><div class="empty">' + DA.icon('baby') + '<div>Büyüme eğrileri yükleniyor…</div></div></div>'; }
+      return DA.iskelet('grafik', 'Büyüme eğrileri yükleniyor'); }
     const G = DA.growth;
     const pts = m.map((x) => {
       const mo = G.months(c.bdate, x.d);
@@ -134,6 +134,23 @@
   }).filter(Boolean).sort((a, b) => b.gecikme - a.gecikme);
   DA.gecenGun = gecenGun;
 
+  /* Son N günde (varsayılan 7) kaydedilmiş ölçüm sayısı. Ana sayfa envanter
+     yerine iş temposunu göstersin diye eklendi: "kaç danışanım var" her gün
+     aynı, "bu hafta kaç ölçüm girdim" ise çalışmayı yansıtır.
+     Gün sınırı takvim gününe göre: bugün dahil son N gün. */
+  DA.sonGunOlcum = (gun) => {
+    const n = gun == null ? 7 : gun;
+    const sinir = new Date(); sinir.setHours(0, 0, 0, 0);
+    sinir.setDate(sinir.getDate() - (n - 1));
+    let say = 0;
+    clients().forEach((c) => (c.meas || []).forEach((x) => {
+      if (!x || !x.d) return;
+      const t = new Date(x.d + 'T00:00');
+      if (!isNaN(t) && t >= sinir) say++;
+    }));
+    return say;
+  };
+
   /* Yetişkin BKİ sınıfı — hesaplayıcıdaki eşiklerle aynı (WHO). */
   function bkiSinif(b) {
     if (b < 16) return ['Ciddi zayıflık', 'bad'];
@@ -147,29 +164,43 @@
 
   /* İstatistik şeridi: boş kutu göstermek yerine dolu olanları gösterir. */
   function istatistik(c, m, last, first, bmi) {
+    /* [etiket, değer, birim, alt not] — birim ayrı tutulur ki sayının yanında
+       küçük ve soluk yazılabilsin; eskiden "kilo (kg)" gibi etikete gömülüydü. */
     const k = [];
-    if (last.w) k.push(['kilo (kg)', fmt(last.w, 1), '']);
+    if (last.w) k.push(['kilo', fmt(last.w, 1), 'kg', '']);
     if (bmi) {
       const sn = age(c) != null && age(c) < 18 ? null : bkiSinif(bmi);
-      k.push(['BKİ', fmt(bmi, 1), sn ? sn[0] : 'yaşa göre persentile bak']);
+      k.push(['BKİ', fmt(bmi, 1), 'kg/m²', sn ? sn[0] : 'yaşa göre persentile bak']);
     }
     if (first && last && first !== last && first.w && last.w) {
       const d = last.w - first.w;
-      k.push(['değişim (kg)', (d > 0 ? '+' : '') + fmt(d, 1), 'ilk ölçümden beri']);
+      k.push(['değişim', (d > 0 ? '+' : '') + fmt(d, 1), 'kg', 'ilk ölçümden beri']);
     }
     if (c.hedef > 0 && last.w) {
       /* "Değişim" ile aynı işaret düzeni: kilonun ne kadar değişmesi gerektiği.
          Eksi = verilecek, artı = alınacak. Aynı fmt kullanıldığı için eksi
          karakteri de iki kutuda aynı olur. */
       const gerek = c.hedef - last.w;
-      k.push(['hedefe (kg)', Math.abs(gerek) < 0.05 ? '0' : (gerek > 0 ? '+' : '') + fmt(gerek, 1),
-        Math.abs(gerek) < 0.5 ? 'hedefte' : 'hedef ' + fmt(c.hedef, 1)]);
+      k.push(['hedefe', Math.abs(gerek) < 0.05 ? '0' : (gerek > 0 ? '+' : '') + fmt(gerek, 1), 'kg',
+        Math.abs(gerek) < 0.5 ? 'hedefte' : 'hedef ' + fmt(c.hedef, 1) + ' kg']);
     }
-    if (last.fat) k.push(['yağ %', fmt(last.fat, 1), '']);
+    if (last.fat) k.push(['yağ oranı', fmt(last.fat, 1), '%', '']);
     if (!k.length) return '';
     return '<div class="macros mt">' + k.map((x) =>
-      '<div><b>' + x[1] + '</b><small>' + esc(x[0]) + '</small>' +
-      (x[2] ? '<small class="alt">' + esc(x[2]) + '</small>' : '') + '</div>').join('') + '</div>';
+      '<div><b>' + esc(x[1]) + (x[2] ? '<i class="vu">' + esc(x[2]) + '</i>' : '') + '</b>' +
+      '<small>' + esc(x[0]) + '</small>' +
+      (x[3] ? '<small class="alt">' + esc(x[3]) + '</small>' : '') + '</div>').join('') + '</div>';
+  }
+
+  /* Yazdırma çıktısında kart çerçevesi istenmez. Eskiden tüm <div class="card">
+     ve sondaki </div> kör bir regex'le siliniyordu; pediatric() kart yerine
+     yükleme iskeleti döndürdüğünde bu etiketleri bozuyordu. Artık yalnızca
+     baştaki kart sarmalayıcısı, o da varsa, soyulur. */
+  function pediatrikYazdir(c, m) {
+    const h = pediatric(c, m);
+    return /^<div class="card"/.test(h)
+      ? h.replace(/^<div class="card"[^>]*>/, '').replace(/<\/div>\s*$/, '')
+      : h;
   }
 
   /* Grafik altındaki hedef özeti: ne kadar yol alındı, ne kadar kaldı. */
@@ -199,7 +230,9 @@
             const m = sortedMeas(c), last = m[m.length - 1], first = m[0];
             const d = last && first && m.length > 1 && last.w && first.w ? last.w - first.w : null;
             return '<a class="li chev" href="#/danisan/' + c.id + '"><span class="ic">' + esc((c.name[0] || '?').toUpperCase()) + '</span><span class="grow"><div class="t">' + esc(c.name) + '</div><div class="s">' + (last && last.w ? fmt(last.w, 1) + ' kg' : 'Ölçüm yok') + (d != null ? ' · ' + (d > 0 ? '+' : '') + fmt(d, 1) + ' kg' : '') + '</div></span></a>';
-          }).join('') + '</div>' : DA.emptyState('users', 'Henüz danışan yok.<br><span class="small">+ ile ekle.</span>')) +
+          }).join('') + '</div>' : DA.emptyState('users', { baslik: 'Henüz danışan yok',
+            aciklama: 'Ölçüm geçmişi, kilo grafiği, hedef takibi ve danışan raporu burada tutulur.',
+            eylem: { act: 'clientNew', etiket: 'İlk danışanı ekle', ico: 'plus' } })) +
           '<button class="fab" data-act="clientNew" aria-label="Danışan ekle">' + DA.icon('plus') + '</button>'
       };
     }
@@ -219,7 +252,9 @@
         pediatric(c, m) +
         '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg', c.hedef) + hedefOzet(c, last) + '</div>' +
         '<div class="sect">Ölçümler</div>' +
-        (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : '<div class="muted small center mb">Henüz ölçüm yok.</div>') +
+        (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : DA.emptyState('scale', { baslik: 'Henüz ölçüm yok',
+          aciklama: 'İlk ölçümü girdikten sonra kilo grafiği, değişim ve hedefe kalan otomatik çıkar.',
+          eylem: { act: 'measNew', veri: 'data-id="' + c.id + '"', etiket: 'Ölçüm ekle', ico: 'plus' } })) +
         planHtml(c) +
         savedCalcs(c) +
         '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>' +
@@ -228,17 +263,17 @@
   };
   /* Danışana kaydedilmiş değişim listesi planı */
   function planHtml(c) {
-    if (!c.plan) return '<div class="card"><div class="empty">' + DA.icon('table') +
-      '<div>Henüz plan yok.<br><span class="small">Değişim listesinden bu danışana plan kaydedebilirsin.</span></div>' +
-      '<a class="btn sec" href="#/hesapla/degisim?c=' + esc(c.id) + '">Plan oluştur</a></div></div>';
+    if (!c.plan) return '<div class="card">' + DA.emptyState('swap', { baslik: 'Henüz plan yok',
+      aciklama: 'Değişim listesinde grup sayılarını belirle ve bu danışana kaydet; plan burada görünsün.',
+      eylem: { href: '#/hesapla/degisim?c=' + esc(c.id), etiket: 'Plan oluştur', ico: 'swap' } }) + '</div>';
     const p = c.plan;
     return '<div class="card"><div class="row between"><div><b>Değişim listesi planı</b>' +
       '<div class="muted small">' + esc(DA.fdate(p.d)) + '</div></div>' +
       '<a class="btn ghost sm" href="#/hesapla/degisim?c=' + esc(c.id) + '">Düzenle</a></div>' +
-      '<div class="macros mt"><div><b>' + fmt(p.top.kcal, 0) + '</b><small>kcal</small></div>' +
-      '<div><b>' + fmt(p.top.c, 0) + '</b><small>KH g</small></div>' +
-      '<div><b>' + fmt(p.top.p, 0) + '</b><small>Protein g</small></div>' +
-      '<div><b>' + fmt(p.top.f, 0) + '</b><small>Yağ g</small></div></div></div>';
+      '<div class="macros mt"><div><b>' + fmt(p.top.kcal, 0) + '<i class="vu">kcal</i></b><small>enerji</small></div>' +
+      '<div><b>' + fmt(p.top.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div>' +
+      '<div><b>' + fmt(p.top.p, 0) + DA.birim('g') + '</b><small>protein</small></div>' +
+      '<div><b>' + fmt(p.top.f, 0) + DA.birim('g') + '</b><small>yağ</small></div></div></div>';
   }
 
   /* Danışan dosyasına işlenmiş hesaplar */
@@ -397,23 +432,22 @@
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="clientShare" data-id="' + c.id + '">Metin olarak paylaş</button></div>' +
         '<div class="printdoc">' + DA.antet() + '<h2>' + esc(c.name) + '</h2>' +
-        '<div style="color:#555;font-size:13px">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a2 != null ? ' · ' + a2 + ' yaş' : '') +
+        '<div class="alt">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a2 != null ? ' · ' + a2 + ' yaş' : '') +
         (c.h ? ' · ' + fmt(c.h, 0) + ' cm' : '') + ' · Rapor tarihi ' + esc(DA.fdate(DA.today())) + '</div>' +
-        '<div class="by">' + esc(DA.dyt()) + '</div>' +
-        (((c.tags || []).length || c.avoid) ? '<div style="font-size:13px;margin:6px 0">' +
+        (((c.tags || []).length || c.avoid) ? '<div class="sat blok">' +
           ((c.tags || []).length ? '<b>Klinik durum:</b> ' + esc((c.tags || []).map((k) => {
             const e = (DA.clientTags || []).find((x) => x[0] === k); return e ? e[1] : k; }).join(', ')) : '') +
           (c.avoid ? (((c.tags || []).length ? ' · ' : '') + '<b>Kaçınılan:</b> ' + esc(c.avoid)) : '') + '</div>' : '') +
         (m.length ? '<table><thead><tr><th>Tarih</th><th class="n">Kilo</th><th class="n">Boy</th><th class="n">BKİ</th><th class="n">Bel</th><th class="n">Yağ %</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p>Henüz ölçüm kaydı yok.</p>') +
         (delta != null ? '<div><b>Toplam değişim:</b> ' + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta), 1) + ' kg (' + m.length + ' ölçüm)</div>' : '') +
-        (wPts.length > 1 ? '<div style="margin:12px 0"><b style="font-size:13px">Kilo seyri</b>' + chartSvg(wPts, 'kg') + '</div>' : '') +
-        (bmiPts.length > 1 ? '<div style="margin:12px 0"><b style="font-size:13px">BKİ seyri</b>' + chartSvg(bmiPts, 'kg/m²') + '</div>' : '') +
-        pediatric(c, m).replace(/<div class="card"[^>]*>|<\/div>\s*$/g, '') +
+        (wPts.length > 1 ? '<div class="blok"><h3>Kilo seyri</h3>' + chartSvg(wPts, 'kg') + '</div>' : '') +
+        (bmiPts.length > 1 ? '<div class="blok"><h3>BKİ seyri</h3>' + chartSvg(bmiPts, 'kg/m²') + '</div>' : '') +
+        pediatrikYazdir(c, m) +
         (DA.exchangePlanHtml ? DA.exchangePlanHtml(c.plan) : '') +
-        ((c.calcs || []).length ? '<div style="margin-top:12px"><b>Kayıtlı hesaplar</b>' +
-          (c.calcs || []).slice().reverse().map((x) => '<div style="font-size:13px">' + esc(DA.fdate(x.d)) + ' — ' + esc(x.t) + ': ' + esc(x.s) + '</div>').join('') + '</div>' : '') +
-        (c.note ? '<div style="margin-top:12px"><b>Notlar</b><br>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
-        '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — bu rapor bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+        ((c.calcs || []).length ? '<div class="blok"><h3>Kayıtlı hesaplar</h3>' +
+          (c.calcs || []).slice().reverse().map((x) => '<div class="sat">' + esc(DA.fdate(x.d)) + ' — ' + esc(x.t) + ': ' + esc(x.s) + '</div>').join('') + '</div>' : '') +
+        (c.note ? '<div class="blok"><h3>Notlar</h3>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
+        DA.dipnot('bu rapor bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
   };
   DA.actions.clientShare = (el) => {

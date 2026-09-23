@@ -212,9 +212,9 @@
     const fatPct = 100 - T.c - T.p;
     return '<div class="card">' +
       '<div class="res hl"><span class="l">Toplam enerji</span><span class="v">' + fmt(t.kcal, 0) + ' kcal<span class="sub">' + fmt(t.n, 1) + ' değişim</span></span></div>' +
-      '<div class="macros mt"><div><b>' + fmt(t.c, 0) + '</b><small>KH g · %' + fmt(t.c * 4 / e * 100, 0) + '</small></div>' +
-      '<div><b>' + fmt(t.p, 0) + '</b><small>Protein g · %' + fmt(t.p * 4 / e * 100, 0) + '</small></div>' +
-      '<div><b>' + fmt(t.f, 0) + '</b><small>Yağ g · %' + fmt(t.f * 9 / e * 100, 0) + '</small></div>' +
+      '<div class="macros mt"><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small><small class="alt">%' + fmt(t.c * 4 / e * 100, 0) + ' enerji</small></div>' +
+      '<div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small><small class="alt">%' + fmt(t.p * 4 / e * 100, 0) + ' enerji</small></div>' +
+      '<div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small><small class="alt">%' + fmt(t.f * 9 / e * 100, 0) + ' enerji</small></div>' +
       '<div><b>' + fmt(t.c / 15, 1) + '</b><small>KH değişimi</small></div></div>' +
       '<div class="sect">Hedefe göre</div>' +
       barLine('Enerji', t.kcal, T.kcal, 'kcal') +
@@ -367,13 +367,13 @@
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="exShare">Metin olarak paylaş</button></div>' +
         '<div class="printdoc">' + DA.antet() + '<h2>Değişim listesi planı</h2>' +
-        '<div style="color:#555;font-size:13px">' + (cl ? esc(cl.name) + ' · ' : '') + esc(DA.fdate(plan.d)) +
+        '<div class="alt">' + (cl ? esc(cl.name) + ' · ' : '') + esc(DA.fdate(plan.d)) +
         ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</div>' +
-        (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan).replace(/^<div style="margin-top:12px">/, '<div>') : '') +
+        (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan) : '') +
         '<div style="margin-top:14px"><b>1 değişim ne kadar?</b>' +
         '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' +
-        (cl && cl.avoid ? '<div style="font-size:13px"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
-        '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — bu plan bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+        (cl && cl.avoid ? '<div class="sat"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
+        DA.dipnot('bu plan bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
   };
   DA.actions.exSaveClient = (el) => {
@@ -398,15 +398,15 @@
     const ogun = MEALS.map((mm) => {
       const mv = (plan.meal || {})[mm[0]] || {};
       const det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + mv[g.k]).join(', ');
-      return det ? '<div style="font-size:13px"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
+      return det ? '<div class="sat"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
     }).filter(Boolean).join('');
-    return '<div style="margin-top:12px"><b>Değişim listesi planı</b> <span style="color:#666;font-size:12px">' +
-      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</span>' +
+    return '<div class="blok"><h3>Değişim listesi planı <span class="ince">' +
+      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</span></h3>' +
       '<table><thead><tr><th>Grup</th><th class="n">Değişim</th><th class="n">KH</th><th class="n">P</th><th class="n">Y</th></tr></thead>' +
       '<tbody>' + rows + '</tbody><tfoot><tr><th>Toplam</th><th></th><th class="n">' + plan.top.c + '</th>' +
       '<th class="n">' + plan.top.p + '</th><th class="n">' + plan.top.f + '</th></tr></tfoot></table>' +
-      '<div style="font-size:13px;margin-top:4px"><b>Toplam enerji:</b> ' + plan.top.kcal + ' kcal</div>' +
-      (ogun ? '<div style="margin-top:8px">' + ogun + '</div>' : '') + '</div>';
+      '<div class="sat"><b>Toplam enerji:</b> ' + plan.top.kcal + ' kcal</div>' +
+      (ogun ? '<div class="mt-s">' + ogun + '</div>' : '') + '</div>';
   };
   DA.actions.exMenu = () => {
     if (DA.menuFromExchange) DA.menuFromExchange(counts(), GROUPS, totals(counts()));

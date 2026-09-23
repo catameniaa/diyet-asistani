@@ -59,11 +59,10 @@
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="omCopy" data-id="' + esc(m.id) + '">Metin olarak paylaş</button></div>' +
         '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.t) + '</h2>' +
-        '<div style="color:#555;font-size:13px">' + esc(m.d) + '</div>' +
-        m.o.map((o) => '<div style="margin-top:12px"><b>' + esc(o[0]) + '</b>' +
-          '<ul style="margin:4px 0 0;padding-left:20px">' + o[1].map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
-        '<div class="ft">Kaynak: ' + esc(M().src) + ' · ' + esc(DA.dyt()) +
-        ' — menü örnektir, kişiye göre uyarlanmalıdır.</div></div>'
+        '<div class="alt">' + esc(m.d) + '</div>' +
+        m.o.map((o) => '<div class="blok"><h3>' + esc(o[0]) + '</h3>' +
+          '<ul>' + o[1].map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+        DA.dipnot('menü örnektir, kişiye göre uyarlanmalıdır.', M().src) + '</div>'
     };
   };
 

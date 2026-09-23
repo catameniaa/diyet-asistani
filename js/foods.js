@@ -143,9 +143,16 @@
     if (cat === 'Favoriler') items = items.filter((f) => fv.indexOf(f.id) >= 0);
     /* Favoriler listenin başında; kendi aralarında ad sırası korunur. */
     else if (fv.length) items = items.slice().sort((a, b) => (fv.indexOf(b.id) >= 0) - (fv.indexOf(a.id) >= 0));
-    if (!items.length) return DA.emptyState('search', cat === 'Favoriler'
-      ? 'Henüz favori yok.<br><span class="small">Besin satırındaki yıldıza dokunarak ekle.</span>'
-      : 'Besin bulunamadı.<br><span class="small">Sağ üstteki + ile kendi besinini ekleyebilirsin.</span>');
+    if (!items.length) {
+      if (cat === 'Favoriler') return DA.emptyState('star', { baslik: 'Henüz favori yok',
+        aciklama: 'Sık kullandığın besinleri yıldızla; listenin başında dursunlar, her seferinde aramak zorunda kalma.' });
+      if (q) return DA.emptyState('search', { baslik: '“' + q + '” için sonuç yok',
+        aciklama: 'Yazımı kontrol et ya da kendi besinini ekle. Eklediğin besinler aramaya dahil olur.',
+        eylem: { act: 'foodNew', etiket: 'Kendi besinini ekle', ico: 'plus' } });
+      return DA.emptyState('apple', { baslik: 'Bu kategoride besin yok',
+        aciklama: 'Başka bir kategori seç ya da kendi besinini ekle.',
+        eylem: { act: 'foodNew', etiket: 'Besin ekle', ico: 'plus' } });
+    }
     return '<div class="list">' + items.map((f) => {
       const on = fv.indexOf(f.id) >= 0;
       return '<div class="li' + (on ? ' fav' : '') + '">' +
@@ -203,7 +210,7 @@
     return '<option value="1">gram</option>' + f.u.map((u) => '<option value="' + u[1] + '">' + esc(u[0]) + ' (' + fmt(u[1], 1) + ' g)</option>').join('');
   }
   function nutTable(n) {
-    return '<div class="macros mt"><div><b>' + fmt(n.kcal, 0) + '</b><small>kcal</small></div><div><b>' + fmt(n.p, 1) + '</b><small>protein g</small></div><div><b>' + fmt(n.c, 1) + '</b><small>karb. g</small></div><div><b>' + fmt(n.f, 1) + '</b><small>yağ g</small></div></div>' +
+    return '<div class="macros mt"><div><b>' + fmt(n.kcal, 0) + '<i class="vu">kcal</i></b><small>enerji</small></div><div><b>' + fmt(n.p, 1) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(n.c, 1) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(n.f, 1) + DA.birim('g') + '</b><small>yağ</small></div></div>' +
       '<div class="small muted center mt-s">Lif ' + fmt(n.fib, 1) + ' g</div>';
   }
   function updatePreview() {
@@ -282,7 +289,9 @@
         html: (list.length ? '<div class="list">' + list.map((m) => {
           const t = menuTotals(m);
           return '<a class="li chev" href="#/menu/' + m.id + '"><span class="ic">' + DA.icon('menu') + '</span><span class="grow"><div class="t">' + esc(m.title) + '</div><div class="s">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div></span><span class="end">' + fmt(t.kcal, 0) + ' kcal</span></a>';
-        }).join('') + '</div>' : DA.emptyState('menu', 'Henüz menü yok.<br><span class="small">Aşağıdaki + ile ilk menünü oluştur.</span>')) +
+        }).join('') + '</div>' : DA.emptyState('menu', { baslik: 'Henüz menü yok',
+            aciklama: 'Öğün öğün besin ekle; enerji, makro ve mikro besin toplamları hedefinle karşılaştırılsın.',
+            eylem: { act: 'menuNew', etiket: 'İlk menüyü oluştur', ico: 'plus' } })) +
           '<button class="fab" data-act="menuNew" aria-label="Yeni menü">' + DA.icon('plus') + '</button>'
       };
     }
@@ -296,7 +305,7 @@
     const bar = (l, a, b, u) => '<div class="mt-s"><div class="row between small"><span>' + l + '</span><span><b>' + fmt(a, 0) + '</b> / ' + fmt(b, 0) + ' ' + u + '</span></div><div class="bar' + (a > b * 1.05 ? ' over' : '') + '"><i style="width:' + pct(a, b) + '%"></i></div></div>';
     const html =
       '<div class="sticky-tot">' + bar('Enerji', t.kcal, tg.kcal, 'kcal') +
-      '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + '</b><small>protein g</small></div><div><b>' + fmt(t.c, 0) + '</b><small>karb. g</small></div><div><b>' + fmt(t.f, 0) + '</b><small>yağ g</small></div><div><b>' + fmt(t.fib, 0) + '</b><small>lif g</small></div></div>' +
+      '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small></div><div><b>' + fmt(t.fib, 0) + DA.birim('g') + '</b><small>lif</small></div></div>' +
       (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
       exchangeCard(t) +
       mikroKartHtml(m) +
@@ -435,7 +444,7 @@
     if (ihtiyac && !DA.hazir(ihtiyac)) {
       DA.need(ihtiyac).then(() => { DA.foodsInvalidate(); DA.render(true); }).catch(() => {});
       return { title: 'Yazdır', back: 'ana', noRecent: true,
-        html: '<div class="card"><div class="empty">' + DA.icon('note') + '<div>Yükleniyor…</div></div></div>' };
+        html: DA.iskelet('belge', 'Çıktı hazırlanıyor') };
     }
     if (parts[0] === 'menu') {
       const m = DA.state().menus.find((x) => x.id === parts[1]);
@@ -451,12 +460,11 @@
         title: 'PDF / Paylaş', tab: 'besin', back: 'menu/' + m.id,
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
-          '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div style="color:#555;font-size:13px">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
-          '<div class="by">' + esc(DA.dyt()) + '</div>' +
+          '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div class="alt">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
           '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +
-          (m.note ? '<div style="margin-top:10px"><b>Notlar:</b><br>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +
-          '<div class="ft">' + esc(DA.dyt()) + ' · ' + esc(DA.APP) + ' — besin değerleri yaklaşık ortalamalardır. Bu liste bireysel tıbbi tavsiye yerine geçmez.</div></div>'
+          (m.note ? '<div class="blok"><h3>Notlar</h3>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +
+          DA.dipnot('besin değerleri yaklaşık ortalamalardır; bu liste bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
       };
     }
     if (parts[0] === 'staj') return DA.views._printJournal(parts.slice(1));

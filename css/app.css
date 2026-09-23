@@ -17,12 +17,15 @@
      (11,5 · 12,5 · 13,5 · 14,5 gibi ara değerler dahil); gözle seçilemeyen
      farklar tutarsızlık hissi yaratıyordu. Her kademenin kendi satır
      yüksekliği ve harf aralığı var. */
-  --t-xs:12px;   --lh-xs:1.4;   --ls-xs:.01em;   /* etiket, dipnot, tablo başlığı */
-  --t-sm:14px;   --lh-sm:1.45;  --ls-sm:0;       /* ikincil metin, rozet, düğme */
-  --t-md:16px;   --lh-md:1.5;   --ls-md:0;       /* gövde, girdi (taban) */
-  --t-lg:20px;   --lh-lg:1.3;   --ls-lg:-.01em;  /* kart başlığı, istatistik değeri */
-  --t-xl:26px;   --lh-xl:1.2;   --ls-xl:-.02em;  /* vurgulu sonuç değeri */
-  --t-xxl:34px;  --lh-xxl:1.15; --ls-xxl:-.025em;/* hero başlığı */
+  --t-xs:11px;   --lh-xs:1.4;   --ls-xs:.01em;   /* bölüm etiketi, tablo başlığı, dipnot */
+  --t-sm:13px;   --lh-sm:1.45;  --ls-sm:0;       /* ikincil metin, rozet, not, küçük düğme */
+  --t-md:15px;   --lh-md:1.5;   --ls-md:0;       /* gövde: liste başlığı, kart başlığı, düğme */
+  --t-lg:18px;   --lh-lg:1.3;   --ls-lg:-.01em;  /* ekran başlığı, istatistik değeri */
+  --t-xl:22px;   --lh-xl:1.2;   --ls-xl:-.02em;  /* vurgulu sonuç değeri */
+  --t-xxl:26px;  --lh-xxl:1.15; --ls-xxl:-.025em;/* hero başlığı */
+  /* Girdi alanları 16px'in ALTINA inemez: iOS Safari daha küçük puntolu bir
+     alana odaklanınca sayfayı yakınlaştırıyor ve düzen bozuluyor. */
+  --t-input:16px;
 
   /* Boşluk ölçeği — dikey ritim tek yerden. */
   --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px;
@@ -105,6 +108,11 @@ main{max-width:760px;margin:0 auto;padding:16px 14px 8px;outline:none}
 .hero .stat{flex:1;min-width:88px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.16);border-radius:var(--r-s);padding:9px 11px;color:#fff;text-decoration:none;display:block}
 .hero .stat b{display:block;font-size:var(--t-lg);line-height:var(--lh-lg);letter-spacing:var(--ls-lg);font-variant-numeric:tabular-nums;line-height:1.2}
 .hero .stat span{font-size:var(--t-xs);line-height:var(--lh-xs);letter-spacing:var(--ls-xs);opacity:.85;display:block;margin-top:1px}
+/* Sıfır olmayan iş yükü kutusu öne çıkar: beyaz zemin üstünde ince bir
+   renk vurgusu. Yalnız renge güvenilmesin diye sayı da kalınlaşır. */
+.hero .stat.uyari{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.42)}
+.hero .stat.uyari b{font-weight:760}
+.hero .stat.iyi{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3)}
 
 /* imza */
 .brandline{text-align:center;margin:18px 0 4px;font-size:var(--t-sm);line-height:var(--lh-sm);color:var(--mute)}
@@ -142,7 +150,7 @@ main{max-width:760px;margin:0 auto;padding:16px 14px 8px;outline:none}
 /* formlar */
 .fld{display:block;margin-bottom:12px}
 .fld>span{display:block;font-size:var(--t-sm);font-weight:600;color:var(--mute);margin-bottom:5px}
-input[type=text],input[type=search],input[type=date],input[type=number],select,textarea{width:100%;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--card-2);font-size:var(--t-md);min-height:46px;-webkit-appearance:none;appearance:none;transition:border-color .12s,box-shadow .12s}
+input[type=text],input[type=search],input[type=date],input[type=number],select,textarea{width:100%;padding:12px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--card-2);font-size:var(--t-input);min-height:46px;-webkit-appearance:none;appearance:none;transition:border-color .12s,box-shadow .12s}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23889d91' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
 textarea{min-height:96px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
@@ -242,7 +250,17 @@ input[type=checkbox], input[type=radio] { width: 24px; height: 24px; accent-colo
 .bar.over>i{background:var(--bad)}
 /* İstatistik şeridi: kutu sayısı değişken (boş değerler gösterilmiyor) */
 .macros{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;text-align:center}
-.macros b{display:block;font-size:var(--t-lg);line-height:var(--lh-lg);letter-spacing:var(--ls-lg);font-variant-numeric:tabular-nums} .macros small{display:block;color:var(--mute);font-size:11.5px}
+.macros b{display:block;font-size:var(--t-lg);line-height:var(--lh-lg);letter-spacing:var(--ls-lg);font-variant-numeric:tabular-nums}
+.macros small{display:block;color:var(--mute);font-size:var(--t-xs);line-height:var(--lh-xs);letter-spacing:var(--ls-xs)}
+
+/* Sayının yanındaki birim: "52 g" tek parça ve aynı kalınlıktaydı, göz sayıyı
+   birimin içinden ayıklamak zorunda kalıyordu. Birim küçük, soluk ve normal
+   kalınlıkta yazılır; tabular rakam kuralı birime uygulanmaz. */
+.vu{font-style:normal;font-weight:500;color:var(--mute);margin-left:3px;
+  font-size:var(--t-sm);line-height:1;letter-spacing:0;font-variant-numeric:normal;white-space:nowrap}
+.macros .vu{font-size:var(--t-xs);margin-left:2px}
+.res .vu{font-size:var(--t-sm)}
+.res.hl .vu{color:var(--pri);opacity:.72}
 .macros small.alt{font-size:var(--t-xs);line-height:var(--lh-xs);color:var(--mute);opacity:.8;margin-top:1px;line-height:1.25}
 
 /* Kilo grafiğinde hedef çizgisi */
@@ -343,22 +361,105 @@ table.t tr.on>td{background:var(--pri-soft);color:var(--ink);font-weight:650}
 /* boş durum */
 .empty{text-align:center;color:var(--mute);padding:34px 18px;font-size:var(--t-sm);line-height:var(--lh-sm)}
 .empty svg.i{width:38px;height:38px;opacity:.4;margin-bottom:10px}
+.empty .eb{font-size:var(--t-md);line-height:var(--lh-md);font-weight:650;color:var(--ink)}
+.empty .ea{margin:6px auto 0;max-width:34ch;font-size:var(--t-sm);line-height:var(--lh-sm)}
+.empty .ed{margin-top:var(--s-4)}
+.empty .ed .btn{min-width:200px}
+
+/* Yalnızca ekran okuyucu için: görünmez ama okunur. clip yerine 1px kutu
+   kullanılır; display:none olsa aria-live duyurusu hiç yapılmazdı. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---- yükleme iskeleti ----
+   Gri bloklar gelecek içeriğin yerini tutar. Parıltı hareketi bilgi taşımaz,
+   yalnızca "çalışıyor" hissi verir; bu yüzden reduced-motion açıkken durur ve
+   düz gri kalır (aşağıdaki genel kural animasyonu zaten sıfırlıyor). */
+:root{--sk-a:var(--line);--sk-b:rgba(255,255,255,.62)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--sk-b:rgba(255,255,255,.07)}}
+:root[data-theme=dark]{--sk-b:rgba(255,255,255,.07)}
+.sk{display:block;border-radius:8px;background:var(--sk-a);
+  background-image:linear-gradient(90deg,transparent 0,var(--sk-b) 50%,transparent 100%);
+  background-size:220% 100%;background-repeat:no-repeat;
+  animation:skpar 1.25s linear infinite}
+@keyframes skpar{from{background-position:-110% 0}to{background-position:110% 0}}
+.sk-t{height:12px;margin:8px 0}          /* metin çizgisi */
+.sk-t2{height:10px;opacity:.7}           /* ikincil metin çizgisi */
+.sk-v{height:24px;margin:10px 0;width:46%;border-radius:10px}  /* vurgulu değer */
+.sk-in{height:44px;border-radius:var(--r-s)}                    /* girdi alanı */
+.sk-ico{width:38px;height:38px;border-radius:11px;flex:none}
+.sk-gr{height:150px;border-radius:var(--r-s);margin-top:var(--s-2)}
+.skr{margin-bottom:var(--s-3)}
+.skr:last-child{margin-bottom:0}
+.skr .sk-t+.sk-t{display:inline-block;margin-left:var(--s-3)}
+.skli{display:flex;align-items:center;gap:var(--s-3);padding:12px 14px;border-bottom:1px solid var(--line)}
+.skli:last-child{border-bottom:0}
+.skli>span:last-child{flex:1}
+.skli .sk-t{margin:5px 0}
+@media (prefers-reduced-motion:reduce){.sk{background-image:none}}
 
 /* yazdırma görünümü */
-.printdoc{background:#fff;color:#000;padding:20px;border-radius:var(--r);border:1px solid var(--line)}
-.printdoc h2{font-size:20px;margin-bottom:2px}
-.printdoc table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:14px}
-.printdoc th,.printdoc td{padding:6px;border-bottom:1px solid #ddd;text-align:left}
+/* ---- yazdırma / PDF çıktısı ----
+   Danışanın elinde kalan tek şey bu kâğıt; ekrandan bağımsız bir belge gibi
+   kurulur. Puntolar bilerek pt cinsinden ve token dışıdır: token ölçeği ekran
+   için px'tir, kâğıtta fiziksel birim gerekir. Renk tek başına bilgi taşımaz;
+   gri tonlu yazıcıda da ayırt edilebilsin diye kalınlık ve çizgi kullanılır. */
+.printdoc{background:#fff;color:#000;padding:20px;border-radius:var(--r);border:1px solid var(--line);
+  font-size:10.5pt;line-height:1.45}
+/* başlık kademeleri: belge adı > bölüm > satır */
+.printdoc h2{font-size:15pt;line-height:1.2;letter-spacing:-.01em;margin:0 0 2px}
+.printdoc h3{font-size:11pt;line-height:1.25;margin:0 0 4px;padding-bottom:2px;
+  border-bottom:1px solid #bbb;font-weight:700}
+.printdoc h3 .ince{font-weight:400;font-size:9pt;color:#555}
+.printdoc .alt{font-size:9.5pt;color:#555;margin-bottom:2px}   /* belge alt başlığı */
+.printdoc .sat{font-size:9.5pt}                                /* tek satırlık bilgi */
+.printdoc .blok{margin-top:12px}                               /* sayfa sonu bölünmeyecek bölüm */
+.printdoc table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:9.5pt}
+.printdoc caption{caption-side:top;text-align:left;font-weight:700;font-size:10pt;padding-bottom:4px}
+.printdoc th,.printdoc td{padding:5px 6px;text-align:left;border-bottom:1px solid #ddd}
+.printdoc thead th{border-bottom:1.4px solid #333;border-top:1.4px solid #333;
+  font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.printdoc tfoot th{border-top:1.4px solid #333;border-bottom:0;font-weight:700}
+.printdoc tbody tr:nth-child(even) td{background:#f6f6f6}   /* zebra: gri tonluda da okunur */
 .printdoc th.n,.printdoc td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.printdoc .mh{background:#eef5f0;font-weight:700}
-.printdoc .ft{font-size:11px;color:#666;margin-top:16px;border-top:1px solid #ddd;padding-top:8px}
+/* Öğün ayırıcı satır: eskiden yalnız açık yeşil zemindi, gri tonlu yazıcıda
+   kaybolurdu. Artık koyu zemin çizgisi ve üst kenarla ayrılıyor. */
+.printdoc .mh td{background:#e6e6e6;font-weight:700;border-top:1px solid #999;border-bottom:1px solid #999}
+.printdoc .ft{font-size:8pt;color:#555;margin-top:16px;border-top:1px solid #999;padding-top:6px}
 .printdoc .antet{border-bottom:2px solid #0e7a50;padding-bottom:8px;margin-bottom:14px}
-.printdoc .antet .ad{font-size:16px;font-weight:700;color:#0e7a50}
-.printdoc .antet .il{font-size:12px;color:#555;margin-top:2px}
-.printdoc .by{font-size:12.5px;color:#0e7a50;font-weight:700;margin-top:2px}
+.printdoc .antet .ad{font-size:12pt;font-weight:700;color:#0e7a50}
+.printdoc .antet .il{font-size:9pt;color:#555;margin-top:2px}
+.printdoc ul{margin:4px 0 0;padding-left:18px}
+.printdoc li{margin:1px 0}
+.printdoc svg{max-width:100%;height:auto}
+
 @media print{
-  body{background:#fff;padding:0}
-  .top,.tabs,.fab,.noprint,.toast,.sheet-wrap{display:none!important}
+  /* A4, üstte antet için biraz daha pay; altta yinelenen dipnot payı */
+  @page{size:A4;margin:14mm 13mm 20mm}
+  body{background:#fff;padding:0;color:#000}
+  .top,.tabs,.fab,.noprint,.toast,.sheet-wrap,.skel{display:none!important}
   main{padding:0;max-width:none}
-  .printdoc{border:0;padding:0}
+  /* Zebra ve öğün zemini yazıcıda da basılsın; yoksa satırlar birbirine girer. */
+  .printdoc{border:0;padding:0;border-radius:0;font-size:10pt;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* Sayfa sonu denetimi: başlık kendi bölümünden kopmaz, satırlar ortadan
+     bölünmez, tablo başlığı her sayfada yinelenir. */
+  .printdoc h2,.printdoc h3{break-after:avoid;page-break-after:avoid}
+  .printdoc .blok{break-inside:avoid;page-break-inside:avoid}
+  .printdoc tr,.printdoc .li{break-inside:avoid;page-break-inside:avoid}
+  .printdoc thead{display:table-header-group}
+  .printdoc tfoot{display:table-footer-group}
+  .printdoc .antet{break-after:avoid;page-break-after:avoid}
+  /* Dipnot akışta, belgenin sonunda kalır ve ortadan bölünmez.
+     Her sayfaya yinelenen bir dipnot position:fixed ile denendi; tarayıcı
+     bunu her sayfanın içerik alanının dibine koyuyor ve oradaki metnin
+     üstüne biniyor. Sayfa numarası ile tarih zaten tarayıcının kendi
+     yazdırma altlığından geliyor: CSS'ten sayfa numarası üretmek mümkün
+     değil, @page margin box'ları desteklenmiyor. */
+  .printdoc .ft{break-inside:avoid;page-break-inside:avoid}
+  /* Bağlantı adresleri kâğıtta anlamsız; metin siyah ve düz kalır. */
+  .printdoc a{color:#000;text-decoration:none}
+  h1,h2,h3{orphans:3;widows:3}
+  p,.printdoc .sat{orphans:2;widows:2}
+}
 }

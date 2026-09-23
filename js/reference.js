@@ -6,7 +6,8 @@
   function listHtml(openId) {
     const s = DA.trLower(q);
     const items = DA.data.ref.filter((r) => !s || DA.trLower(r.t + ' ' + r.tags + ' ' + r.h.replace(/<[^>]+>/g, ' ')).includes(s));
-    if (!items.length) return DA.emptyState('search', 'Sonuç yok.');
+    if (!items.length) return DA.emptyState('search', { baslik: 'Sonuç yok',
+      aciklama: 'Farklı bir terim dene: besin ögesi adı (demir, lif), hastalık (diyabet) ya da kısaltma (PRI, UL) arayabilirsin.' });
     return items.map((r) => '<details class="acc"' + (s || r.id === openId ? ' open' : '') + '><summary>' + esc(r.t) + '</summary><div class="body">' + r.h + '</div></details>').join('');
   }
   DA.live.refSearch = (el) => { q = el.value; DA.$('#refList').innerHTML = listHtml(); };

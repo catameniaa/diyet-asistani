@@ -462,6 +462,10 @@ function ornekDurum(tema) {
     DA.save();
     location.hash = 'danisan/h'; DA.render(false);
     const t = document.querySelector('#app').textContent;
+    /* İstatistik kutusunu etiketinden bulur; değer+birim metnini döndürür. */
+    const kutuEl = (etiket) => Array.from(document.querySelectorAll('.macros > div'))
+      .find((d) => { const s2 = d.querySelector('small'); return s2 && s2.textContent.trim() === etiket; }) || null;
+    const kutu = (etiket) => { const d = kutuEl(etiket); return d ? d.querySelector('b').textContent.trim() : null; };
     const hc = document.querySelector('.chart .hedef');
     /* Çizginin var olması yetmez: ölçek hedefi kapsamazsa çizgi görünür
        alanın dışına düşer. viewBox 0..150 içinde olmalı. */
@@ -470,8 +474,11 @@ function ornekDurum(tema) {
       cizgi: !!hc,
       cizgiIcerde: hy != null && hy > 0 && hy < 150,
       etiket: !!document.querySelector('.chart text.hedefe'),
-      hedefeKalan: t.indexOf('hedefe (kg)') >= 0,
-      bes: /hedefe \(kg\)/.test(t) && t.indexOf('-5') >= 0,   /* 65 − 70 = -5: 5 kg verilecek */
+      /* Birim artık etiketin içinde değil, sayının yanında küçük bir <i>.
+         Bu yüzden kutu yapısı üzerinden okunur: <b>değer<i>birim</i></b><small>etiket</small> */
+      hedefeKalan: kutu('hedefe') != null,
+      bes: kutu('hedefe') === '-5kg',                /* 65 − 70 = -5: 5 kg verilecek */
+      birimAyri: (() => { const d = kutuEl('hedefe'); return !!(d && d.querySelector('b > i.vu')); })(),
       ilerleme: t.indexOf('yolun %50') >= 0,          /* 75→70, hedef 65: yarısı */
       bki: t.indexOf('Normal') >= 0                   /* 70/1.65² = 25,7 → Fazla kilolu */
         || t.indexOf('Fazla kilolu') >= 0
@@ -482,6 +489,7 @@ function ornekDurum(tema) {
   uiEkle('Hedef çizgisinde etiket var', true, hedef.etiket);
   uiEkle('Hedefe kalan gösteriliyor', true, hedef.hedefeKalan);
   uiEkle('Hedefe kalan miktarı doğru', true, hedef.bes);
+  uiEkle('Birim sayıdan ayrı işaretlenmiş (i.vu)', true, hedef.birimAyri);
   uiEkle('Hedef ilerlemesi doğru hesaplanıyor', true, hedef.ilerleme);
   uiEkle('BKİ sınıfı gösteriliyor', true, hedef.bki);
 
@@ -578,6 +586,216 @@ function ornekDurum(tema) {
   uiEkle('reduced-motion açıkken ekran animasyonu kapalı', 'none', kapali.anim);
   uiEkle('reduced-motion açıkken geçişler kapalı', true, kapali.sure < 0.01);
   await azHareket.close();
+
+  /* ---- yükleme iskeleti ----
+     Tembel veri gelmeden önce ekran boş kalmasın; gelecek içeriğin kaba
+     biçimi çizilsin ve ekran okuyucuya durum metni gitsin. */
+  const isk = await sayfa.evaluate(() => {
+    /* Yüklenmiş veriyi geri al: iskelet yolunu yeniden tetiklemek için */
+    const yedek = DA.data.pal; delete DA.data.pal;
+    location.hash = 'hesapla/enerji'; DA.render(false);
+    const kap = document.querySelector('#app .skel');
+    const durum = document.querySelector('#app [role=status]');
+    const o = {
+      var: !!kap,
+      gizli: kap ? kap.getAttribute('aria-hidden') === 'true' : false,
+      /* iskelet kutuları gerçekten yer tutuyor mu — sıfır yükseklik işe yaramaz */
+      yukseklik: kap ? Math.round(kap.getBoundingClientRect().height) : 0,
+      parca: kap ? kap.querySelectorAll('.sk').length : 0,
+      girdiYuvasi: kap ? kap.querySelectorAll('.sk-in').length : 0,
+      /* Yuvanın var olması yetmez: gerçek girdi kadar yer tutmalı, yoksa veri
+         gelince düzen zıplar. Girdiler 44px yüksekliğinde. */
+      girdiYuksekligi: (() => {
+        const h = kap ? Array.from(kap.querySelectorAll('.sk-in'))
+          .map((e) => Math.round(e.getBoundingClientRect().height)) : [];
+        return h.length ? Math.min.apply(null, h) : 0;
+      })(),
+      parcaBos: kap ? Array.from(kap.querySelectorAll('.sk'))
+        .filter((e) => e.getBoundingClientRect().height < 6).length : 99,
+      metin: durum ? durum.textContent.trim() : '',
+      canli: durum ? durum.getAttribute('aria-live') : '',
+      /* iskelet metni ekranda görünmemeli (yalnız ekran okuyucu) */
+      metinGizli: durum ? durum.getBoundingClientRect().width <= 2 : false
+    };
+    if (yedek) DA.data.pal = yedek;
+    return o;
+  });
+  uiEkle('Tembel ekran iskelet gösteriyor', true, isk.var);
+  uiEkle('İskelet ekran okuyucudan saklanıyor', true, isk.gizli);
+  uiEkle('İskelet yer tutuyor (>120px)', true, isk.yukseklik > 120);
+  uiEkle('İskelet parça sayısı yeterli (>=6)', true, isk.parca >= 6);
+  uiEkle('Hesaplayıcı iskeleti girdi yuvası çiziyor', true, isk.girdiYuvasi >= 3);
+  uiEkle('İskelet girdi yuvası gerçek girdi kadar yer tutuyor', true, isk.girdiYuksekligi >= 40);
+  uiEkle('İskelette yüksekliği sıfır parça yok', 0, isk.parcaBos);
+  kosulUi('İskelette bekleme durumu duyuruluyor', /hazırlanıyor|Yükleniyor/.test(isk.metin), isk.metin);
+  uiEkle('Bekleme durumu aria-live polite', 'polite', isk.canli);
+  uiEkle('Bekleme metni gözle görünmüyor', true, isk.metinGizli);
+
+  /* ---- sayı vurgusu ---- */
+  const vur = await sayfa.evaluate(() => {
+    location.hash = 'hesapla/bki'; DA.render(false);
+    const f = document.querySelector('form[data-calc]');
+    const doldur = (ad, deger) => { const el = f.querySelector('[name=' + ad + ']'); el.value = deger; DA.live.calc(el); };
+    doldur('h', '165'); doldur('w', '70');
+    const hl = document.querySelector('#calcOut .res.hl .v');
+    const u = hl ? hl.querySelector('i.vu') : null;
+    return {
+      sonucVar: !!hl,
+      /* birim ayrı bir <i> içinde ve değerin kendisi harf içermiyor */
+      birim: u ? u.textContent.trim() : null,
+      deger: hl ? hl.firstChild.textContent.trim() : null,
+      /* birim gözle daha küçük ve daha soluk olmalı */
+      buyukluk: hl && u ? parseFloat(getComputedStyle(hl).fontSize) - parseFloat(getComputedStyle(u).fontSize) : 0,
+      kalinlik: u ? parseInt(getComputedStyle(u).fontWeight, 10) : 999
+    };
+  });
+  uiEkle('Hesap sonucu okunuyor', true, vur.sonucVar);
+  uiEkle('Birim ayrı etikete alınmış', 'kg/m²', vur.birim);
+  kosulUi('Değer yalnızca sayı', /^[0-9,.−-]+$/.test(vur.deger || ''), vur.deger);
+  uiEkle('Birim değerden küçük yazılıyor', true, vur.buyukluk >= 4);
+  uiEkle('Birim değerden ince yazılıyor', true, vur.kalinlik < 700);
+  const vurDuz = await sayfa.evaluate(() => {
+    /* Sayıyla başlamayan değer bozulmadan geçmeli */
+    return [DA.sayiVurgu('Ciddi kayıp'), DA.sayiVurgu('1850 kcal/gün'), DA.sayiVurgu('24,2'),
+      DA.sayiVurgu('%12,5'), DA.sayiVurgu('1500 – 1800 ml'),
+      /* Kaçırma hem sayısız hem birim dalından sınanır: birim dalı eskiden
+         sınanmıyordu, çünkü '<script>' sayıyla başlamadığı için düz metin
+         dalına düşüyordu. */
+      DA.sayiVurgu('<script>'), DA.sayiVurgu('5 <script>kg')];
+  });
+  uiEkle('Metin değer sarmalanmıyor', 'Ciddi kayıp', vurDuz[0]);
+  uiEkle('Birim sayıdan ayrılıyor', '1850<i class="vu">kcal/gün</i>', vurDuz[1]);
+  uiEkle('Birimsiz sayı sarmalanmıyor', '24,2', vurDuz[2]);
+  uiEkle('Yüzde işareti değerde kalıyor', '%12,5', vurDuz[3]);
+  uiEkle('Aralık tek değer sayılıyor', '1500 – 1800<i class="vu">ml</i>', vurDuz[4]);
+  kosulUi('Sayı vurgusu metin dalında HTML kaçırıyor', vurDuz[5].indexOf('<script') < 0, vurDuz[5]);
+  kosulUi('Sayı vurgusu birim dalında HTML kaçırıyor', vurDuz[6].indexOf('<script') < 0, vurDuz[6]);
+
+  /* ---- ana sayfa hero'su: envanter değil, bugünün işi ---- */
+  const kahraman = await sayfa.evaluate(() => {
+    const S = DA.state(), b = DA.today();
+    const g = (n) => { const d = new Date(b + 'T00:00'); d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10); };
+    S.clients = [
+      /* gecikmiş: 40 gün önce ölçüm, 21 günlük takip */
+      { id: 'a', name: 'A', sex: 'K', h: 165, aralik: 21, meas: [{ id: 'm', d: g(40), w: 70 }] },
+      /* Bu hafta iki ölçüm: bugün ve 6 gün önce. 7 gün önceki tam sınırda ve
+         hafta DIŞINDA (7 günlük pencere bugün dahil son 7 takvim günü, yani
+         bugün..bugün-6); 8 gün önceki de dışında. Sınır ölçümü bilerek var:
+         olmazsa bir gün kayan bir hata testten sızıp geçiyor. */
+      { id: 'b', name: 'B', sex: 'E', h: 175, aralik: 21,
+        meas: [{ id: 'm1', d: b, w: 80 }, { id: 'm2', d: g(6), w: 81 },
+          { id: 'm3', d: g(7), w: 82 }, { id: 'm4', d: g(8), w: 83 }] }
+    ];
+    DA.save();
+    location.hash = 'ana'; DA.render(false);
+    const kutu = Array.from(document.querySelectorAll('.hero .stat'));
+    return {
+      hafta: DA.sonGunOlcum(7),
+      takip: DA.takipGereken().length,
+      adet: kutu.length,
+      hepsiBaglanti: kutu.every((k) => k.tagName === 'A' && (k.getAttribute('href') || '').indexOf('#/') === 0),
+      /* dokunma hedefi: 44px kuralı */
+      enKisa: Math.min.apply(null, kutu.map((k) => Math.round(k.getBoundingClientRect().height))),
+      etiketler: kutu.map((k) => k.querySelector('span').textContent.trim()),
+      degerler: kutu.map((k) => k.querySelector('b').textContent.trim()),
+      /* İş yükü olan kutu göze çarpsın — ama hangi kutu olduğu önemli.
+         Eskiden yalnız toplam sayılıyordu; başka kutudaki vurgu testi
+         geçiriyordu. */
+      takipVurgulu: kutu[0] ? kutu[0].classList.contains('uyari') : false,
+      /* Sıfır olan kutu vurgulanmamalı: vurgu bilgi taşımalı */
+      kartVurgulu: kutu[2] ? kutu[2].classList.contains('uyari') : false,
+      kartDeger: kutu[2] ? kutu[2].querySelector('b').textContent.trim() : null
+    };
+  });
+  uiEkle('Bu hafta ölçüm sayısı doğru', 2, kahraman.hafta);
+  uiEkle('Takip bekleyen sayısı doğru', 1, kahraman.takip);
+  uiEkle('Hero üç kutu gösteriyor', 3, kahraman.adet);
+  uiEkle('Hero kutuları tıklanır bağlantı', true, kahraman.hepsiBaglanti);
+  uiEkle('Hero kutuları dokunulabilir yükseklikte', true, kahraman.enKisa >= 44);
+  uiEkle('Hero takip bekleyeni gösteriyor', '1', kahraman.degerler[0]);
+  uiEkle('Hero bu hafta ölçümü gösteriyor', '2', kahraman.degerler[1]);
+  kosulUi('Hero etiketleri envanter değil iş yükü',
+    kahraman.etiketler.join('|') === 'takip bekliyor|bu hafta ölçüm|kart günü'
+      || kahraman.etiketler.join('|') === 'takip bekliyor|bu hafta ölçüm|kart bekliyor',
+    kahraman.etiketler.join('|'));
+  uiEkle('Takip bekleyen kutusu vurgulanıyor', true, kahraman.takipVurgulu);
+  uiEkle('Sıfır olan kutu vurgulanmıyor', kahraman.kartDeger !== '0', kahraman.kartVurgulu);
+
+  /* ---- yazdırma düzeni ---- */
+  const bas = await sayfa.evaluate(() => {
+    /* Çıktının her bölümü dolu olsun: boş bırakılan bölüm hiç çizilmediği için
+       oradaki bir gerileme testten sızıp geçiyordu (notlar, kayıtlı hesaplar,
+       klinik durum bölümleri eskiden hiç uğranmamıştı). */
+    const S = DA.state();
+    S.clients.push({ id: 'p', name: 'Çıktı Testi', sex: 'K', h: 162, bdate: null,
+      aralik: 0, tags: ['dm2'], avoid: 'fıstık',
+      note: 'İlk satır\nİkinci satır',
+      calcs: [{ d: DA.today(), t: 'BKİ', s: 'BKİ: 24,2 kg/m²' }],
+      meas: [{ id: 'q1', d: '2026-01-10', w: 70, h: 162, waist: 88, fat: 32 },
+        { id: 'q2', d: '2026-03-10', w: 66, h: 162, waist: 84, fat: 30 }] });
+    DA.save();
+    location.hash = 'yazdir/danisan/p'; DA.render(false);
+    const d = document.querySelector('.printdoc');
+    if (!d) return { yok: true };
+    const tab = d.querySelector('table');
+    const ft = d.querySelector('.ft');
+    return {
+      antet: !!d.querySelector('.antet'),
+      /* Hazırlayanın adı antette ve dipnotta var; gövdede üçüncü kez tekrar etmesin */
+      adTekrari: (d.textContent.match(new RegExp(DA.dyt().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length,
+      h2: d.querySelectorAll('h2').length,
+      h3: d.querySelectorAll('h3').length,
+      /* tablo başlığı sayfa sonunda yinelenebilsin diye thead şart */
+      thead: !!(tab && tab.querySelector('thead')),
+      /* satır içi stil kalmasın; düzen sınıflardan gelsin */
+      satirIci: d.querySelectorAll('[style*="font-size"]').length,
+      blok: d.querySelectorAll('.blok').length,
+      dipnot: ft ? ft.textContent : '',
+      tarih: ft ? ft.textContent.indexOf(DA.fdate(DA.today())) >= 0 : false,
+      /* sayılar sağa yaslı ve tabular */
+      sagaYasli: !!(tab && tab.querySelector('td.n'))
+    };
+  });
+  kosulUi('Yazdırma belgesi çiziliyor', !bas.yok, JSON.stringify(bas));
+  uiEkle('Çıktıda antet var', true, bas.antet);
+  uiEkle('Hazırlayan adı çıktıda iki kez geçiyor (antet + dipnot)', 2, bas.adTekrari);
+  uiEkle('Çıktıda belge başlığı var', 1, bas.h2);
+  /* Kilo seyri, BKİ seyri, Kayıtlı hesaplar, Notlar — dördü de h3 olmalı */
+  uiEkle('Çıktıda bölüm başlıkları h3 ile', true, bas.h3 >= 4);
+  uiEkle('Çıktı tablosunda thead var', true, bas.thead);
+  uiEkle('Çıktıda satır içi punto kalmadı', 0, bas.satirIci);
+  uiEkle('Çıktı bölümleri .blok ile işaretli', true, bas.blok >= 1);
+  uiEkle('Çıktı dipnotunda tarih var', true, bas.tarih);
+  kosulUi('Dipnotta hazırlayan ve uyarı var',
+    bas.dipnot.indexOf('Diyet Asistanı') >= 0 && /tavsiye yerine geçmez/.test(bas.dipnot), bas.dipnot);
+  uiEkle('Çıktıda sayılar sağa yaslı', true, bas.sagaYasli);
+  /* Yazdırma kuralları: sayfa sonu denetimi gerçekten tanımlı mı */
+  const basKural = await sayfa.evaluate(() => {
+    const bul = (secici, ozellik) => {
+      let v = null;
+      Array.from(document.styleSheets).forEach((ss) => {
+        let k; try { k = ss.cssRules; } catch (e) { return; }
+        Array.from(k).forEach((r) => {
+          if (r.type !== CSSRule.MEDIA_RULE || r.conditionText.indexOf('print') < 0) return;
+          Array.from(r.cssRules).forEach((x) => {
+            if (x.selectorText && x.selectorText.indexOf(secici) >= 0 && x.style[ozellik]) v = x.style[ozellik];
+          });
+        });
+      });
+      return v;
+    };
+    return {
+      baslik: bul('.printdoc h3', 'breakAfter'),
+      blok: bul('.printdoc .blok', 'breakInside'),
+      satir: bul('.printdoc tr', 'breakInside'),
+      thead: bul('.printdoc thead', 'display')
+    };
+  });
+  uiEkle('Başlık bölümünden kopmuyor', 'avoid', basKural.baslik);
+  uiEkle('Bölümler sayfa sonunda bölünmüyor', 'avoid', basKural.blok);
+  uiEkle('Tablo satırları bölünmüyor', 'avoid', basKural.satir);
+  uiEkle('Tablo başlığı her sayfada yineleniyor', 'table-header-group', basKural.thead);
 
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());

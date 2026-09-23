@@ -69,7 +69,8 @@
     const s = trLower(q).trim();
     if (s.length < 2) {
       const f = DA.favs(), r = DA.recents();
-      let h = '<div class="empty">' + icon('search') + '<div>Besin, hesaplayıcı, referans konusu, danışan ya da menü ara.</div></div>';
+      let h = DA.emptyState('search', { baslik: 'Her şeyi buradan ara',
+        aciklama: 'Besin, hesaplayıcı, referans konusu, danışan ya da menü — hepsi tek aramada.' });
       if (f.length) h += '<div class="sect">Favoriler</div><div class="chips">' + f.map((x) => '<a class="chip" href="' + esc(x.h) + '">' + esc(x.t) + '</a>').join('') + '</div>';
       if (r.length) h += '<div class="sect">Son açılanlar</div><div class="chips">' + r.map((x) => '<a class="chip" href="' + esc(x.h) + '">' + esc(x.t) + '</a>').join('') + '</div>';
       return h;

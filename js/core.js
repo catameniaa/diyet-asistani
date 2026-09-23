@@ -57,6 +57,15 @@
     return '<div class="antet"><div class="ad">' + DA.esc(DA.dyt()) + '</div>' +
       (p.iletisim ? '<div class="il">' + DA.esc(p.iletisim) + '</div>' : '') + '</div>';
   };
+  /* Yazdırma dipnotu: kim hazırladı, hangi tarihte, hangi uyarıyla.
+     Tarih çıktıda önemli — danışanın elindeki kâğıdın hangi ölçüme ait
+     olduğu aylar sonra ancak buradan anlaşılıyor. Sayfa numarasını
+     tarayıcının kendi yazdırma altlığı yazar; CSS'ten üretilemiyor. */
+  DA.dipnot = (uyari, kaynak) => '<div class="ft">' +
+    (kaynak ? 'Kaynak: ' + DA.esc(kaynak) + '<br>' : '') +
+    DA.esc(DA.dyt()) + ' · ' + DA.esc(DA.APP) + ' · ' + DA.esc(DA.fdate(DA.today())) +
+    (uyari ? ' — ' + DA.esc(uyari) : '') + '</div>';
+
   DA.THEMES = [['auto', 'Otomatik'], ['light', 'Açık'], ['dark', 'Koyu']];
   DA.theme = () => state.ui.theme || 'auto';
   DA.applyTheme = () => {
@@ -87,6 +96,24 @@
   DA.uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   DA.num = (v) => { const n = parseFloat(String(v == null ? '' : v).trim().replace(',', '.')); return isFinite(n) ? n : NaN; };
   DA.fmt = (n, d) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('tr-TR', { maximumFractionDigits: d == null ? 1 : d, useGrouping: false }) : '—';
+  /* ---- sayı vurgusu ----
+     Hesap sonuçları tek parça metindi: "1850 kcal/gün" tamamı aynı punto ve
+     kalınlıkta yazılıyor, göz sayıyı birimin içinden ayıklamak zorunda
+     kalıyordu. Burada baştaki sayı (varsa % işareti, eksi, aralık) ile
+     arkasındaki birim ayrılır; birim küçük ve soluk yazılır.
+     Sayıyla başlamayan değer ("Ciddi kayıp" gibi) olduğu gibi döner. */
+  const SAYI_RE = /^([%‰]?\s*[-−+]?\d[\d.,]*(?:\s*[–—-]\s*[-−+]?\d[\d.,]*)?)\s*(.*)$/;
+  /* Sayının yanına küçük ve soluk yazılan birim. */
+  DA.birim = (u) => '<i class="vu">' + DA.esc(u) + '</i>';
+  DA.sayiVurgu = (metin) => {
+    const t = String(metin == null ? '' : metin).trim();
+    const m = SAYI_RE.exec(t);
+    if (!m) return DA.esc(t);
+    /* birim yoksa sarmalamaya gerek yok */
+    if (!m[2]) return DA.esc(m[1]);
+    return DA.esc(m[1]) + '<i class="vu">' + DA.esc(m[2]) + '</i>';
+  };
+
   DA.today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   DA.fdate = (iso) => { if (!iso) return ''; const d = new Date(iso + 'T00:00'); return isNaN(d) ? iso : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }); };
   DA.$ = (s, r) => (r || document).querySelector(s);
@@ -395,5 +422,66 @@
   };
   DA.actions.hideUpdate = () => { const b = document.getElementById('updBar'); if (b) b.remove(); };
 
-  DA.emptyState = (icon, text) => '<div class="empty">' + DA.icon(icon) + '<div>' + text + '</div></div>';
+  /* Boş durum: ne yok, neden işe yarar, nasıl başlanır.
+     Eski imza (ikon, metin) geriye dönük çalışmaya devam eder; yeni kullanım
+     bir nesne alır: { ico, baslik, aciklama, eylem:{ act|href, etiket, ico } }. */
+  DA.emptyState = (ico, o) => {
+    if (typeof o === 'string') o = { html: o };          /* eski çağrılar */
+    o = o || {};
+    const dugme = o.eylem
+      ? (o.eylem.href
+          ? '<a class="btn" href="' + o.eylem.href + '">' + (o.eylem.ico ? DA.icon(o.eylem.ico) : '') + ' ' + DA.esc(o.eylem.etiket) + '</a>'
+          : '<button class="btn" data-act="' + o.eylem.act + '"' +
+            (o.eylem.veri ? ' ' + o.eylem.veri : '') + '>' +
+            (o.eylem.ico ? DA.icon(o.eylem.ico) : '') + ' ' + DA.esc(o.eylem.etiket) + '</button>')
+      : '';
+    return '<div class="empty">' + DA.icon(ico) +
+      (o.html ? '<div>' + o.html + '</div>'
+        : '<div class="eb">' + DA.esc(o.baslik || '') + '</div>' +
+          (o.aciklama ? '<p class="ea">' + DA.esc(o.aciklama) + '</p>' : '')) +
+      (dugme ? '<div class="ed">' + dugme + '</div>' : '') + '</div>';
+  };
+
+  /* ---- yükleme iskeleti ----
+     Tembel yüklenen ekranlar önce boş bir "Yükleniyor…" satırı gösteriyordu:
+     ekran bir an bomboş kalıyor, veri gelince yerleşim zıplıyordu. İskelet
+     gelecek içeriğin kaba biçimini aynı yükseklikte çizer, böylece göz nereye
+     bakacağını bilir ve sayfa yerinden oynamaz.
+     Ekran okuyucuya sızmaması için kapsayıcı aria-hidden; bekleme durumu
+     yanındaki aria-live bölgesinden metin olarak duyurulur. */
+  const ISKELET = {
+    /* hesaplayıcı: etiket + girdi çiftleri, ardından sonuç kartı */
+    form: () => '<div class="card">' +
+        yinele(4, '<div class="skr"><span class="sk sk-t" style="width:38%"></span><span class="sk sk-in"></span></div>') +
+      '</div><div class="card">' +
+        '<span class="sk sk-t" style="width:30%"></span>' +
+        '<span class="sk sk-v"></span>' +
+        '<span class="sk sk-t" style="width:64%"></span>' +
+      '</div>',
+    /* liste: satır başına ikon yuvası + iki metin çizgisi */
+    liste: (n) => '<div class="list">' +
+      yinele(n || 5, '<div class="skli"><span class="sk sk-ico"></span>' +
+        '<span><span class="sk sk-t" style="width:52%"></span>' +
+        '<span class="sk sk-t sk-t2" style="width:34%"></span></span></div>') + '</div>',
+    /* grafik: başlık çizgisi + çizim alanı */
+    grafik: () => '<div class="card">' +
+      '<span class="sk sk-t" style="width:44%"></span><span class="sk sk-gr"></span>' +
+      '<div class="skr mt-s"><span class="sk sk-t" style="width:28%"></span>' +
+      '<span class="sk sk-t" style="width:28%"></span></div></div>',
+    /* belge: yazdırma/paylaşma çıktısı — başlık, birkaç tablo satırı */
+    belge: () => '<div class="card">' +
+      '<span class="sk sk-v" style="width:58%"></span>' +
+      '<span class="sk sk-t" style="width:40%"></span>' +
+      yinele(6, '<div class="skr"><span class="sk sk-t" style="width:46%"></span>' +
+        '<span class="sk sk-t" style="width:18%"></span></div>') + '</div>'
+  };
+  function yinele(n, s) { let o = ''; for (let i = 0; i < n; i++) o += s; return o; }
+
+  /* tur: form | liste | grafik | belge ; mesaj ekran okuyucuya okunur */
+  DA.iskelet = (tur, mesaj, n) => {
+    const yap = ISKELET[tur] || ISKELET.liste;
+    return '<div class="sr-only" role="status" aria-live="polite">' +
+        DA.esc(mesaj || 'Yükleniyor') + '</div>' +
+      '<div class="skel" aria-hidden="true">' + yap(n) + '</div>';
+  };
 })();

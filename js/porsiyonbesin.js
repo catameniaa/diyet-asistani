@@ -38,10 +38,10 @@
     return '<div class="card">' +
       '<div class="res hl"><span class="l">Toplam enerji</span><span class="v">' + fmt(t[1], 0) +
       ' kcal<span class="sub">' + s.sepet.length + ' besin · ' + fmt(t[0], 0) + ' g</span></span></div>' +
-      '<div class="macros mt"><div><b>' + fmt(t[3], 0) + '</b><small>KH g</small></div>' +
-      '<div><b>' + fmt(t[2], 0) + '</b><small>Protein g</small></div>' +
-      '<div><b>' + fmt(t[5], 0) + '</b><small>Yağ g</small></div>' +
-      '<div><b>' + fmt(t[4], 0) + '</b><small>Lif g</small></div></div>' +
+      '<div class="macros mt"><div><b>' + fmt(t[3], 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div>' +
+      '<div><b>' + fmt(t[2], 0) + DA.birim('g') + '</b><small>protein</small></div>' +
+      '<div><b>' + fmt(t[5], 0) + DA.birim('g') + '</b><small>yağ</small></div>' +
+      '<div><b>' + fmt(t[4], 0) + DA.birim('g') + '</b><small>lif</small></div></div>' +
       '<div class="list mt">' + s.sepet.map((x, i) =>
         '<div class="li"><span class="grow"><div class="t">' + esc(x.n) + '</div>' +
         '<div class="s">' + fmt(x.k, 2) + ' porsiyon</div></span>' +
