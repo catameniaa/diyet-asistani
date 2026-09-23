@@ -51,12 +51,12 @@
   }
 
   DA.calcs.push({
-    id: 'khdagilim', title: 'Öğün başına karbonhidrat', desc: 'Günlük KH hedefini öğünlere böl, değişim ve bolus karşılığı', ico: 'drop',
+    id: 'khdagilim', title: 'Öğün başına karbonhidrat', desc: 'Günlük KH hedefini öğünlere böl, değişim ve bolus karşılığı', ico: 'split',
     view() {
       const st = S();
       return {
         title: 'Öğün başına karbonhidrat', tab: 'hesapla', back: 'hesapla', ico: 'drop',
-        fav: { h: '#/hesapla/khdagilim', t: 'Öğün başına KH', ico: 'drop' },
+        fav: { h: '#/hesapla/khdagilim', t: 'Öğün başına KH', ico: 'split' },
         html:
           '<div class="card"><div class="grid2">' +
           '<label class="fld"><span>Günlük KH hedefi (g)</span><input type="text" inputmode="numeric" name="kh" value="' +

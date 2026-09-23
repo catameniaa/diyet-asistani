@@ -58,13 +58,13 @@
   };
 
   DA.calcs.push({
-    id: 'gebe', data: ['gebe'], title: 'Gebelik ve emzirme referansları', desc: 'Ağırlık kazanımı, besin ögesi ve porsiyon önerileri', ico: 'heart',
+    id: 'gebe', data: ['gebe'], title: 'Gebelik ve emzirme referansları', desc: 'Ağırlık kazanımı, besin ögesi ve porsiyon önerileri', ico: 'pregnant',
     view() {
       const p = DA.state().profile || {};
       const bki = (p.h > 0 && p.w > 0) ? p.w / Math.pow(p.h / 100, 2) : 0;
       return {
-        title: 'Gebelik ve emzirme', tab: 'hesapla', back: 'hesapla', ico: 'heart',
-        fav: { h: '#/hesapla/gebe', t: 'Gebelik referansları', ico: 'heart' },
+        title: 'Gebelik ve emzirme', tab: 'hesapla', back: 'hesapla', ico: 'pregnant',
+        fav: { h: '#/hesapla/gebe', t: 'Gebelik referansları', ico: 'pregnant' },
         html:
           (bki ? '<div class="note">Profildeki boy ve kiloya göre BKİ <b>' + fmt(bki, 1) +
             '</b> kg/m²; aşağıdaki tabloda ilgili satır vurgulandı.</div>' : '') +

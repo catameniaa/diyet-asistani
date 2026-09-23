@@ -107,15 +107,15 @@
 
   DA.calcs.push({
     id: 'enerjiref', data: ['enerjiRef'], title: 'Enerji referans değerleri (TÜBER)',
-    desc: 'Yaş, boy persentili ve PAL’e göre Türkiye enerji gereksinimi', ico: 'heart',
+    desc: 'Yaş, boy persentili ve PAL’e göre Türkiye enerji gereksinimi', ico: 'bars',
     view() {
       const s = S(), r = R();
       const seg = (k, opts) => '<div class="seg">' + opts.map((o) =>
         '<button class="' + (s[k] === o[0] ? 'on' : '') + '" data-act="erefSet" data-' + k + '="' + o[0] + '">' +
         esc(o[1]) + '</button>').join('') + '</div>';
       return {
-        title: 'Enerji referans değerleri', tab: 'referans', back: 'referans', ico: 'heart',
-        fav: { h: '#/hesapla/enerjiref', t: 'Enerji referansı', ico: 'heart' },
+        title: 'Enerji referans değerleri', tab: 'referans', back: 'referans', ico: 'bars',
+        fav: { h: '#/hesapla/enerjiref', t: 'Enerji referansı', ico: 'bars' },
         html:
           '<div class="card">' + seg('grp', [['cocuk', 'Çocuk ve adolesan'], ['yetiskin', 'Yetişkin']]) +
           '<div class="mt-s">' + seg('sex', [['E', 'Erkek'], ['K', 'Kadın']]) + '</div></div>' +

@@ -97,15 +97,15 @@
   }
 
   DA.calcs.push({
-    id: 'istege', data: ['istege','tuber'], title: 'İsteğe bağlı besinler', desc: 'Tatlı, hamur işi, cips — 75 kkal katları ve günlük pay', ico: 'apple',
+    id: 'istege', data: ['istege','tuber'], title: 'İsteğe bağlı besinler', desc: 'Tatlı, hamur işi, cips — 75 kkal katları ve günlük pay', ico: 'treat',
     view() {
       const s = S(), O = DA.data.tuber.oruntu;
       const kcal = s.kcal || (DA.state().targets && DA.state().targets.kcal) || 1800;
       const ci = DA.oruntu.nearest(kcal);
       setTimeout(() => { const c = DA.$('.chips .chip.on'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' }); }, 0);
       return {
-        title: 'İsteğe bağlı besinler', tab: 'hesapla', back: 'hesapla', ico: 'apple',
-        fav: { h: '#/hesapla/istege', t: 'İsteğe bağlı besinler', ico: 'apple' },
+        title: 'İsteğe bağlı besinler', tab: 'hesapla', back: 'hesapla', ico: 'treat',
+        fav: { h: '#/hesapla/istege', t: 'İsteğe bağlı besinler', ico: 'treat' },
         html:
           '<div class="card"><div class="sect" style="margin-top:0">Enerji düzeyi</div><div class="chips">' +
           O.kcal.map((k, j) => '<button class="chip' + (j === ci ? ' on' : '') + '" data-act="ibKcal" data-k="' + k + '">' +

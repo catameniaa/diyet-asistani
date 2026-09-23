@@ -568,6 +568,40 @@
       kosul(G, 'Her besinde ad ve enerji var', eksik.length === 0, eksik.length + ' kayıt eksik');
     }
 
+    /* --- İkonlar --- */
+    {
+      /* Yanlış yazılmış ikon adı sessizce boş <svg> çiziyor; testin yakalaması gerek. */
+      const eksik = DA.calcs.filter((c) => c.ico && !DA.icon(c.ico).match(/<(path|circle|rect|line)/))
+        .map((c) => c.id + ' → ' + c.ico);
+      kosul(G, 'Her hesaplayıcının ikonu gerçekten tanımlı', eksik.length === 0, eksik.join(', '));
+
+      /* Aynı ikonun çok yerde kullanılması ekranları ayırt edilemez yapıyor.
+         Eskiden apple 13, heart 12, table 10 yerdeydi. */
+      const say = {};
+      DA.calcs.forEach((c) => { if (c.ico) say[c.ico] = (say[c.ico] || 0) + 1; });
+      const cok = Object.keys(say).filter((k) => say[k] > 4).map((k) => k + ' (' + say[k] + ')');
+      kosul(G, 'Hiçbir ikon 4’ten fazla hesaplayıcıda kullanılmıyor', cok.length === 0, cok.join(', '));
+
+      /* Sekme ikonları da tanımlı olmalı */
+      const sekme = ['home', 'calc', 'apple', 'users', 'book'];
+      const sEksik = sekme.filter((n) => !DA.icon(n).match(/<(path|circle|rect)/));
+      kosul(G, 'Sekme ikonları tanımlı', sEksik.length === 0, sEksik.join(', '));
+    }
+
+    /* --- Tipografi jetonları --- */
+    {
+      const kok = getComputedStyle(document.documentElement);
+      const kademe = ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'];
+      const puntolar = kademe.map((k) => parseFloat(kok.getPropertyValue('--t-' + k)));
+      kosul(G, 'Altı tipografi kademesi tanımlı', puntolar.every((v) => v > 0), puntolar.join(','));
+      kosul(G, 'Tipografi ölçeği artan', puntolar.every((v, i) => !i || v > puntolar[i - 1]), puntolar.join(','));
+      kosul(G, 'Her kademenin satır yüksekliği var',
+        kademe.every((k) => parseFloat(kok.getPropertyValue('--lh-' + k)) > 0));
+      /* Boşluk ölçeği */
+      const bosluk = [1, 2, 3, 4, 5, 6].map((n) => parseFloat(kok.getPropertyValue('--s-' + n)));
+      kosul(G, 'Boşluk ölçeği artan', bosluk.every((v, i) => v > 0 && (!i || v > bosluk[i - 1])), bosluk.join(','));
+    }
+
     /* --- Bilgi mimarisi: IA ile hesaplayıcı listesi örtüşüyor --- */
     const idler = DA.calcs.map((c) => c.id);
     kosul(G, 'Hesaplayıcı kimlikleri benzersiz', new Set(idler).size === idler.length);

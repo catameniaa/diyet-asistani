@@ -4,7 +4,7 @@
   const { fmt } = DA;
 
   DA.calcs.push({
-    id: 'khsayim', title: 'Karbonhidrat sayımı', desc: 'İ:KH oranı (500), düzeltme faktörü (1800), öğün bolusu', ico: 'calc',
+    id: 'khsayim', title: 'Karbonhidrat sayımı', desc: 'İ:KH oranı (500), düzeltme faktörü (1800), öğün bolusu', ico: 'syringe',
     fields: [
       { k: 'gtid', l: 'Günlük toplam insülin dozu (ünite)', t: 'num', ph: 'örn. 40' },
       { k: 'ikh', l: 'İ:KH oranı (hekim verdiyse; 1 Ü / … g)', t: 'num', ph: '500 kuralından hesaplanır', opt: true },

@@ -127,7 +127,7 @@
 
   /* ---- kendi başına referans ekranı ---- */
   DA.calcs.push({
-    id: 'oruntu', data: ['tuber','hedef'], title: 'Beslenme örüntüleri (TÜBER)', desc: '1000–3200 kkal için besin grubu porsiyonları', ico: 'book',
+    id: 'oruntu', data: ['tuber','hedef'], title: 'Beslenme örüntüleri (TÜBER)', desc: '1000–3200 kkal için besin grubu porsiyonları', ico: 'grid',
     view() {
       const ui = DA.state().ui;
       const kcal = num(ui.oruntuK) || (DA.state().targets && DA.state().targets.kcal) || 1800;
@@ -135,8 +135,8 @@
       /* seçili enerji düzeyi ekran dışında kalmasın */
       setTimeout(() => { const c = DA.$('.chips .chip.on'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' }); }, 0);
       return {
-        title: 'Beslenme örüntüleri', tab: 'hesapla', back: 'hesapla', ico: 'book',
-        fav: { h: '#/hesapla/oruntu', t: 'Beslenme örüntüleri', ico: 'book' },
+        title: 'Beslenme örüntüleri', tab: 'hesapla', back: 'hesapla', ico: 'grid',
+        fav: { h: '#/hesapla/oruntu', t: 'Beslenme örüntüleri', ico: 'grid' },
         html:
           '<div class="card"><div class="sect" style="margin-top:0">Enerji düzeyi</div>' +
           '<div class="chips">' +

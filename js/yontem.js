@@ -50,12 +50,12 @@
 
   DA.calcs.push({
     id: 'yontem', data: ['yontem'], title: 'Yöntem ve tanımlar',
-    desc: 'PRI, AI, EAR, RI ve UL ne demek · faktöriyel yöntem · amino asit örüntüsü', ico: 'table',
+    desc: 'PRI, AI, EAR, RI ve UL ne demek · faktöriyel yöntem · amino asit örüntüsü', ico: 'info',
     view() {
     const y = Y();
     return {
-      title: 'Yöntem ve tanımlar', tab: 'referans', back: 'referans', ico: 'table',
-      fav: { h: '#/hesapla/yontem', t: 'Yöntem ve tanımlar', ico: 'table' },
+      title: 'Yöntem ve tanımlar', tab: 'referans', back: 'referans', ico: 'info',
+      fav: { h: '#/hesapla/yontem', t: 'Yöntem ve tanımlar', ico: 'info' },
       html:
         '<div class="note">Uygulamadaki tablolarda geçen <b>PRI</b>, <b>AI</b>, <b>EAR/AR</b>, <b>RI</b> ve ' +
         '<b>UL</b> etiketlerinin ne anlama geldiği ve hangisinin ne için kullanıldığı.</div>' +

@@ -88,12 +88,12 @@
   }
 
   DA.calcs.push({
-    id: 'porsiyonbesin', data: ['porsiyonBesin'], title: 'Porsiyon besin değerleri', desc: '97 besinin standart porsiyonunda 19 besin ögesi', ico: 'apple',
+    id: 'porsiyonbesin', data: ['porsiyonBesin'], title: 'Porsiyon besin değerleri', desc: '97 besinin standart porsiyonunda 19 besin ögesi', ico: 'table',
     view() {
       const s = S();
       return {
-        title: 'Porsiyon besin değerleri', tab: 'hesapla', back: 'hesapla', ico: 'apple',
-        fav: { h: '#/hesapla/porsiyonbesin', t: 'Porsiyon besin değerleri', ico: 'apple' },
+        title: 'Porsiyon besin değerleri', tab: 'hesapla', back: 'hesapla', ico: 'table',
+        fav: { h: '#/hesapla/porsiyonbesin', t: 'Porsiyon besin değerleri', ico: 'table' },
         html:
           '<div id="pbOut">' + sepetHtml() + '</div>' +
           zeytinHtml() +

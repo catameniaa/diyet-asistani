@@ -118,7 +118,46 @@
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
     baby: '<circle cx="12" cy="8" r="4"/><path d="M4.5 21c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/><path d="M10 8h.01M14 8h.01"/>',
     drop: '<path d="M12 3s6 6.4 6 10.5A6 6 0 0 1 6 13.5C6 9.4 12 3 12 3z"/>',
-    flask: '<path d="M10 3h4M11 3v6L5.5 18A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 1.7-3L13 9V3"/><path d="M8.5 14h7"/>'
+    flask: '<path d="M10 3h4M11 3v6L5.5 18A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 1.7-3L13 9V3"/><path d="M8.5 14h7"/>',
+
+    /* --- Bölüme özgü ikonlar. Eskiden table 10, book 8, apple 13 yerde
+       kullanılıyordu; ekranlar birbirinden ayırt edilemiyordu. Aynı çizgi
+       stili (24x24 kutu, stroke, yuvarlak uç) korunuyor. --- */
+    /* antropometri */
+    scale: '<path d="M4 8h16l-2 12H6z"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1.4"/><path d="M9 12h6"/>',
+    target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>',
+    tape: '<rect x="3" y="7" width="18" height="10" rx="3"/><path d="M7 7v3M10 7v2M13 7v3M16 7v2"/><circle cx="12" cy="14" r="1.6"/>',
+    trend: '<path d="M3 7l6 6 4-4 8 8"/><path d="M21 12v5h-5"/>',
+    /* enerji */
+    flame: '<path d="M12 21c3.9 0 6.5-2.6 6.5-6 0-4.5-4.5-6.5-4-12-3 1.5-5.5 4.5-5.5 8 0 1.5.6 2.5 1 3-1.5 0-2.5-1-3-2-.6 1-1.5 2-1.5 3.5 0 3 2.6 5.5 6.5 5.5z"/>',
+    pulse: '<path d="M2 12h4l2.5-7 4 14L15.5 12H22"/>',
+    /* değişim ve karbonhidrat */
+    swap: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+    syringe: '<path d="M14 4l6 6M18 6l-9 9-4 1 1-4 9-9z"/><path d="M11 9l4 4M5.5 18.5L3 21"/>',
+    split: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5h8.5"/><path d="M12 12L6 18"/>',
+    gauge: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4.5-5"/><circle cx="12" cy="17" r="1.3"/>',
+    /* çocuk ve gebelik */
+    growth: '<path d="M4 20V4M4 20h16"/><path d="M7 16l3.5-5 3 3L20 7"/><circle cx="7" cy="16" r="1.2"/><circle cx="20" cy="7" r="1.2"/>',
+    pregnant: '<circle cx="12" cy="4.5" r="2.2"/><path d="M12 7c-2 0-3 1.5-3 3.5v3c0 3.5 1.5 4.5 1.5 7.5"/><path d="M12 10.5c3 0 4.5 1.8 4.5 4s-1.5 4-4.5 4"/>',
+    /* tarama ve risk */
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M9 10h6M9 14h6M9 18h3"/>',
+    alert: '<path d="M12 3.5L21.5 20H2.5z"/><path d="M12 10v4.5M12 17.5h.01"/>',
+    /* klinik */
+    iv: '<path d="M10 2h4v5l-2 2-2-2z"/><path d="M12 9v11"/><path d="M9 20h6"/><path d="M12 13h3"/>',
+    drip: '<rect x="8" y="2" width="8" height="8" rx="2"/><path d="M12 10v4"/><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5c0-1.6-2.5-4-2.5-4s-2.5 2.4-2.5 4A2.5 2.5 0 0 0 12 22z"/>',
+    /* spor */
+    run: '<circle cx="15" cy="4.5" r="2"/><path d="M8 21l3-5-2.5-3 1.5-5 3.5 2 2 3h3"/><path d="M8.5 8L5 10"/>',
+    sweat: '<path d="M7 3.5s4 4.3 4 7a4 4 0 0 1-8 0c0-2.7 4-7 4-7z"/><path d="M17 11s3 3.2 3 5a3 3 0 0 1-6 0c0-1.8 3-5 3-5z"/>',
+    battery: '<rect x="2.5" y="7" width="16" height="10" rx="2.5"/><path d="M21.5 11v2"/><path d="M6 11v2M9.5 11v2"/>',
+    /* referans */
+    checklist: '<path d="M4 6l1.6 1.6L8.5 4.7M4 13l1.6 1.6L8.5 11.7M4 20l1.6 1.6L8.5 18.7"/><path d="M12 6.5h8M12 13.5h8M12 20.5h8"/>',
+    grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+    bars: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="11" width="3.5" height="6" rx="1"/><rect x="13" y="7" width="3.5" height="10" rx="1"/>',
+    bowl: '<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M8 8c0-1.5 1.8-2 4-2s4 .5 4 2"/><path d="M5 20h14"/>',
+    treat: '<circle cx="12" cy="12" r="5"/><path d="M7 12L3 9.5v5L7 12z"/><path d="M17 12l4-2.5v5L17 12z"/><path d="M10.5 11h.01M13 13h.01"/>',
+    walk: '<circle cx="13" cy="4" r="2"/><path d="M11 21l1.5-6-2.5-2.5V9l3-2 2.5 3 2.5 1"/><path d="M10 13l-2 8"/>',
+    leaf: '<path d="M20 4C10 4 4 9 4 16c0 2 .8 3.4.8 3.4S9 12 20 9c0 0-1 6-6 9 8 0 6-14 6-14z"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/>'
   };
   DA.icon = (n) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[n] || '') + '</svg>';
 

@@ -85,13 +85,13 @@
   }
 
   DA.calcs.push({
-    id: 'diyabetrisk', title: 'Tip 2 diyabet risk anketi', desc: 'FINDRISC — 8 soruda 10 yıllık risk tahmini', ico: 'drop',
+    id: 'diyabetrisk', title: 'Tip 2 diyabet risk anketi', desc: 'FINDRISC — 8 soruda 10 yıllık risk tahmini', ico: 'alert',
     view() {
       const sg = suggest(), st = S();
       const eksik = Object.keys(sg).filter((k) => st[k] == null).length;
       return {
         title: 'Diyabet risk anketi', tab: 'hesapla', back: 'hesapla', ico: 'drop',
-        fav: { h: '#/hesapla/diyabetrisk', t: 'Diyabet risk anketi', ico: 'drop' },
+        fav: { h: '#/hesapla/diyabetrisk', t: 'Diyabet risk anketi', ico: 'alert' },
         html:
           (eksik ? '<button class="btn sec block mb" data-act="drAuto">' + icon('calc') +
             ' Profilden doldur (' + eksik + ' soru)</button>' : '') +

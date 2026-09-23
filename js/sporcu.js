@@ -11,7 +11,7 @@
   /* ---------------- Günlük spor beslenme planı ---------------- */
   DA.calcs.push({
     id: 'sporcu', data: ['sporcu'], title: 'Sporcu beslenme planı',
-    desc: 'Karbonhidrat, protein, yağ ve sıvı hedefleri · antrenman yüküne göre', ico: 'heart',
+    desc: 'Karbonhidrat, protein, yağ ve sıvı hedefleri · antrenman yüküne göre', ico: 'run',
     fields: [
       num_('w', 'Vücut ağırlığı (kg)'),
       { k: 'yuk', l: 'Antrenman yükü', t: 'sel', def: '2', o: () =>
@@ -90,7 +90,7 @@
   /* ---------------- Terleme oranı ve rehidrasyon ---------------- */
   DA.calcs.push({
     id: 'terleme', data: ['sporcu'], title: 'Terleme oranı ve rehidrasyon',
-    desc: 'Egzersiz öncesi/sonrası tartıdan sıvı kaybı ve yerine koyma planı', ico: 'drop',
+    desc: 'Egzersiz öncesi/sonrası tartıdan sıvı kaybı ve yerine koyma planı', ico: 'sweat',
     fields: [
       num_('w1', 'Egzersiz öncesi ağırlık (kg)'),
       num_('w2', 'Egzersiz sonrası ağırlık (kg)'),
@@ -153,7 +153,7 @@
   /* ---------------- Kullanılabilir enerji (RED-S) ---------------- */
   DA.calcs.push({
     id: 'sporke', data: ['sporcu'], title: 'Kullanılabilir enerji (RED-S)',
-    desc: 'Yağsız kütle başına kullanılabilir enerji ve düşük enerji riski', ico: 'flask',
+    desc: 'Yağsız kütle başına kullanılabilir enerji ve düşük enerji riski', ico: 'battery',
     fields: [
       num_('alim', 'Günlük enerji alımı (kcal)'),
       num_('egzersiz', 'Egzersiz için harcanan enerji (kcal)'),

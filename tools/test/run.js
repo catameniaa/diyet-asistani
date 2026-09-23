@@ -557,6 +557,28 @@ function ornekDurum(tema) {
   uiEkle('Kopyadaki değişiklik aslını bozmuyor (gram)', 50, kopya.aslindaGram);
   uiEkle('Kopyadaki ekleme aslını bozmuyor (öğün)', 0, kopya.aslindaOgle);
 
+  /* ---- Hareket ve reduced-motion ---- */
+  const hareket = await sayfa.evaluate(() => {
+    const k = getComputedStyle(document.documentElement);
+    return { sure: k.getPropertyValue('--gec').trim(),
+      appAnim: getComputedStyle(document.querySelector('#app')).animationName };
+  });
+  uiEkle('Ekran geçişi animasyonu tanımlı', 'gir', hareket.appAnim);
+  uiEkle('Geçiş süresi ölçülü (<=200ms)', true, parseFloat(hareket.sure) <= 200);
+
+  const azHareket = await tarayici.newPage({ viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce' });
+  await azHareket.goto(B, { waitUntil: 'networkidle' });
+  await azHareket.waitForTimeout(200);
+  const kapali = await azHareket.evaluate(() => {
+    const a = getComputedStyle(document.querySelector('#app'));
+    const b = getComputedStyle(document.querySelector('.btn') || document.body);
+    return { anim: a.animationName, sure: parseFloat(b.transitionDuration) };
+  });
+  uiEkle('reduced-motion açıkken ekran animasyonu kapalı', 'none', kapali.anim);
+  uiEkle('reduced-motion açıkken geçişler kapalı', true, kapali.sure < 0.01);
+  await azHareket.close();
+
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
   uiEkle('Depolama durumu raporlanıyor', true,

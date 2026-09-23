@@ -126,7 +126,7 @@
   }
 
   DA.calcs.push({
-    id: 'cocuk', data: ['growth'], title: 'Çocuk persentil (WHO)', desc: 'Ağırlık/yaş, boy/yaş, BKİ/yaş — z-skoru ve persentil', ico: 'users',
+    id: 'cocuk', data: ['growth'], title: 'Çocuk persentil (WHO)', desc: 'Ağırlık/yaş, boy/yaş, BKİ/yaş — z-skoru ve persentil', ico: 'growth',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' },
       { k: 'age', l: 'Yaş', t: 'num', ph: 'örn. 30', rng: false },

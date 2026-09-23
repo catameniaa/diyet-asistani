@@ -15,7 +15,7 @@
   ];
 
   DA.calcs.push({
-    id: 'gebelik', data: ['gebe'], title: 'Gebelik ve laktasyon', desc: 'Ek enerji, protein ve önerilen ağırlık kazanımı', ico: 'heart',
+    id: 'gebelik', data: ['gebe'], title: 'Gebelik ve laktasyon', desc: 'Ek enerji, protein ve önerilen ağırlık kazanımı', ico: 'pregnant',
     help: () => (DA.gebe ? DA.gebe.helpHtml() : ''),
     fields: [
       { k: 'durum', l: 'Durum', t: 'sel', def: 't2', o: [
@@ -65,7 +65,7 @@
     ['1.6', 'Ağır enfeksiyon (1,6)'], ['1.7', 'Yanık %30–50 (1,7)'], ['1.8', 'Yanık %50–70 (1,8)'], ['2', 'Yanık >%70 (2,0)']];
 
   DA.calcs.push({
-    id: 'stres', title: 'Stres ve aktivite faktörü', desc: 'Klinik hastada BMH × aktivite × stres, kcal/kg kontrolü', ico: 'flask',
+    id: 'stres', title: 'Stres ve aktivite faktörü', desc: 'Klinik hastada BMH × aktivite × stres, kcal/kg kontrolü', ico: 'pulse',
     fields: [
       { k: 'sex', l: 'Cinsiyet', t: 'sex' }, num_('age', 'Yaş'), num_('h', 'Boy (cm)'), num_('w', 'Kilo (kg)'),
       { k: 'akt', l: 'Aktivite', t: 'sel', def: '1.2', o: [['1.1', 'Yatak istirahati (1,1)'], ['1.2', 'Yatağa bağımlı, hareketli (1,2)'], ['1.3', 'Yatak dışı / ayaktaki hasta (1,3)']] },
@@ -151,7 +151,7 @@
 
   /* ---------- Glisemik yük ---------- */
   DA.calcs.push({
-    id: 'gy', data: ['gi'], title: 'Glisemik indeks ve yük', desc: 'GI listesinden seç ya da elle gir, porsiyonun glisemik yükü', ico: 'apple',
+    id: 'gy', data: ['gi'], title: 'Glisemik indeks ve yük', desc: 'GI listesinden seç ya da elle gir, porsiyonun glisemik yükü', ico: 'gauge',
     fields: [
       { k: 'f', l: 'Besin', t: 'sel', def: '', o: () => [['', 'Elle gir']].concat((DA.data.gi || []).map((g, i) => [String(i), g[0] + ' (GI ' + g[1] + ')'])) },
       num_('gi', 'Glisemik indeks (elle değiştirilebilir)', '', true),

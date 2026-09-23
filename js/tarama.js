@@ -84,7 +84,7 @@
   /* ---------------- NRS-2002 ---------------- */
   const NRS = {
     id: 'nrs', kisa: 'NRS-2002', t: 'NRS-2002 malnütrisyon taraması',
-    d: 'Yatan hastada beslenme riski; beslenme durumu + hastalık şiddeti + yaş', ico: 'flask',
+    d: 'Yatan hastada beslenme riski; beslenme durumu + hastalık şiddeti + yaş', ico: 'clipboard',
     ust: () => {
       const b = bkiOf();
       return '<div class="note">Önce ön tarama: BKİ &lt;20,5 · son 3 ayda kilo kaybı · son 1 haftada alımda azalma · ağır hastalık. ' +
@@ -115,7 +115,7 @@
   /* ---------------- MUST ---------------- */
   const MUST = {
     id: 'must', kisa: 'MUST', t: 'MUST malnütrisyon taraması',
-    d: 'BKİ + istemsiz kilo kaybı + akut hastalık etkisi', ico: 'flask',
+    d: 'BKİ + istemsiz kilo kaybı + akut hastalık etkisi', ico: 'clipboard',
     ust: () => {
       const b = bkiOf();
       return b ? '<div class="note ok">Profildeki BKİ <b>' + fmt(b, 1) + ' kg/m²</b> → 1. adım için ' +
@@ -140,7 +140,7 @@
   /* ---------------- MNA-SF ---------------- */
   const MNA = {
     id: 'mnasf', kisa: 'MNA-SF', t: 'MNA-SF (yaşlıda beslenme taraması)',
-    d: '65 yaş üstü için kısa beslenme değerlendirmesi, 14 puan', ico: 'flask',
+    d: '65 yaş üstü için kısa beslenme değerlendirmesi, 14 puan', ico: 'clipboard',
     ust: () => {
       const b = bkiOf(), y = yasOf();
       return '<div class="note">65 yaş ve üzeri için geliştirilmiştir.' +

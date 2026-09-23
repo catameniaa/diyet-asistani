@@ -59,12 +59,12 @@
 
   DA.calcs.push({
     id: 'vejetaryen', data: ['vejetaryen'], title: 'Vejetaryen beslenmesi',
-    desc: 'Diyet türleri, porsiyon miktarları ve dikkat edilecek besin ögeleri', ico: 'apple',
+    desc: 'Diyet türleri, porsiyon miktarları ve dikkat edilecek besin ögeleri', ico: 'leaf',
     view() {
       const v = V();
       return {
-        title: 'Vejetaryen beslenmesi', tab: 'referans', back: 'referans', ico: 'apple',
-        fav: { h: '#/hesapla/vejetaryen', t: 'Vejetaryen beslenmesi', ico: 'apple' },
+        title: 'Vejetaryen beslenmesi', tab: 'referans', back: 'referans', ico: 'leaf',
+        fav: { h: '#/hesapla/vejetaryen', t: 'Vejetaryen beslenmesi', ico: 'leaf' },
         html:
           '<div class="note ok">' + esc(v.fayda) + '</div>' +
           '<div class="sect"><span>Diyet türü</span></div>' +

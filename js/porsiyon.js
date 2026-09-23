@@ -67,7 +67,7 @@
   }
 
   DA.calcs.push({
-    id: 'porsiyon', data: ['porsiyon'], title: 'Porsiyon ölçüleri (TÜBER)', desc: '1 porsiyon ne kadar · yaşa göre kaç porsiyon', ico: 'table',
+    id: 'porsiyon', data: ['porsiyon'], title: 'Porsiyon ölçüleri (TÜBER)', desc: '1 porsiyon ne kadar · yaşa göre kaç porsiyon', ico: 'bowl',
     view(parts, q) {
       const ui = DA.state().ui;
       if (q && q.get('t')) ui.poTab = q.get('t');
@@ -82,8 +82,8 @@
       if (tab === 'yas') setTimeout(() => { const c = DA.$('.chips .chip.on'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' }); }, 0);
 
       return {
-        title: 'Porsiyon ölçüleri', tab: 'hesapla', back: 'hesapla', ico: 'table',
-        fav: { h: '#/hesapla/porsiyon', t: 'Porsiyon ölçüleri', ico: 'table' },
+        title: 'Porsiyon ölçüleri', tab: 'hesapla', back: 'hesapla', ico: 'bowl',
+        fav: { h: '#/hesapla/porsiyon', t: 'Porsiyon ölçüleri', ico: 'bowl' },
         html:
           '<div class="seg mb"><button class="' + (tab === 'yas' ? 'on' : '') + '" data-act="poTab" data-t="yas">Yaşa göre öneri</button>' +
           '<button class="' + (tab === 'olcu' ? 'on' : '') + '" data-act="poTab" data-t="olcu">Ölçüler</button></div>' +

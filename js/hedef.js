@@ -141,13 +141,13 @@
   }
 
   DA.calcs.push({
-    id: 'hedef', data: ['hedef','tuber'], title: 'Yaşa göre besin ögesi hedefleri', desc: 'TÜBER Ek 3.4 — enerji, makro ve mikro hedefleri', ico: 'book',
+    id: 'hedef', data: ['hedef','tuber'], title: 'Yaşa göre besin ögesi hedefleri', desc: 'TÜBER Ek 3.4 — enerji, makro ve mikro hedefleri', ico: 'checklist',
     view() {
       const { sex, T, i, pi } = sel();
       setTimeout(() => { const c = DA.$('.chips .chip.on'); if (c) c.scrollIntoView({ block: 'nearest', inline: 'center' }); }, 0);
       return {
-        title: 'Besin ögesi hedefleri', tab: 'hesapla', back: 'hesapla', ico: 'book',
-        fav: { h: '#/hesapla/hedef', t: 'Besin ögesi hedefleri', ico: 'book' },
+        title: 'Besin ögesi hedefleri', tab: 'hesapla', back: 'hesapla', ico: 'checklist',
+        fav: { h: '#/hesapla/hedef', t: 'Besin ögesi hedefleri', ico: 'checklist' },
         html:
           '<div class="card"><div class="seg mb">' +
           ['E', 'K'].map((s) => '<button class="' + (s === sex ? 'on' : '') + '" data-act="hdSex" data-s="' + s + '">' +

@@ -46,7 +46,7 @@
   ];
 
   DA.calcs = [
-    { id: 'enerji', data: ['pal'], title: 'Enerji ihtiyacı & makrolar', desc: 'BMH, TEH, hedef kcal, KH/protein/yağ gramı', ico: 'heart',
+    { id: 'enerji', data: ['pal'], title: 'Enerji ihtiyacı & makrolar', desc: 'BMH, TEH, hedef kcal, KH/protein/yağ gramı', ico: 'flame',
       fields: [SEX, num_('age', 'Yaş'), num_('h', 'Boy (cm)'), num_('w', 'Kilo (kg)'),
         { k: 'formula', l: 'Formül', t: 'sel', o: [['mifflin', 'Mifflin–St Jeor (önerilen)'], ['henry', 'Henry 2005 (TÜBER 2022)'], ['hb', 'Harris–Benedict (revize)'], ['katch', 'Katch–McArdle (yağ % gerekli)']], def: 'mifflin' },
         num_('fat', 'Vücut yağ % (Katch için)', '', true),
@@ -91,7 +91,7 @@
         if (hedef < low) { note = 'Hedef enerji ' + low + ' kcal altında. Klinik gözetim olmadan çok düşük enerjili plan önerilmez.'; tone = 'warn'; }
         return { rows, note, tone, actions: [{ label: 'Menü hedefi olarak kaydet', act: 'saveTargets' }] };
       } },
-    { id: 'bki', title: 'Beden kitle indeksi (BKİ)', desc: 'BKİ, sınıf ve sağlıklı kilo aralığı', ico: 'calc',
+    { id: 'bki', title: 'Beden kitle indeksi (BKİ)', desc: 'BKİ, sınıf ve sağlıklı kilo aralığı', ico: 'scale',
       fields: [num_('w', 'Kilo (kg)'), num_('h', 'Boy (cm)'), num_('age', 'Yaş (isteğe bağlı)', '', true)], req: ['w', 'h'],
       run(v) {
         const m = v.h / 100, b = v.w / (m * m), c = bmiCat(b);
@@ -102,7 +102,7 @@
           'BKİ kas kütlesini ve yağ dağılımını ayırt etmez; sporcu, yaşlı ve gebede dikkatli yorumlayın.';
         return { rows, badge: c, note, tone: 'info' };
       } },
-    { id: 'ideal', title: 'İdeal kilo', desc: 'Devine, Robinson, Miller, Hamwi + düzeltilmiş kilo', ico: 'calc',
+    { id: 'ideal', title: 'İdeal kilo', desc: 'Devine, Robinson, Miller, Hamwi + düzeltilmiş kilo', ico: 'target',
       fields: [SEX, num_('h', 'Boy (cm)'), num_('w', 'Mevcut kilo (kg, isteğe bağlı)', '', true)], req: ['h'],
       run(v) {
         const inch = v.h / 2.54, over = Math.max(0, inch - 60), E = v.sex === 'E';
@@ -115,7 +115,7 @@
         }
         return { rows, note: 'Formüller 152 cm (60 inç) üstü boy için geliştirilmiştir. Klinik kararlarda BKİ ve vücut kompozisyonu ile birlikte değerlendirin.', tone: 'info' };
       } },
-    { id: 'bel', title: 'Bel/kalça oranı & vücut yağı', desc: 'Bel-kalça oranı, bel çevresi riski, US Navy yağ %', ico: 'calc',
+    { id: 'bel', title: 'Bel/kalça oranı & vücut yağı', desc: 'Bel-kalça oranı, bel çevresi riski, US Navy yağ %', ico: 'tape',
       fields: [SEX, num_('h', 'Boy (cm)'), num_('waist', 'Bel çevresi (cm)'), num_('hip', 'Kalça çevresi (cm)', '', true), num_('neck', 'Boyun çevresi (cm, yağ % için)', '', true)], req: ['waist'],
       run(v) {
         const E = v.sex === 'E', rows = [];
@@ -134,7 +134,7 @@
         }
         return { rows, badge: wr, tone: 'info', note: 'Çevre ölçümleri standart noktalardan (bel: son kaburga ile kristal iliaka arası orta nokta; kalça: en geniş nokta) alınmalıdır.' };
       } },
-    { id: 'kilokaybi', title: 'Kilo kaybı yüzdesi', desc: 'İstemsiz kilo kaybının klinik anlamlılığı', ico: 'calc',
+    { id: 'kilokaybi', title: 'Kilo kaybı yüzdesi', desc: 'İstemsiz kilo kaybının klinik anlamlılığı', ico: 'trend',
       fields: [num_('usual', 'Olağan kilo (kg)'), num_('w', 'Şimdiki kilo (kg)'), { k: 'per', l: 'Süre', t: 'sel', o: [['w1', '1 hafta'], ['m1', '1 ay'], ['m3', '3 ay'], ['m6', '6 ay']], def: 'm1' }], req: ['usual', 'w'],
       run(v) {
         const pct = (v.usual - v.w) / v.usual * 100;
@@ -144,7 +144,7 @@
         if (pct < 0) cat = ['Kilo artışı', 'info'];
         return { rows: [R('Kilo değişimi', fmt(v.w - v.usual, 1) + ' kg'), R('Kayıp yüzdesi', '%' + fmt(pct, 1), '', true), R('Değerlendirme', cat[0])], badge: cat, tone: 'info', note: 'Ölçütler (Blackburn): anlamlı — 1 hf %1–2, 1 ay %5, 3 ay %7,5, 6 ay %10; ciddi — sırasıyla >%2, >%5, >%7,5, >%10.' };
       } },
-    { id: 'sivi', title: 'Sıvı ihtiyacı', desc: 'Yetişkin, yaşlı ve çocuk (Holliday–Segar)', ico: 'calc',
+    { id: 'sivi', title: 'Sıvı ihtiyacı', desc: 'Yetişkin, yaşlı ve çocuk (Holliday–Segar)', ico: 'drop',
       fields: [num_('w', 'Kilo (kg)'), { k: 'grp', l: 'Grup', t: 'sel', o: [['ad', 'Yetişkin (30–35 ml/kg)'], ['ya', 'Yaşlı ≥65 (25–30 ml/kg)'], ['co', 'Çocuk (Holliday–Segar)']], def: 'ad' }], req: ['w'],
       run(v) {
         let lo, hi, s = '';
@@ -152,7 +152,7 @@
         else { const r = v.grp === 'ya' ? [25, 30] : [30, 35]; lo = r[0] * v.w; hi = r[1] * v.w; }
         return { rows: [R('Günlük sıvı', lo === hi ? fmt(lo, 0) + ' ml' : fmt(lo, 0) + ' – ' + fmt(hi, 0) + ' ml', s, true), R('Bardak (200 ml)', fmt(lo / 200, 1) + (lo === hi ? '' : ' – ' + fmt(hi / 200, 1)))], note: 'Ateş, ishal, kusma, yüksek sıcaklık ve böbrek/kalp yetmezliği gibi durumlarda ihtiyaç değişir; hekimle birlikte planlayın.', tone: 'info' };
       } },
-    { id: 'enteral', title: 'Enteral beslenme hacmi', desc: 'Formül hacmi, saatlik hız, protein katkısı', ico: 'calc',
+    { id: 'enteral', title: 'Enteral beslenme hacmi', desc: 'Formül hacmi, saatlik hız, protein katkısı', ico: 'iv',
       fields: [num_('kcal', 'Hedef enerji (kcal/gün)'), num_('dens', 'Formül enerji yoğunluğu (kcal/ml)', '1'), num_('prot', 'Formül proteini (g/100 ml)', '4', true), num_('hours', 'Verilme süresi (saat/gün)', '24')], req: ['kcal'],
       run(v) {
         const dens = isFinite(v.dens) ? v.dens : 1, hours = isFinite(v.hours) ? v.hours : 24;
@@ -161,7 +161,7 @@
         rows.push(R('Serbest su (formül ~%' + fmt(dens >= 1.5 ? 76 : dens >= 1.2 ? 80 : 85, 0) + ' su)', fmt(vol * (dens >= 1.5 ? 0.76 : dens >= 1.2 ? 0.8 : 0.85), 0) + ' ml/gün', 'Toplam sıvı ihtiyacı için serbest su flushları eklenir'));
         return { rows, note: 'Başlangıç hızı ve ilerleme protokolü kurum/kılavuz ve hekim kararına göre belirlenir.', tone: 'info' };
       } },
-    { id: 'gir', title: 'Glukoz infüzyon hızı (GIR)', desc: 'Dekstroz % ve hıza göre mg/kg/dk', ico: 'calc',
+    { id: 'gir', title: 'Glukoz infüzyon hızı (GIR)', desc: 'Dekstroz % ve hıza göre mg/kg/dk', ico: 'drip',
       fields: [num_('w', 'Kilo (kg)'), num_('dex', 'Dekstroz %', '10'), num_('rate', 'Hız (ml/saat)')], req: ['w', 'dex', 'rate'],
       run(v) {
         const mgmin = v.dex * 10 * v.rate / 60, gir = mgmin / v.w, gday = v.dex * 10 * v.rate * 24 / 1000;

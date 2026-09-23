@@ -73,12 +73,12 @@
   };
 
   DA.calcs.push({
-    id: 'pal', data: ['pal'], title: 'Fiziksel aktivite düzeyi (PAL)', desc: 'Yaşam biçimi sınıflaması, Türkiye ortalamaları, egzersiz önerileri', ico: 'heart',
+    id: 'pal', data: ['pal'], title: 'Fiziksel aktivite düzeyi (PAL)', desc: 'Yaşam biçimi sınıflaması, Türkiye ortalamaları, egzersiz önerileri', ico: 'walk',
     view() {
       const p = P();
       return {
-        title: 'Fiziksel aktivite düzeyi', tab: 'hesapla', back: 'hesapla', ico: 'heart',
-        fav: { h: '#/hesapla/pal', t: 'PAL rehberi', ico: 'heart' },
+        title: 'Fiziksel aktivite düzeyi', tab: 'hesapla', back: 'hesapla', ico: 'walk',
+        fav: { h: '#/hesapla/pal', t: 'PAL rehberi', ico: 'walk' },
         html:
           '<div class="note ok">' + esc(p.esikN) + '</div>' +
           '<div class="sect"><span>Yaşam biçimi sınıflaması <span class="muted tiny">Ek 4.8.3</span></span></div>' +

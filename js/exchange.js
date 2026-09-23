@@ -230,15 +230,15 @@
 
   /* ---- görünüm ---- */
   DA.calcs.push({
-    id: 'degisim', data: ['tuber','hedef'], title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'table',
+    id: 'degisim', data: ['tuber','hedef'], title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'swap',
     view(parts, q) {
       const cid = q && q.get('c');
       const cl = cid ? (DA.state().clients || []).find((x) => x.id === cid) : null;
       S().exClient = cl ? cl.id : null;
       const T = target();
       return {
-        title: 'Değişim listesi', tab: 'hesapla', back: 'hesapla', ico: 'table',
-        fav: { h: '#/hesapla/degisim', t: 'Değişim listesi', ico: 'table' },
+        title: 'Değişim listesi', tab: 'hesapla', back: 'hesapla', ico: 'swap',
+        fav: { h: '#/hesapla/degisim', t: 'Değişim listesi', ico: 'swap' },
         back: cl ? 'danisan/' + cl.id : 'hesapla',
         html:
           (cl ? '<div class="note ok"><b>' + esc(cl.name) + '</b> için plan. ' +
