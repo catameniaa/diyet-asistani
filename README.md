@@ -29,6 +29,7 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Spor beslenmesi (TÜBER Bölüm 8.2): günlük KH/protein/yağ planı, terleme oranı ve rehidrasyon,
   kullanılabilir enerji (RED-S) taraması
 - Vejetaryen beslenmesi (TÜBER Bölüm 8.3): 7 diyet türü, porsiyon miktarları, türe göre riskli besin ögeleri
+- Besin favorileri (listenin başına alınır) ve menü kopyalama
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
 Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.

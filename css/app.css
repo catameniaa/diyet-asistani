@@ -113,6 +113,12 @@ main{max-width:760px;margin:0 auto;padding:16px 14px 8px;outline:none}
 .li{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink);min-height:54px;cursor:pointer;background:none;width:100%;text-align:left;border-left:0;border-right:0;border-top:0}
 .li:last-child{border-bottom:0}
 .li:active{background:var(--pri-soft)}
+/* Besin satırı: ad/değerler bir düğme, yıldız ayrı bir düğme */
+.li .favli{flex:1;min-width:0;border:0;background:none;color:inherit;font-family:inherit;text-align:left;padding:0;cursor:pointer;min-height:44px}
+.li .favbtn{flex:none;width:44px;height:44px;border:0;background:none;border-radius:11px;color:var(--line-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.li .favbtn.on{color:#e0a500}
+.li .favbtn:active{background:var(--pri-soft)}
+.li.fav{background:linear-gradient(90deg,var(--pri-soft) 0,transparent 40%)}
 .li .ic{width:36px;height:36px;border-radius:11px;background:var(--pri-soft);color:var(--pri);display:flex;align-items:center;justify-content:center;flex:none}
 .li .ic.warn{background:var(--warn-bg);color:var(--warn)}
 .li .t{font-weight:600;font-size:15px}

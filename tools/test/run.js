@@ -497,6 +497,66 @@ function ornekDurum(tema) {
   });
   uiEkle('Yağ yüzdesi girilmemişse kutu gösterilmiyor', false, bos.yagVar);
 
+  /* ---- Hız paketi: favoriler ve menü kopyalama ---- */
+  await sayfa.goto(B, { waitUntil: 'networkidle' });
+  await sayfa.evaluate(ornekDurum, 'light');
+  await git('#/besin', '#foodList .li');
+  const fav = await sayfa.evaluate(() => {
+    const ilkAd = () => document.querySelector('#foodList .li .t').textContent;
+    const once = ilkAd();
+    /* listenin sonlarından bir besini favorile */
+    const satirlar = document.querySelectorAll('#foodList .favbtn');
+    const hedefBtn = satirlar[satirlar.length - 1];
+    const hedefAd = hedefBtn.closest('.li').querySelector('.t').textContent;
+    DA.actions.foodFav(hedefBtn);
+    return { once, hedefAd, sonra: ilkAd(), kayitli: DA.state().ui.favFood.length,
+      yildiz: !!document.querySelector('#foodList .favbtn.on'),
+      satirVurgu: !!document.querySelector('#foodList .li.fav') };
+  });
+  uiEkle('Favorilenen besin listenin başına geçiyor', fav.hedefAd, fav.sonra);
+  uiEkle('Favori kaydediliyor', 1, fav.kayitli);
+  uiEkle('Favori yıldızı işaretli görünüyor', true, fav.yildiz);
+  uiEkle('Favori satırı vurgulanıyor', true, fav.satirVurgu);
+
+  const favCip = await sayfa.evaluate(() => {
+    DA.render(false);
+    const cips = Array.from(document.querySelectorAll('[data-act=foodCat]')).map((b) => b.dataset.c);
+    return { var: cips.indexOf('Favoriler') >= 0, yer: cips.indexOf('Favoriler') };
+  });
+  uiEkle('Favoriler kategorisi çıkıyor', true, favCip.var);
+  uiEkle('Favoriler kategorisi Tümü’nün hemen yanında', 1, favCip.yer);
+
+  const favCikar = await sayfa.evaluate(() => {
+    const b = document.querySelector('#foodList .favbtn.on');
+    DA.actions.foodFav(b);
+    return { kayitli: DA.state().ui.favFood.length,
+      cipVar: Array.from(document.querySelectorAll('[data-act=foodCat]')).some((x) => x.dataset.c === 'Favoriler') };
+  });
+  uiEkle('Favoriden çıkarılabiliyor', 0, favCikar.kayitli);
+
+  /* Menü kopyalama: derin kopya olmalı, öğünler paylaşılmamalı */
+  const kopya = await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.menus = [{ id: 'k1', title: 'Pazartesi', date: '2026-01-05', client: 'Ayşe', note: 'not',
+      target: { kcal: 1800 }, meals: { 'Kahvaltı': [{ id: 'beyaz-ekmek', g: 50 }], 'Öğle': [] } }];
+    DA.save();
+    DA.actions.menuCopy({ dataset: { m: 'k1' } });
+    const T = DA.state(), yeni = T.menus[0], eski = T.menus.find((m) => m.id === 'k1');
+    /* kopyada değişiklik aslını etkilememeli */
+    yeni.meals['Kahvaltı'][0].g = 999;
+    yeni.meals['Öğle'].push({ id: 'x', g: 1 });
+    return { adet: T.menus.length, baslik: yeni.title, ayriMi: yeni.id !== eski.id,
+      bugun: yeni.date === DA.today(), danisan: yeni.client,
+      aslindaGram: eski.meals['Kahvaltı'][0].g, aslindaOgle: eski.meals['Öğle'].length };
+  });
+  uiEkle('Menü kopyası oluşuyor', 2, kopya.adet);
+  uiEkle('Kopyanın başlığı işaretli', 'Pazartesi (kopya)', kopya.baslik);
+  uiEkle('Kopya yeni kimlik alıyor', true, kopya.ayriMi);
+  uiEkle('Kopyanın tarihi bugün', true, kopya.bugun);
+  uiEkle('Danışan bilgisi kopyalanıyor', 'Ayşe', kopya.danisan);
+  uiEkle('Kopyadaki değişiklik aslını bozmuyor (gram)', 50, kopya.aslindaGram);
+  uiEkle('Kopyadaki ekleme aslını bozmuyor (öğün)', 0, kopya.aslindaOgle);
+
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
   uiEkle('Depolama durumu raporlanıyor', true,

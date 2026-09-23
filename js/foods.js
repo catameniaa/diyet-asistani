@@ -137,11 +137,39 @@
   let cat = 'Tümü', query = '';
   function foodListHtml() {
     const q = DA.trLower(query);
-    const items = allFoods().filter((f) => (cat === 'Tümü' || f.cat === cat || (cat === 'Eklediklerim' && f.custom)) && (!q || DA.trLower(f.n).includes(q)));
-    if (!items.length) return DA.emptyState('search', 'Besin bulunamadı.<br><span class="small">Sağ üstteki + ile kendi besinini ekleyebilirsin.</span>');
-    return '<div class="list">' + items.map((f) =>
-      '<button class="li" data-act="foodDetail" data-id="' + esc(f.id) + '"><span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">P ' + fmt(f.p, 1) + ' · K ' + fmt(f.c, 1) + ' · Y ' + fmt(f.f, 1) + ' g' + (f.por ? ' · porsiyon ' + fmt(f.por, 0) + ' g' : '') + '</div></span><span class="end"><b style="color:var(--ink)">' + fmt(f.kcal, 0) + '</b> kcal</span></button>').join('') + '</div>';
+    const fv = favs();
+    let items = allFoods().filter((f) => (cat === 'Tümü' || f.cat === cat || (cat === 'Eklediklerim' && f.custom) ||
+      (cat === 'Favoriler' && fv.indexOf(f.id) >= 0)) && (!q || DA.trLower(f.n).includes(q)));
+    if (cat === 'Favoriler') items = items.filter((f) => fv.indexOf(f.id) >= 0);
+    /* Favoriler listenin başında; kendi aralarında ad sırası korunur. */
+    else if (fv.length) items = items.slice().sort((a, b) => (fv.indexOf(b.id) >= 0) - (fv.indexOf(a.id) >= 0));
+    if (!items.length) return DA.emptyState('search', cat === 'Favoriler'
+      ? 'Henüz favori yok.<br><span class="small">Besin satırındaki yıldıza dokunarak ekle.</span>'
+      : 'Besin bulunamadı.<br><span class="small">Sağ üstteki + ile kendi besinini ekleyebilirsin.</span>');
+    return '<div class="list">' + items.map((f) => {
+      const on = fv.indexOf(f.id) >= 0;
+      return '<div class="li' + (on ? ' fav' : '') + '">' +
+        '<button class="grow favli" data-act="foodDetail" data-id="' + esc(f.id) + '">' +
+        '<div class="t">' + esc(f.n) + '</div><div class="s">P ' + fmt(f.p, 1) + ' · K ' + fmt(f.c, 1) + ' · Y ' + fmt(f.f, 1) + ' g' +
+        (f.por ? ' · porsiyon ' + fmt(f.por, 0) + ' g' : '') + '</div></button>' +
+        '<span class="end"><b style="color:var(--ink)">' + fmt(f.kcal, 0) + '</b> kcal</span>' +
+        '<button class="favbtn' + (on ? ' on' : '') + '" data-act="foodFav" data-id="' + esc(f.id) + '" ' +
+        'aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(f.n) + (on ? ' favorilerden çıkar' : ' favorilere ekle') + '">' +
+        DA.icon('star') + '</button></div>';
+    }).join('') + '</div>';
   }
+  /* Favoriler: sık kullanılan besinler her seferinde aranmasın diye
+     listenin başına alınır. Kimlikler ayarlarda değil ui altında tutulur. */
+  const favs = () => (DA.state().ui.favFood = DA.state().ui.favFood || []);
+  DA.foodFav = (id) => favs().indexOf(id) >= 0;
+  DA.actions.foodFav = (el, e) => {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    const id = el.dataset.id, f = favs(), i = f.indexOf(id);
+    if (i >= 0) f.splice(i, 1); else f.push(id);
+    DA.save();
+    const o = DA.$('#foodList'); if (o) o.innerHTML = foodListHtml(); else DA.render(true);
+  };
+
   DA.live.foodSearch = (el) => { query = el.value; DA.$('#foodList').innerHTML = foodListHtml(); };
   DA.actions.foodCat = (el) => { cat = el.dataset.c; DA.render(true); };
 
@@ -152,6 +180,7 @@
     const sira = DA.data.foodCats.filter((c) => gorulen.indexOf(c) >= 0);
     const cats = ['Tümü'].concat(sira, gorulen.filter((c) => sira.indexOf(c) < 0));
     if (DA.state().customFoods.length) cats.push('Eklediklerim');
+    if (favs().length) cats.splice(1, 0, 'Favoriler');   /* Tümü'nün hemen yanında */
     return {
       title: 'Besinler', tab: 'besin',
       html: '<a class="btn block mb" href="#/menu">' + DA.icon('menu') + ' Menü planlayıcı</a>' +
@@ -337,8 +366,13 @@
     DA.silGeriAl('Besin çıkarıldı', () => { m.meals[k].splice(i, 0, silinen); });
   };
   DA.actions.menuCopy = (el) => {
-    const S = DA.state(), m = S.menus.find((x) => x.id === el.dataset.m), c = JSON.parse(JSON.stringify(m));
-    c.id = uid(); c.title = m.title + ' (kopya)'; S.menus.unshift(c); DA.save(); DA.go('menu/' + c.id);
+    const S = DA.state(), m = S.menus.find((x) => x.id === el.dataset.m);
+    if (!m) return;
+    const c = JSON.parse(JSON.stringify(m));   /* derin kopya: öğünler paylaşılmasın */
+    c.id = uid(); c.title = m.title + ' (kopya)';
+    c.date = DA.today();                       /* kopya yeni bir gün için alınır */
+    S.menus.unshift(c); DA.save(); DA.go('menu/' + c.id);
+    DA.toast('Menü kopyalandı');
   };
   DA.actions.menuTarget = (el) => {
     const m = DA.state().menus.find((x) => x.id === el.dataset.m), t = targetOf(m);
