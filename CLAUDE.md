@@ -85,6 +85,10 @@ Ayrıntı: `tools/test/README.md`.
    değerini fixture'a koymamak, fixture'ın kod yolundan hiç geçmemesi.
 4. Testte sabit bekleme (`waitForTimeout`) kullanma; `waitForSelector` ile
    beklenen öğeyi bekle. Sabit bekleme yarış koşulu üretti, bir kez kırdı.
+5. **Çıkış kodunu maskeleme.** `node tools/test/run.js | tail -3` yazarsan
+   boru hattının çıkış kodu `tail`'in kodudur; test çökse bile 0 döner ve
+   `&& git push` çalışır. Bu bir kez oldu. Ya çıplak koş, ya `set -o
+   pipefail` kullan, ya da `echo "çıkış: $?"` ile kodu gör.
 
 ---
 
