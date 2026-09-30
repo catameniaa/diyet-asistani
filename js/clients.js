@@ -3,7 +3,10 @@
   'use strict';
   const { esc, fmt, num, uid } = DA;
   const clients = () => DA.state().clients;
-  const sortedMeas = (c) => (c.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d));
+  /* Tarihsiz ölçüm sıralamayı çökertmesin: eski ya da elle düzenlenmiş
+     veride tek bir tarihsiz kayıt ana sayfayı ve danışan listesini
+     "Bir şeyler ters gitti"ye düşürüyordu. Tarihsiz kayıt başa dizilir. */
+  const sortedMeas = (c) => DA.tarihSirali(c.meas);
   const age = (c) => {
     if (c.bdate && DA.growth) { const mo = DA.growth.months(c.bdate); if (isFinite(mo)) return Math.floor(mo / 12); }
     return c.birth ? new Date().getFullYear() - c.birth : null;
@@ -266,14 +269,14 @@
     if (!c.plan) return '<div class="card">' + DA.emptyState('swap', { baslik: 'Henüz plan yok',
       aciklama: 'Değişim listesinde grup sayılarını belirle ve bu danışana kaydet; plan burada görünsün.',
       eylem: { href: '#/hesapla/degisim?c=' + esc(c.id), etiket: 'Plan oluştur', ico: 'swap' } }) + '</div>';
-    const p = c.plan;
+    const p = c.plan, top = DA.exchange ? DA.exchange.planToplam(p) : (p.top || {});
     return '<div class="card"><div class="row between"><div><b>Değişim listesi planı</b>' +
       '<div class="muted small">' + esc(DA.fdate(p.d)) + '</div></div>' +
       '<a class="btn ghost sm" href="#/hesapla/degisim?c=' + esc(c.id) + '">Düzenle</a></div>' +
-      '<div class="macros mt"><div><b>' + fmt(p.top.kcal, 0) + '<i class="vu">kcal</i></b><small>enerji</small></div>' +
-      '<div><b>' + fmt(p.top.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div>' +
-      '<div><b>' + fmt(p.top.p, 0) + DA.birim('g') + '</b><small>protein</small></div>' +
-      '<div><b>' + fmt(p.top.f, 0) + DA.birim('g') + '</b><small>yağ</small></div></div></div>';
+      '<div class="macros mt"><div><b>' + fmt(top.kcal, 0) + '<i class="vu">kcal</i></b><small>enerji</small></div>' +
+      '<div><b>' + fmt(top.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div>' +
+      '<div><b>' + fmt(top.p, 0) + DA.birim('g') + '</b><small>protein</small></div>' +
+      '<div><b>' + fmt(top.f, 0) + DA.birim('g') + '</b><small>yağ</small></div></div></div>';
   }
 
   /* Danışan dosyasına işlenmiş hesaplar */
@@ -282,7 +285,7 @@
     if (!list.length) return '';
     /* Aynı hesabın farklı tarihleri tek grupta, eskiden yeniye, farkıyla birlikte */
     const grup = [];
-    list.sort((a, b) => a.d.localeCompare(b.d)).forEach((x) => {
+    DA.tarihSirali(list).forEach((x) => {
       let g = grup.find((y) => y.t === x.t);
       if (!g) { g = { t: x.t, ico: x.ico, k: x.k, u: x.u, kayit: [] }; grup.push(g); }
       g.kayit.push(x);

@@ -60,7 +60,7 @@
     cl.sort((a, b) => sonOlcum(b).localeCompare(sonOlcum(a)));
     return '<div class="sect">Son danışanlar</div><div class="list mb">' +
       cl.slice(0, 4).map((c) => {
-        const m = (c.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).pop();
+        const m = DA.tarihSirali(c.meas).pop();
         return '<a class="li chev" href="#/danisan/' + esc(c.id) + '"><span class="ic">' + icon('users') + '</span>' +
           '<span class="grow"><div class="t">' + esc(c.name) + '</div><div class="s">' +
           (m ? DA.fdate(m.d) + (m.w ? ' · ' + DA.fmt(m.w, 1) + ' kg' : '') : 'ölçüm yok') + '</div></span></a>';
@@ -339,6 +339,13 @@
       'Kurtarma yolu yoktur — parolayı güvenli bir yerde sakla.</div>');
   };
 
+  /* Yedek metni: dosyaya alındığı gün damgalanır. Geri yükleme ekranı
+     "Yedek tarihi"ni buradan okur. Eskiden o satır o.lastBackup'a bakıyordu;
+     tarih durumda ui.lastBackup altında durduğu için satır hiç görünmüyordu.
+     Doğru alanı okusa da bir önceki yedeğin tarihini gösterecekti, çünkü
+     dosya markBackup'tan önce yazılıyor. */
+  const yedekMetni = (bosluk) => JSON.stringify(Object.assign({}, DA.state(), { yedekTarihi: DA.today() }), null, bosluk);
+
   DA.forms.sifreliYedek = async (f) => {
     const d = DA.formData(f);
     if (!d.p1) return DA.toast('Parola gerekli');
@@ -346,14 +353,14 @@
     if (d.p1.length < 8) return DA.toast('Parola en az 8 karakter olmalı');
     DA.toast('Şifreleniyor…');
     try {
-      const zarf = await DA.sifrele(JSON.stringify(DA.state()), d.p1);
+      const zarf = await DA.sifrele(yedekMetni(), d.p1);
       const ad = 'diyet-asistani-yedek-' + DA.today() + '.sifreli.json';
       if (await dosyaVer(zarf, ad, 'application/json')) { DA.closeSheet(); markBackup(); }
     } catch (e) { DA.toast(e.message || 'Şifrelenemedi'); }
   };
 
   DA.actions.backup = async () => {
-    const json = JSON.stringify(DA.state(), null, 1), name = 'diyet-asistani-yedek-' + DA.today() + '.json';
+    const json = yedekMetni(1), name = 'diyet-asistani-yedek-' + DA.today() + '.json';
     try {
       const file = new File([json], name, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); markBackup(); return; }
@@ -414,7 +421,7 @@
           sat('Danışan', y.danisan, m.danisan) + sat('Menü', y.menu, m.menu) +
           sat('Staj kaydı', y.staj, m.staj) + sat('Eklenen besin', y.besin, m.besin) +
           '</tbody></table>' +
-          (o.lastBackup ? '<p class="muted tiny">Yedek tarihi: ' + esc(DA.fdate(String(o.lastBackup).slice(0, 10))) + '</p>' : '') +
+          (/^\d{4}-\d{2}-\d{2}$/.test(String(o.yedekTarihi || '')) ? '<p class="muted tiny">Yedek tarihi: ' + esc(DA.fdate(o.yedekTarihi)) + '</p>' : '') +
           '<button class="btn block" data-act="restoreMerge">' + icon('plus') + ' Birleştir (mevcut kayıtlar korunur)</button>' +
           '<button class="btn danger block mt-s" data-act="restoreReplace">Üzerine yaz (mevcut veriler silinir)</button>' +
           '<p class="muted tiny" style="margin-bottom:0">Birleştirmede aynı kimlikli kayıtlar atlanır; iki cihaz kullanıyorsan bunu seç.</p>');
@@ -425,6 +432,7 @@
   DA.actions.restoreReplace = () => {
     if (!_yedek) return;
     if (!confirm('Mevcut veriler bu yedekle DEĞİŞTİRİLECEK. Devam edilsin mi?')) return;
+    delete _yedek.yedekTarihi;   /* dosyanın damgası, durumun parçası değil */
     DA.replaceState(_yedek); _yedek = null; DA.closeSheet(); DA.toast('Yedek yüklendi'); DA.render(false);
   };
 

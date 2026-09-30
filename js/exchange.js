@@ -756,17 +756,18 @@
       '<td class="n">' + fmt(plan.ex[g.k] * g.c, 0) + '</td><td class="n">' + fmt(plan.ex[g.k] * g.p, 0) + '</td>' +
       '<td class="n">' + fmt(plan.ex[g.k] * g.f, 0) + '</td></tr>').join('');
     if (!rows) return '';
+    const top = planToplam(plan);
     const ogun = MEALS.map((mm) => {
       const mv = (plan.meal || {})[mm[0]] || {};
       const det = GROUPS.filter((g) => mv[g.k]).map((g) => KISA[g.k] + ' ' + numText(mv[g.k])).join(', ');
       return det ? '<div class="sat"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
     }).filter(Boolean).join('');
     return '<div class="blok"><h3>Değişim listesi planı <span class="ince">' +
-      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</span></h3>' +
+      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt((plan.hedef || {}).kcal, 0) + ' kcal</span></h3>' +
       '<table><thead><tr><th>Grup</th><th class="n">Değişim</th><th class="n">KH</th><th class="n">P</th><th class="n">Y</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody><tfoot><tr><th>Toplam</th><th></th><th class="n">' + plan.top.c + '</th>' +
-      '<th class="n">' + plan.top.p + '</th><th class="n">' + plan.top.f + '</th></tr></tfoot></table>' +
-      '<div class="sat"><b>Toplam enerji:</b> ' + plan.top.kcal + ' kcal</div>' +
+      '<tbody>' + rows + '</tbody><tfoot><tr><th>Toplam</th><th></th><th class="n">' + fmt(top.c, 0) + '</th>' +
+      '<th class="n">' + fmt(top.p, 0) + '</th><th class="n">' + fmt(top.f, 0) + '</th></tr></tfoot></table>' +
+      '<div class="sat"><b>Toplam enerji:</b> ' + fmt(top.kcal, 0) + ' kcal</div>' +
       (ogun ? '<div class="mt-s">' + ogun + '</div>' : '') + '</div>';
   };
   DA.actions.exMenu = () => {
@@ -775,5 +776,14 @@
   };
 
   /* menü planlayıcının kullanması için */
-  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals };
+  /* Kayıtlı planın toplamı. "top" alanı sonradan eklendi: eski planlarda yok
+     ya da boş; o zaman değişimlerden yeniden hesaplanır. Eskiden danışan
+     dosyası "top" yokken çöküyor, rapor da kâğıda "undefined" basıyordu. */
+  function planToplam(plan) {
+    const t = plan && plan.top;
+    if (t && isFinite(t.kcal)) return t;
+    const h = totals((plan && plan.ex) || {});
+    return { kcal: Math.round(h.kcal), c: Math.round(h.c), p: Math.round(h.p), f: Math.round(h.f) };
+  }
+  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals, planToplam: planToplam };
 })();

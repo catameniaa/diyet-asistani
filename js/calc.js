@@ -183,11 +183,11 @@
         else if (cl.bdate) p.age = new Date().getFullYear() - parseInt(cl.bdate.slice(0, 4), 10);
         else if (cl.birth) p.age = new Date().getFullYear() - cl.birth;
         if (cl.pal) p.pal = cl.pal;
-        const last = (cl.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).pop();
+        const last = DA.tarihSirali(cl.meas).pop();
         if (last && last.w) p.w = last.w;
         if (last && last.fat) p.fat = last.fat;
         if (last && last.h) p.h = last.h;
-        const bel = (cl.meas || []).slice().sort((a, b) => a.d.localeCompare(b.d)).filter((x) => x.waist).pop();
+        const bel = DA.tarihSirali(cl.meas).filter((x) => x.waist).pop();
         if (bel) p.waist = bel.waist;
         if (last && last.hip) p.hip = last.hip;
       }

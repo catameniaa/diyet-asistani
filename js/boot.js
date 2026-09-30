@@ -26,9 +26,19 @@
           });
         });
       }).catch(() => {});
+      /* Yeniden yükleme yalnız güncellemede: eski sürüm sayfayı yönetirken
+         yenisi devreye girdiğinde. İlk ziyarette de service worker sayfayı
+         sahiplenince (clients.claim) "controllerchange" geliyordu; sayfa bir
+         kez kendiliğinden yenileniyor, kullanıcının o an yazdığı kayboluyordu.
+         Test koşusunda ara sıra görülen "bağlam kayboldu" hatası da buydu. */
+      /* Önceki sahip her değişimde izlenir: ilk ziyarette açılan sayfa aynı
+         oturumda güncelleme alırsa "Yenile" yine çalışsın. */
+      let onceki = navigator.serviceWorker.controller;
       let reloaded = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (reloaded) return; reloaded = true; location.reload();
+        const guncelleme = !!onceki;
+        onceki = navigator.serviceWorker.controller;
+        if (reloaded || !guncelleme) return; reloaded = true; location.reload();
       });
     });
   }

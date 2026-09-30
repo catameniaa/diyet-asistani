@@ -227,7 +227,12 @@ input[type=checkbox], input[type=radio] { width: 24px; height: 24px; accent-colo
 .chips.wrap{flex-wrap:wrap;overflow:visible}
 .li .end.up{color:var(--warn);font-weight:700}
 .li .end.down{color:var(--ok);font-weight:700}
-.badge{display:inline-block;padding:4px 11px;border-radius:99px;font-size:var(--t-sm);font-weight:700}
+.badge{display:inline-block;padding:4px 11px;border-radius:99px;font-size:var(--t-sm);font-weight:700;max-width:100%}
+/* Uzun boşluksuz metin satır kırsın: nota yapıştırılmış bir bağlantı ya da
+   "fıstık,ceviz,badem" gibi boşluksuz liste ekranı yatayda taşırıyor,
+   çıktıda sağ kenardan kesilip kayboluyordu. Sayı hücreleri (td.n) nowrap
+   olduğu için etkilenmez. */
+#app,#sheet,.printdoc{overflow-wrap:anywhere}
 .badge.ok{background:var(--ok-bg);color:var(--ok)} .badge.warn{background:var(--warn-bg);color:var(--warn)} .badge.bad{background:var(--bad-bg);color:var(--bad)} .badge.info{background:var(--info-bg);color:var(--info)}
 .note{border-radius:var(--r-s);padding:11px 13px;font-size:var(--t-sm);line-height:var(--lh-sm);margin:10px 0;background:var(--info-bg);color:var(--info);border-left:3px solid currentColor}
 .note.warn{background:var(--warn-bg);color:var(--warn)} .note.bad{background:var(--bad-bg);color:var(--bad)} .note.ok{background:var(--ok-bg);color:var(--ok)}

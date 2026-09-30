@@ -33,34 +33,56 @@
     const t = s.replace(/[^\w-]/g, '_');
     return t || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
   }
-  function kayitlar(a) { return Array.isArray(a) ? a.filter((x) => x && typeof x === 'object') : a; }
+  const nesneMi = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+  /* Dizi olması gereken alan: dizi değilse boş dizi; içindeki nesne olmayanlar atılır. */
+  const nesneDizisi = (a) => (Array.isArray(a) ? a.filter(nesneMi) : []);
+  const metin = (x) => (x == null ? '' : String(x));
+
+  /* Kaydın şekli de denetlenir. Yapısal taramada tek bir bozuk alan (eski
+     sürümden kalan, elle düzenlenmiş ya da yarım içe aktarılmış yedek) ana
+     ekranları kilitliyordu: tarihsiz tek bir ölçüm ana sayfayı, danışan
+     listesini ve raporu "Bir şeyler ters gitti"ye düşürüyordu; öğünsüz bir
+     menü menü listesini, "top" alanı olmayan eski bir plan danışan dosyasını
+     çökertiyordu. 94 alan × 5 bozulma biçiminde 26 çökme bulundu. */
+  function danisanDenetle(c) {
+    c.id = kimlik(c.id);
+    c.name = metin(c.name);
+    c.tags = Array.isArray(c.tags) ? c.tags.map(metin) : [];
+    ['meas', 'calcs'].forEach((k) => {
+      c[k] = nesneDizisi(c[k]);
+      c[k].forEach((x) => { x.id = kimlik(x.id); });
+    });
+    c.meas.forEach((m) => { m.d = metin(m.d); });
+    if (c.plan != null) {
+      if (!nesneMi(c.plan)) delete c.plan;
+      else ['hedef', 'ex', 'meal', 'top'].forEach((k) => { if (!nesneMi(c.plan[k])) c.plan[k] = {}; });
+    }
+  }
+  function menuDenetle(m) {
+    m.id = kimlik(m.id);
+    m.title = metin(m.title);
+    if (!nesneMi(m.meals)) m.meals = {};
+    Object.keys(m.meals).forEach((k) => {
+      m.meals[k] = nesneDizisi(m.meals[k]);
+      m.meals[k].forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
+    });
+  }
   DA.veriDenetle = (o) => {
-    if (!o || typeof o !== 'object') return o;
+    if (!nesneMi(o)) return {};
     ['clients', 'menus', 'journal', 'customFoods', 'customCards'].forEach((k) => {
-      if (o[k] == null) return;
-      if (!Array.isArray(o[k])) { delete o[k]; return; }          /* varsayılan boş liste gelsin */
-      o[k] = kayitlar(o[k]);
-      o[k].forEach((x) => { x.id = kimlik(x.id); });
+      /* dizi değilse (null dahil) silinir; varsayılan boş liste gelir */
+      if (!Array.isArray(o[k])) { delete o[k]; return; }
+      o[k] = nesneDizisi(o[k]);
     });
-    (o.clients || []).forEach((c) => {
-      ['meas', 'calcs'].forEach((k) => {
-        if (!Array.isArray(c[k])) return;
-        c[k] = kayitlar(c[k]);
-        c[k].forEach((x) => { x.id = kimlik(x.id); });
-      });
-    });
-    (o.menus || []).forEach((m) => {
-      if (!m.meals || typeof m.meals !== 'object') return;
-      Object.keys(m.meals).forEach((k) => {
-        if (!Array.isArray(m.meals[k])) return;
-        m.meals[k] = kayitlar(m.meals[k]);
-        m.meals[k].forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
-      });
-    });
+    (o.clients || []).forEach(danisanDenetle);
+    (o.menus || []).forEach(menuDenetle);
+    ['journal', 'customFoods', 'customCards'].forEach((k) => (o[k] || []).forEach((x) => { x.id = kimlik(x.id); }));
+    ['cardProgress', 'targets', 'profile', 'ui'].forEach((k) => { if (o[k] != null && !nesneMi(o[k])) delete o[k]; });
     const ui = o.ui;
-    if (ui && typeof ui === 'object') {
+    if (ui) {
       ['fav', 'recent'].forEach((k) => {
-        if (Array.isArray(ui[k])) ui[k] = ui[k].filter((x) => x && typeof x.h === 'string' && ROTA.test(x.h));
+        if (ui[k] == null) return;
+        ui[k] = nesneDizisi(ui[k]).filter((x) => typeof x.h === 'string' && ROTA.test(x.h));
       });
       if (ui.exClient != null) ui.exClient = kimlik(ui.exClient);
     }
@@ -166,6 +188,13 @@
     if (!m[2]) return DA.esc(m[1]);
     return DA.esc(m[1]) + '<i class="vu">' + DA.esc(m[2]) + '</i>';
   };
+
+  /* Tarihe göre sıralama — tek yerden. Aynı sıralama beş dosyada ayrı ayrı
+     a.d.localeCompare(b.d) olarak yazılmıştı; tarihsiz tek bir kayıt ana
+     sayfayı, danışan listesini ve raporu çökertiyordu. Tarihsiz kayıt başa
+     dizilir, nesne olmayan eleman atılır. */
+  DA.tarihSirali = (dizi) => (Array.isArray(dizi) ? dizi : []).filter((x) => x && typeof x === 'object')
+    .sort((a, b) => String(a.d || '').localeCompare(String(b.d || '')));
 
   DA.today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   DA.fdate = (iso) => { if (!iso) return ''; const d = new Date(iso + 'T00:00'); return isNaN(d) ? iso : d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }); };

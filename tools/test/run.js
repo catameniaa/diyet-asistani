@@ -46,6 +46,10 @@ const ROTALAR = [
 /* ---- küçük statik sunucu ---- */
 const TIP = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png' };
+/* Güncelleme testi için: doluysa sw.js yeni bir sürüm gibi sunulur. Tarayıcı
+   service worker güncellemesini kendisi denetler; Playwright'ın route'u bu
+   isteği yakalamadığı için değişiklik sunucuda yapılır. */
+let swSurumEki = '';
 function sunucu() {
   return new Promise((ok) => {
     const s = http.createServer((req, res) => {
@@ -56,6 +60,10 @@ function sunucu() {
         res.writeHead(404); res.end('yok'); return;
       }
       res.writeHead(200, { 'Content-Type': TIP[path.extname(dosya)] || 'application/octet-stream' });
+      if (swSurumEki && p === '/sw.js') {
+        res.end(fs.readFileSync(dosya, 'utf8').replace(/const CACHE = '([^']+)'/, "const CACHE = '$1" + swSurumEki + "'"));
+        return;
+      }
       res.end(fs.readFileSync(dosya));
     });
     s.listen(PORT, '127.0.0.1', () => ok(s));
@@ -1343,6 +1351,225 @@ function ornekDurum(tema) {
   uiEkle('Birleştir: kayıtlar eklendi', true, await gv.evaluate(() => DA.state().clients.length === 2));
   uiEkle('Birleştir: hiçbir ekranda enjeksiyon yok', '', await tara(ROTA_G));
   await gv.close();
+
+  /* ---- yapısal dayanıklılık: bozuk tek bir alan ekranı kilitlememeli ----
+     Genel taramada bulundu: tarihsiz tek bir ölçüm ana sayfayı, danışan
+     listesini ve raporu "Bir şeyler ters gitti"ye düşürüyordu; öğünsüz menü
+     menü ekranlarını, "top"suz eski plan danışan dosyasını çökertiyordu.
+     Tam dolu bir durumdan her alan tek tek silinir / null / metin / sayı /
+     dizi yapılır, veri gerçek giriş yolundan (replaceState → denetim) geçer
+     ve kaydın türüne göre ilgili ekranlar çizilir. 94 alan × 5 biçimde
+     26 çökme vardı. */
+  const yp = await tarayici.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  yp.on('dialog', (d) => d.accept());
+  await yp.goto(B + '#/ana', { waitUntil: 'domcontentloaded' });
+  await yp.waitForFunction(() => window.DA && DA.state);
+  await yp.evaluate(() => DA.needAll());
+  const yapi = await yp.evaluate(() => {
+    const t = DA.today();
+    const TAM = () => ({
+      v: 1,
+      clients: [{ id: 'c1', name: 'Ayşe', sex: 'K', h: 165, bdate: '2015-03-01', birth: 2015, hedef: 60, aralik: 21, pal: '1.4', tags: ['dm2'], avoid: 'x', note: 'n',
+        meas: [{ id: 'm1', d: '2026-01-10', w: 30, h: 130, waist: 60, hip: 70, fat: 20, note: 'a' }, { id: 'm2', d: t, w: 32, h: 133 }],
+        calcs: [{ id: 'k1', d: t, t: 'BKİ', s: 'BKİ: 18', ico: 'scale', k: 'BKİ', v: 18, u: 'kg/m²' }],
+        plan: { d: t, ts: 1, hedef: { kcal: 1800, birim: 'yuzde', c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 }, meal: { kahvalti: { sutyy: 1 } }, top: { kcal: 1800, c: 225, p: 90, f: 60 } } }],
+      menus: [{ id: 'mm', title: 'Menü', date: t, client: 'Ayşe', note: 'n', target: { kcal: 1800, p: 90, c: 225, f: 60 },
+        meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50 }], 'Öğle': [{ id: 'c_o', g: 100 }] } }],
+      journal: [{ id: 'j1', d: t, type: 'Klinik', place: 'Hastane', hours: 2, title: 'Vaka', text: 'metin' }],
+      customFoods: [{ id: 'c_o', n: 'Özel', cat: 'Eklediklerim', kcal: 100, p: 5, c: 10, f: 3, fib: 1, u: [['1 porsiyon', 50]] }],
+      customCards: [{ id: 'cc1', q: 'Soru', a: 'Cevap', tag: 'x' }],
+      cardProgress: {}, targets: { kcal: 2000, p: 100, c: 250, f: 67 }, profile: { dyt: 'Dyt. X', iletisim: 'tel' },
+      ui: { fav: [{ h: '#/hesapla/bki', t: 'BKİ', ico: 'calc' }], recent: [{ h: '#/danisan/c1', t: 'Ayşe', ico: 'users' }], lastBackup: t }
+    });
+    const EKRAN = {
+      clients: ['ana', 'danisan', 'danisan/c1', 'yazdir/danisan/c1', 'yazdir/degisim/c1', 'hesapla/degisim?c=c1', 'hesapla/enerji?c=c1', 'ara'],
+      menus: ['ana', 'menu', 'menu/mm', 'yazdir/menu/mm', 'ara'],
+      journal: ['ana', 'staj', 'yazdir/staj'],
+      customFoods: ['besin', 'menu/mm', 'yazdir/menu/mm'],
+      customCards: ['ana', 'kart']
+    };
+    const yollar = [];
+    const gez = (kok, o, yol) => {
+      if (!o || typeof o !== 'object') return;
+      Object.keys(o).forEach((k) => {
+        const y = yol.concat(k); yollar.push([kok, y]);
+        if (Array.isArray(o[k])) { if (o[k].length && typeof o[k][0] === 'object') gez(kok, o[k][0], y.concat(0)); }
+        else if (o[k] && typeof o[k] === 'object') gez(kok, o[k], y);
+      });
+    };
+    const tam = TAM();
+    Object.keys(EKRAN).forEach((k) => { yollar.push([k, [k]]); gez(k, tam[k][0], [k, 0]); });
+    const BOZ = [['sil'], ['null', null], ['metin', 'x'], ['sayı', 7], ['dizi', []]];
+    const cokme = [];
+    let cizim = 0;
+    yollar.forEach(([kok, yol]) => BOZ.forEach(([ad, deger]) => {
+      const o = TAM(); let h = o;
+      for (let i = 0; i < yol.length - 1; i++) h = h[yol[i]];
+      const son = yol[yol.length - 1];
+      if (ad === 'sil') delete h[son]; else h[son] = deger;
+      try { DA.replaceState(o); } catch (e) { cokme.push(yol.join('.') + '←' + ad + ' replaceState'); return; }
+      EKRAN[kok].forEach((r) => {
+        cizim++;
+        let hata = '';
+        try { location.hash = r; DA.render(false); } catch (e) { hata = e.message; }
+        if (hata || /Bir şeyler ters gitti/.test((document.querySelector('#app') || {}).innerText || '')) cokme.push(yol.join('.') + '←' + ad + ' @' + r);
+      });
+    }));
+    return { yol: yollar.length, cizim, cokme };
+  });
+  await yp.close();
+  uiEkle('Yapısal tarama kapsamı (alan sayısı)', true, yapi.yol >= 90);
+  uiEkle('Yapısal tarama: bozuk tek alan hiçbir ekranı çökertmiyor', '', yapi.cokme.slice(0, 6).join(' | '));
+
+  /* İki katman ayrı ayrı: (1) sınır denetimi kaydın şeklini düzeltiyor mu,
+     (2) kullanım yeri denetimi atlayan bellek içi veride çökmüyor mu. Tek
+     katman sınansaydı öteki bozulduğunda testler fark etmezdi. */
+  const katman = await sayfa.evaluate(() => {
+    const o = DA.veriDenetle({ clients: [{ id: 'a', name: null, tags: 'x', meas: [{ id: 'm' }, 'çöp', null], calcs: 5,
+      plan: { ex: { sut: 1 } } }], menus: [{ id: 'b', meals: { 'Kahvaltı': 'x' } }, { id: 'c' }], journal: null, customCards: 'x' });
+    const c = o.clients[0];
+    const denetim = [c.name === '', Array.isArray(c.tags), c.meas.length === 1, c.meas[0].d === '', Array.isArray(c.calcs),
+      typeof c.plan.top === 'object' && typeof c.plan.hedef === 'object', Array.isArray(o.menus[0].meals['Kahvaltı']),
+      typeof o.menus[1].meals === 'object', !('journal' in o), !('customCards' in o)].map((x) => (x ? 1 : 0)).join('');
+    /* denetimi atlayan bellek içi veri: tarihsiz ölçüm üç elemanlı dizinin sonunda */
+    const S = DA.state();
+    S.clients = [{ id: 'bt', name: 'Tarihsiz', sex: 'K', h: 160, meas: [{ id: '1', d: '2026-01-01', w: 60 }, { id: '2', d: '2026-02-01', w: 61 }, { id: '3', w: 62 }] }];
+    const cok = [];
+    /* ana sayfa ve ön doldurma yolları ayrı sıralama kopyaları taşıyordu */
+    ['ana', 'danisan', 'danisan/bt', 'yazdir/danisan/bt', 'hesapla/enerji?c=bt', 'hesapla/bel?c=bt'].forEach((r) => {
+      try { location.hash = r; DA.render(false); } catch (e) { cok.push(r + ':' + e.message); }
+      if (/Bir şeyler ters gitti/.test(document.querySelector('#app').innerText)) cok.push(r);
+    });
+    return { denetim, cok: cok.join(' ') };
+  });
+  uiEkle('Sınır denetimi kaydın şeklini düzeltiyor (10 madde)', '1111111111', katman.denetim);
+  uiEkle('Tarihsiz ölçüm (bellekte) ekranları çökertmiyor', '', katman.cok);
+
+  /* "top" alanı olmayan eski plan: toplam değişimlerden hesaplanır — elle:
+     yarım yağlı süt 3 × 87 + et 5 × 69 + ekmek 8 × 68 = 1150 kcal;
+     KH 27 + 120 = 147 g. Eskiden dosya çöküyor, rapor "undefined" basıyordu. */
+  const eskiPlan = await sayfa.evaluate(() => {
+    const S = DA.state();
+    S.clients = [{ id: 'ep', name: 'Eski Plan', sex: 'K', h: 160, meas: [],
+      plan: { d: '2025-01-01', hedef: { kcal: 1200, c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 } } }];
+    DA.save();
+    location.hash = 'danisan/ep'; DA.render(false);
+    const kart = Array.from(document.querySelectorAll('#app .card')).find((c) => /Değişim listesi planı/.test(c.textContent));
+    location.hash = 'yazdir/danisan/ep'; DA.render(false);
+    const rapor = document.querySelector('.printdoc') ? document.querySelector('.printdoc').textContent : '';
+    return { kart: kart ? kart.textContent.replace(/\s+/g, ' ') : '', rapor };
+  });
+  kosulUi('Eski planda enerji değişimlerden hesaplanıyor', /1150\s*kcal/.test(eskiPlan.kart), eskiPlan.kart.slice(0, 120));
+  kosulUi('Eski planda KH değişimlerden hesaplanıyor', /147\s*g/.test(eskiPlan.kart), eskiPlan.kart.slice(0, 120));
+  kosulUi('Raporda "undefined" yok, toplam enerji basılıyor', !/undefined/.test(eskiPlan.rapor) && /Toplam enerji:\s*1150 kcal/.test(eskiPlan.rapor), eskiPlan.rapor.slice(0, 200));
+
+  /* ---- yedek tarihi ----
+     Geri yükleme ekranı "Yedek tarihi"ni o.lastBackup'tan okuyordu; tarih
+     durumda ui.lastBackup altında durduğu için satır hiç görünmüyordu. */
+  const yt = await tarayici.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', acceptDownloads: true });
+  yt.on('dialog', (d) => d.accept());
+  await yt.goto(B + '#/daha', { waitUntil: 'domcontentloaded' });
+  await yt.waitForFunction(() => window.DA && DA.state);
+  await yt.evaluate(() => { DA.replaceState({ clients: [{ id: 'y1', name: 'Yedekli', sex: 'K', h: 160, meas: [] }], ui: { lastBackup: '2025-01-01' } }); });
+  const indirme = yt.waitForEvent('download', { timeout: 10000 });
+  await yt.evaluate(() => { navigator.canShare = () => false; DA.actions.backup(); });
+  const yedekMetin = fs.readFileSync(await (await indirme).path(), 'utf8');
+  const yedekObje = JSON.parse(yedekMetin);
+  const yedekGunu = await yt.evaluate(() => DA.today());
+  uiEkle('Yedek dosyası alındığı günle damgalanıyor', yedekGunu, yedekObje.yedekTarihi);
+  await yt.evaluate(() => { location.hash = 'daha'; DA.render(false); });
+  await yt.setInputFiles('input[data-change=restore]', { name: 'y.json', mimeType: 'application/json', buffer: Buffer.from(yedekMetin) });
+  await yt.waitForSelector('[data-act=restoreReplace]', { timeout: 10000 });
+  const tarihMetni = await yt.evaluate(() => (document.querySelector('#sheet').textContent.match(/Yedek tarihi: ([^\n]+?)(Birleştir|$)/) || [])[1] || '');
+  uiEkle('Geri yüklemede yedek tarihi görünüyor', await yt.evaluate(() => DA.fdate(DA.today())), tarihMetni.trim());
+  await yt.click('[data-act=restoreReplace]');
+  await yt.waitForTimeout(100);
+  uiEkle('Dosya damgası duruma karışmıyor', false, await yt.evaluate(() => 'yedekTarihi' in DA.state()));
+  await yt.close();
+
+  /* ---- uzun boşluksuz metin taşmamalı (360 px telefon) ----
+     Nota yapıştırılmış bağlantı ya da "fıstık,ceviz,badem" gibi boşluksuz
+     liste danışan dosyasını yatayda taşırıyordu; çıktılarda sağ kenardan
+     kesilip kayboluyordu. Kasıtlı yatay kaydırma alanları (.chips, .scrollx)
+     sayılmaz. */
+  const ts = await tarayici.newPage({ viewport: { width: 360, height: 780 }, serviceWorkers: 'block' });
+  await ts.goto(B + '#/ana', { waitUntil: 'domcontentloaded' });
+  await ts.waitForFunction(() => window.DA && DA.state);
+  await ts.evaluate(() => DA.needAll());
+  const tasmaSonuc = await ts.evaluate(() => {
+    const S = DA.state(), t = DA.today();
+    const URL_ = 'https://www.saglik.gov.tr/TR,11588/turkiye-beslenme-rehberi-tuber-2022.html';
+    const LISTE = 'fıstık,ceviz,badem,fındık,susam,yumurta,süt,gluten,kivi';
+    const KELIME = 'Çokuzunbirkelimeboşluksuz'.repeat(8);
+    S.clients = [{ id: 'u', name: KELIME, sex: 'K', h: 160, avoid: LISTE, note: URL_, tags: ['dm2'],
+      meas: [{ id: '1', d: t, w: 60, note: URL_ }], calcs: [{ id: 'k', d: t, t: KELIME, s: URL_, k: 'BKİ', v: 20, u: 'kg/m²' }] }];
+    S.menus = [{ id: 'mu', title: KELIME, date: t, client: KELIME, note: URL_, meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50 }] } }];
+    S.journal = [{ id: 'ju', d: t, type: 'Klinik', place: KELIME, hours: 2, title: KELIME, text: URL_ }];
+    DA.save();
+    const bulgu = [];
+    ['danisan', 'danisan/u', 'menu', 'menu/mu', 'staj', 'yazdir/danisan/u', 'yazdir/menu/mu', 'yazdir/staj'].forEach((h) => {
+      location.hash = h; DA.render(false);
+      const W = document.documentElement.clientWidth, fark = document.documentElement.scrollWidth - W;
+      const tas = Array.from(document.querySelectorAll('#app *')).filter((e) => !e.closest('.chips, .scrollx') && e.getBoundingClientRect().right > W + 1);
+      if (fark > 0 || tas.length) bulgu.push(h + ':' + fark + 'px');
+    });
+    return bulgu.join(' ');
+  });
+  await ts.close();
+  uiEkle('Uzun boşluksuz metin ekranı ve çıktıyı taşırmıyor', '', tasmaSonuc);
+
+  /* ---- service worker: ilk ziyarette yenileme yok, güncellemede var ----
+     İlk ziyarette service worker sayfayı sahiplenince (clients.claim)
+     "controllerchange" geliyor, uygulama sayfayı yeniden yüklüyordu: o an
+     açık formdaki kaydedilmemiş yazı kayboluyordu (yeni danışan adı). Test
+     koşusunda ara sıra görülen "bağlam kayboldu" hatası da buydu. Yenileme
+     yalnız güncellemede, "Yenile"ye basılınca olmalı. Service worker AÇIK. */
+  {
+    const swBag = await tarayici.newContext({ viewport: { width: 390, height: 844 } });
+    const sw = await swBag.newPage();
+    let yukleme = 0; sw.on('load', () => yukleme++);
+    await sw.goto(B + '#/danisan', { waitUntil: 'load' });
+    await sw.waitForFunction(() => window.DA && DA.actions && DA.actions.clientNew);
+    await sw.waitForTimeout(300);
+    /* Yenileme ölçümün ortasında gelirse değerlendirme "bağlam kayboldu"
+       diye fırlatır; test çökmesin, ölçüm başarısız sayılsın. */
+    const guvenli = (p, varsayilan) => p.catch(() => varsayilan);
+    await guvenli(sw.evaluate(() => { DA.actions.clientNew();
+      const i = document.querySelector('#sheet input[name=name]'); i.value = 'Yeni Danışan'; i.dispatchEvent(new Event('input', { bubbles: true })); }), null);
+    /* service worker kurulup sayfayı sahiplenene kadar bekle */
+    await guvenli(sw.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }), null);
+    await sw.waitForTimeout(800);
+    await guvenli(sw.waitForFunction(() => window.DA && DA.actions, null, { timeout: 10000 }), null);
+    uiEkle('İlk ziyarette sayfa kendiliğinden yenilenmiyor', 1, yukleme);
+    uiEkle('İlk ziyarette açık formdaki yazı korunuyor', 'Yeni Danışan',
+      await guvenli(sw.evaluate(() => { const i = document.querySelector('#sheet input[name=name]'); return i ? i.value : '(form kapandı)'; }), '(sayfa yenilendi)'));
+    /* güncelleme: sw.js değişmiş gibi sunulur, "Yenile" sayfayı yenilemeli */
+    swSurumEki = '-test-guncelleme';
+    await sw.evaluate(() => { if (DA.closeSheet) DA.closeSheet(); return DA._sw && DA._sw.update(); });
+    await sw.waitForSelector('#updBar [data-act=doUpdate]', { timeout: 15000 });
+    const onceYukleme = yukleme;
+    const yenilendi = sw.waitForEvent('load', { timeout: 15000 }).catch(() => null);
+    await sw.click('#updBar [data-act=doUpdate]');
+    await yenilendi;
+    uiEkle('Güncellemede "Yenile" sayfayı yeniliyor', onceYukleme + 1, yukleme);
+    swSurumEki = '';
+    await swBag.close();
+  }
+
+  /* ---- çevrimdışı: yüklenen her dosya önbellekte ----
+     Manifestteki maskable ikon önbellek listesinde yoktu. Yeni bir veri
+     dosyası eklenip ASSETS'e yazılmayı unutulursa da burası yakalar. */
+  {
+    const oku = (f) => fs.readFileSync(path.join(KOK, f), 'utf8');
+    const swm = oku('sw.js'), html = oku('index.html'), core = oku('js/core.js'), man = oku('manifest.webmanifest');
+    const assets = new Set((swm.slice(swm.indexOf('const ASSETS'), swm.indexOf('];')).match(/'([^']+)'/g) || []).map((x) => x.slice(1, -1)));
+    const lazyBlok = core.slice(core.indexOf('DA.LAZY = {'), core.indexOf('};', core.indexOf('DA.LAZY = {')));
+    const gerek = new Set([...(html.match(/src="([^"]+)"/g) || []).map((x) => x.slice(5, -1)),
+      ...(lazyBlok.match(/'(js\/data-[\w-]+\.js)'/g) || []).map((x) => x.slice(1, -1)),
+      ...(man.match(/"src"\s*:\s*"([^"]+)"/g) || []).map((x) => x.replace(/^"src"\s*:\s*"/, '').slice(0, -1))]);
+    uiEkle('Yüklenen her dosya service worker önbelleğinde', '', [...gerek].filter((g) => !g.startsWith('http') && !assets.has(g)).join(' '));
+    uiEkle('Önbellek listesindeki her dosya diskte', '', [...assets].filter((a) => a !== './' && !fs.existsSync(path.join(KOK, a))).join(' '));
+  }
 
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
