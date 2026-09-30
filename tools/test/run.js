@@ -935,7 +935,9 @@ function ornekDurum(tema) {
   uiEkle('Kilitli 0,5 et korunuyor', 0.5, dg.kilitEt);
   uiEkle('Yarım yağlı süt seçimi korunuyor', true, dg.yyKaldi);
   uiEkle('Yarım yağlı yerine tam yağlı eklenmiyor', 0, dg.tamYagliEklenmedi);
-  uiEkle('Tam yağlı kilitliyken yarım yağlı olduğu gibi kalıyor', 1, dg.yyKilitYaninda);
+  /* Kullanıcı kararı: süt türü kilitle değişir; kilitli tam yağlı varken
+     kilitsiz yarım yağlı eklenmez. */
+  uiEkle('Tam yağlı kilitliyken yarım yağlı eklenmiyor', 0, dg.yyKilitYaninda);
   uiEkle('Yarım değişim öğünlere tam dağılıyor', 1.5, dg.ogunSut);
   uiEkle('Yarım değişimde uyuşmazlık uyarısı yok', true, dg.uyusmazlikYok);
   uiEkle('Yeni hedef sessizce yazılmıyor', '1800', dg.hedefSessizKaldi);
@@ -947,6 +949,180 @@ function ornekDurum(tema) {
   uiEkle('Elle düzeltme sonrası eski hedef önerilmiyor', true, dg.elleSonraOneriYok);
   uiEkle('Yazdırma ekrandaki planı basıyor', dg.beklenenMeyve, dg.basilanMeyve);
   uiEkle('Kaydedilmemiş plan basılırken uyarı var', true, dg.basimUyarisi);
+
+  /* ---- değişim listesi: klasik basamaklı hesap ----
+     Beklenen değerler yöntemden elle hesaplandı (TÜBER Ek 3.1.1 satırları ×
+     değişim katsayıları, sonra KH→ekmek, P→et, Y→yağ). Uygulamadan türetilmedi. */
+  await sayfa.evaluate(() => DA.need(['tuber', 'hedef']));
+  const kl = await sayfa.evaluate(() => {
+    const ui = DA.state().ui, o = {};
+    const eski = DA.toast; DA.toast = () => {};
+    ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+    const G = ui.exAlan[''];
+    const kos = (kcal, c, p, ex, kilit) => {
+      G.ex = Object.assign({}, ex || {}); G.exLock = Object.assign({}, kilit || {}); G.exT = { kcal, c, p, ts: 1 };
+      DA.actions.exAuto();
+      return Object.assign({}, G.ex);
+    };
+    const T = DA.exchange.totals;
+
+    /* 1800 kcal · KH 50 · P 20 — elle:
+       TÜBER 1800: süt 3 × 1,2 = 3,6 → 4 · sebze 2,5 × 1,5 = 3,75 → 4 ·
+       meyve 2 × 1,25 = 2,5 → 3 · y.tohum (0,5+1)/2 × 2,5 = 1,875 → 2
+       KH 225 g − (36 + 24 + 45) = 120 ÷ 15 = 8 ekmek
+       P 90 g − (24 + 8 + 4 + 16) = 38 ÷ 6 = 6,3 → 6 et
+       Y 60 g − (12 + 10 + 30) = 8 ÷ 5 = 1,6 → 2 yağ
+       Enerji 348 + 128 + 180 + 106 + 544 + 414 + 90 = 1810 kcal */
+    const a = kos(1800, 50, 20);
+    o.a = [a.sutyy, a.sut, a.sebze, a.meyve, a.tohum, a.eyg, a.et, a.yag].join(',');
+    o.aKcal = Math.round(T(a).kcal);
+    o.aUyari = G.adim.uyari.length;
+    const li = Array.from(document.querySelectorAll('#exAdim li')).map((x) => x.textContent);
+    o.adimSayisi = li.length;
+    o.adimEkmek = li.some((x) => /Ekmek = \(225 g KH hedefi − 105\) ÷ 15/.test(x));
+    o.adimEt = li.some((x) => /Et = \(90 g protein hedefi − 52\) ÷ 6/.test(x));
+    o.adimYag = li.some((x) => /Yağ = \(60 g yağ hedefi − 52\) ÷ 5/.test(x));
+    o.adimKaynak = li.length && /TÜBER Ek 3\.1\.1, 1800 kkal/.test(li[0]);
+    /* elle değişince eski adımlar gösterilmez */
+    DA.actions.exInc({ dataset: { k: 'et' } });
+    o.adimElleGizli = !document.querySelector('#exAdim li');
+
+    /* 3000 kcal · KH 55 · P 15 — elle:
+       TÜBER 3000: süt 4 · sebze 4 × 1,5 = 6 · meyve 3 × 1,25 = 3,75 → 4 · y.tohum 2
+       KH 412,5 − (36 + 36 + 60) = 280,5 ÷ 15 = 18,7 → 19
+       P 112,5 − (24 + 12 + 4 + 38) = 34,5 ÷ 6 = 5,75 → 6
+       Y 100 − (12 + 10 + 30) = 48 ÷ 5 = 9,6 → 10 · enerji 3042 kcal
+       (eski arama bu hedefte "bulunamadı" diyordu) */
+    const b = kos(3000, 55, 15);
+    o.b = [b.sutyy, b.sebze, b.meyve, b.tohum, b.eyg, b.et, b.yag].join(',');
+    o.bKcal = Math.round(T(b).kcal);
+
+    /* Kilitli et: 1800/50/20, et 3 kilitli — elle:
+       ekmek 8 · yağ (60 − 12 − 10 − 15) ÷ 5 = 4,6 → 5 · enerji 1738, fark 62 > 54
+       → ekmek + round(62 ÷ 68) = +1 → 9 · sonuç 1806 kcal */
+    const c = kos(1800, 50, 20, { et: 3 }, { et: true });
+    o.c = [c.et, c.yag, c.eyg].join(',');
+    o.cKilitAdim = Array.from(document.querySelectorAll('#exAdim li')).some((x) => /Et kilitli: 3/.test(x.textContent));
+    o.cEnerjiAdim = Array.from(document.querySelectorAll('#exAdim li')).some((x) => /Enerji düzeltmesi/.test(x.textContent));
+
+    /* Süt türü kilitle değişir; varsayılan yarım yağlı */
+    const s1 = kos(1800, 50, 20, { sut: 3 });                        /* kilitsiz tam yağlı */
+    o.sutVarsayilan = s1.sutyy + '/' + s1.sut;
+    const s2 = kos(1800, 50, 20, { sut: 2 }, { sut: true });          /* tam yağlı 2 kilitli */
+    o.sutKilitli = s2.sut + '/' + s2.sutyy;
+    const s3 = kos(1800, 50, 20, { sutyy: 0 }, { sutyy: true });      /* yarım yağlı 0'da kilitli */
+    o.sutTamaGecis = s3.sut + '/' + s3.sutyy;
+    /* tam yağlıya geçince yağ bütçesi daralır: (60 − 24 − 10 − 30) ÷ 5 = −0,8 → 0 */
+    o.sutTamYag = s3.yag;
+
+    /* Yüksek protein: 1500/45/25 — yağ %40'a çıkmadan en yakın plan + uyarı */
+    const d = kos(1500, 45, 25), td = T(d);
+    o.dYagYuzde = Math.round(td.f * 900 / td.kcal);
+    o.dEnerji = Math.abs(td.kcal - 1500) <= 50;
+    o.dUyari = G.adim.uyari.join(' | ');
+    /* 3500/55/20: eklenen yağ 0 → açık uyarı */
+    kos(3500, 55, 20);
+    o.yag0 = G.adim.uyari.join(' | ');
+
+    /* Özellik: 1000–3500 kcal, P ≤ %20 hedeflerin hepsi enerji ±%3 (en az 50)
+       ve makrolar ±3 puan içinde; P %25–30 dahil hiçbir hedef "bulunamadı"
+       demiyor ve enerji tutuyor. */
+    const oran = [[50, 20], [55, 15], [45, 20], [40, 20], [60, 15], [45, 25], [40, 30], [35, 25]];
+    const kotu = [], enerjiKotu = []; let sayi = 0;
+    for (let kcal = 1000; kcal <= 3500; kcal += 100) oran.forEach(([cc, pp]) => {
+      sayi++; const t = T(kos(kcal, cc, pp)), e = t.kcal;
+      if (!(Math.abs(e - kcal) <= Math.max(50, kcal * 0.03))) enerjiKotu.push(kcal + '/' + cc + '/' + pp);
+      if (pp <= 20 && (Math.abs(t.c * 400 / e - cc) > 3 || Math.abs(t.p * 400 / e - pp) > 3 || Math.abs(t.f * 900 / e - (100 - cc - pp)) > 3))
+        kotu.push(kcal + '/' + cc + '/' + pp);
+    });
+    o.izgaraSayi = sayi; o.izgaraMakro = kotu.join(' '); o.izgaraEnerji = enerjiKotu.join(' ');
+
+    /* TÜBER çıpası iki sütun arasında ara değerleniyor:
+       1900 kkal sebze (2,5 + 3)/2 × 1,5 = 4,125 · meyve (2 + 2,5)/2 × 1,25 = 2,8125
+       3500 kkal (tablo dışı) ekmek 8 × 3500/3200 × 2 = 17,5 */
+    const ci = DA.oruntu.degisim(1900), cd = DA.oruntu.degisim(3500);
+    o.araSebze = Math.abs(ci.sebze - 4.125) < 1e-9;
+    o.araDegerMeyve = Math.abs(ci.meyve - 2.8125) < 1e-9;
+    o.disEkmek = Math.abs(cd.eyg - 17.5) < 1e-9;
+
+    /* ---- öğünlere dağıtım: öğüne uygun gruplar (1800/50/20 planı) ---- */
+    kos(1800, 50, 20);
+    DA.actions.exMealAuto();
+    const M = G.exMeal, plan = G.ex;
+    /* Öğün satırı süt türünü göstermeli: parantez atılınca "Süt (yarım yağlı)"
+       da "Süt" oluyordu; varsayılan yarım yağlı olduğundan tür kayboluyordu. */
+    o.ogunSutTuru = /Süt \(yarım yağlı\)/.test((document.querySelector('#exMeals') || {}).textContent || '');
+    const top = {}; Object.keys(M).forEach((m) => Object.keys(M[m]).forEach((k) => { top[k] = (top[k] || 0) + M[m][k]; }));
+    o.ogunToplam = Object.keys(plan).every((k) => Math.abs((top[k] || 0) - (plan[k] || 0)) < 0.01);
+    o.araYagYok = !(M.ara1.yag || M.ara2.yag);
+    o.araEtYok = !(M.ara1.et || M.ara2.et);
+    o.araMeyve = (M.ara1.meyve || 0) >= 1 && (M.ara2.meyve || 0) >= 1;
+    o.kahvaltiEt = (M.kahvalti.et || 0) >= 1;
+    const PAY = { kahvalti: 25, ara1: 10, ogle: 30, ara2: 10, aksam: 25 }, tk = T(plan).kcal;
+    o.payMaks = Math.max.apply(null, Object.keys(PAY).map((m) => Math.abs(T(M[m]).kcal / tk * 100 - PAY[m])));
+    /* Zorlayıcı planlar: gerçekçi planda başka gruplar ara öğünü zaten
+       doldurduğu için uygunluk kuralı sınanmıyordu (ara öğüne yağı serbest
+       bırakan bozma testten geçti). Tek gruptan oluşan planda enerji açığı ara
+       öğünü çeker; kural ancak burada görünür. Elle: {et: 5} ara öğüne yağ/et
+       yasağı kalksa 4. birim ara öğüne gider. */
+    const tek = (ex) => { G.ex = ex; DA.actions.exMealAuto(); return G.exMeal; };
+    /* Sorunun görüldüğü planlar: ekmek dengeleyici olmadan öğle payı 1200 ve
+       2400 kcal'de %24–25'e düşüyordu; et sütten sonra yerleşince süt 4 / et 4
+       planında kahvaltıya peynir/yumurta kalmıyordu. */
+    const payHata = (ex) => { const mm = tek(ex), tt = T(ex).kcal;
+      return Math.max.apply(null, Object.keys(PAY).map((m) => Math.abs(T(mm[m]).kcal / tt * 100 - PAY[m]))); };
+    o.pay1200 = payHata(kos(1200, 55, 15) && Object.assign({}, G.ex));
+    o.pay2400 = payHata(kos(2400, 50, 20) && Object.assign({}, G.ex));
+    o.kahvaltiEt44 = (tek({ sutyy: 4, et: 4, eyg: 9, sebze: 5, meyve: 2, yag: 4, tohum: 2 }).kahvalti.et || 0) >= 1;
+    const e5 = tek({ et: 5 }), y5 = tek({ yag: 5 }), m4 = tek({ meyve: 4 });
+    o.zorEt = (e5.ara1.et || 0) + (e5.ara2.et || 0);
+    o.zorYag = (y5.ara1.yag || 0) + (y5.ara2.yag || 0);
+    o.zorMeyve = (m4.ara1.meyve || 0) >= 1 && (m4.ara2.meyve || 0) >= 1;
+    DA.toast = eski;
+    return o;
+  });
+  uiEkle('Klasik: 1800/50/20 grupları (yy,tam,sebze,meyve,tohum,ekmek,et,yağ)', '4,0,4,3,2,8,6,2', kl.a);
+  uiEkle('Klasik: 1800/50/20 enerji', 1810, kl.aKcal);
+  uiEkle('Klasik: ulaşılabilir hedefte uyarı yok', 0, kl.aUyari);
+  uiEkle('Hesap adımları dört basamak', 4, kl.adimSayisi);
+  uiEkle('Adım: ekmek formülü sayılarıyla', true, kl.adimEkmek);
+  uiEkle('Adım: et formülü sayılarıyla', true, kl.adimEt);
+  uiEkle('Adım: yağ formülü sayılarıyla', true, kl.adimYag);
+  uiEkle('Adım: sabitlerin kaynağı yazıyor', true, !!kl.adimKaynak);
+  uiEkle('Elle değişen planda eski adımlar gizleniyor', true, kl.adimElleGizli);
+  uiEkle('Klasik: 3000/55/15 (eskiden bulunamadı)', '4,6,4,2,19,6,10', kl.b);
+  uiEkle('Klasik: 3000/55/15 enerji', 3042, kl.bKcal);
+  uiEkle('Kilitli et korunuyor, yağ ve ekmek ona göre', '3,5,9', kl.c);
+  uiEkle('Adımlarda kilitli grup yazıyor', true, kl.cKilitAdim);
+  uiEkle('Adımlarda enerji düzeltmesi yazıyor', true, kl.cEnerjiAdim);
+  uiEkle('Süt varsayılanı yarım yağlı (yy/tam)', '4/0', kl.sutVarsayilan);
+  uiEkle('Kilitli tam yağlı süt korunuyor (tam/yy)', '2/0', kl.sutKilitli);
+  uiEkle('Yarım yağlı 0 kilitliyse süt tam yağlı (tam/yy)', '4/0', kl.sutTamaGecis);
+  uiEkle('Tam yağlı sütte yağ bütçesi daralıyor', 0, kl.sutTamYag);
+  uiEkle('Yüksek proteinde yağ %40’a çıkmıyor', true, kl.dYagYuzde <= 33);
+  uiEkle('Yüksek proteinde enerji tutuyor', true, kl.dEnerji);
+  kosulUi('Yüksek proteinde açık uyarı', /Protein hedefi \(%25\) bu listeyle/.test(kl.dUyari), kl.dUyari);
+  kosulUi('Makro sapması sayısıyla yazılıyor', /Hedeften sapma: .*protein %\d+ \(hedef %25\)/.test(kl.dUyari), kl.dUyari);
+  kosulUi('Eklenen yağ 0 ise uyarı', /Eklenen yağ 0/.test(kl.yag0), kl.yag0);
+  uiEkle('Izgara: hedef sayısı', 208, kl.izgaraSayi);
+  uiEkle('Izgara: P ≤ %20 hedeflerde makro sapması yok', '', kl.izgaraMakro);
+  uiEkle('Izgara: tüm hedeflerde enerji tutuyor', '', kl.izgaraEnerji);
+  uiEkle('TÜBER çıpası ara değerleniyor (sebze 1900)', true, kl.araSebze);
+  uiEkle('TÜBER çıpası ara değerleniyor (meyve 1900)', true, kl.araDegerMeyve);
+  uiEkle('TÜBER çıpası tablo dışında ölçekleniyor', true, kl.disEkmek);
+  uiEkle('Öğünler: grup toplamları korunuyor', true, kl.ogunToplam);
+  uiEkle('Öğün satırında süt türü görünüyor', true, kl.ogunSutTuru);
+  uiEkle('Öğünler: ara öğünde yağ yok', true, kl.araYagYok);
+  uiEkle('Öğünler: ara öğünde et yok', true, kl.araEtYok);
+  uiEkle('Öğünler: iki ara öğünde de meyve var', true, kl.araMeyve);
+  uiEkle('Öğünler: kahvaltıda peynir/yumurta (et) var', true, kl.kahvaltiEt);
+  uiEkle('Öğünler: enerji payları ±3 puan içinde', true, kl.payMaks <= 3);
+  uiEkle('Öğünler: 1200 kcal planında paylar ±3 puan', true, kl.pay1200 <= 3);
+  uiEkle('Öğünler: 2400 kcal planında paylar ±3 puan', true, kl.pay2400 <= 3);
+  uiEkle('Öğünler: süt 4 / et 4 planında kahvaltıda et var', true, kl.kahvaltiEt44);
+  uiEkle('Öğünler: yalnız etli planda bile ara öğüne et gitmiyor', 0, kl.zorEt);
+  uiEkle('Öğünler: yalnız yağlı planda bile ara öğüne yağ gitmiyor', 0, kl.zorYag);
+  uiEkle('Öğünler: yalnız meyveli planda iki ara öğünde meyve', true, kl.zorMeyve);
 
   /* Enerji hesaplayıcısı hedefe kim için ve ne zaman hesaplandığını işliyor —
      değişim listesinin öneri kuralı bu damgaya dayanıyor. */

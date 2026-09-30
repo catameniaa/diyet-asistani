@@ -98,6 +98,32 @@
   /* Değişim sayılarıyla kaba karşılaştırma.
      TÜBER porsiyonu ile değişim birimi aynı büyüklükte değildir; dönüşüm yaklaşıktır. */
   const DEG = { sut: 1.2, et: 2.5, eyg: 2, sebze: 1.5, meyve: 1.25, tohum: 2.5 };
+
+  /* Bir enerji düzeyi için TÜBER örüntüsünün değişim birimindeki karşılığı.
+     Değişim listesinin klasik hesabı süt, sebze, meyve ve yağlı tohumu buradan
+     sabitler. Tablo 200 kkal aralıklı; arada kalan enerji iki komşu sütun
+     arasında doğrusal ara değerlenir — en yakın sütunu almak 1900 kkal'lik bir
+     hedefi 1800 ya da 2000'e zıplatırdı. Tablonun dışında (1000 altı, 3200 üstü)
+     uç sütun enerjiyle orantılı ölçeklenir; bu bir ekstrapolasyondur, kaynakta
+     yoktur. Aralıklı hücrelerde (yağlı tohum) orta nokta alınır. */
+  function degisimKarsiligi(kcal) {
+    const O = DA.data.tuber.oruntu, L = O.kcal, son = L.length - 1;
+    const orta = (v) => (Array.isArray(v) ? (v[0] + v[1]) / 2 : v);
+    const satir = (k) => O.r.find((r) => r.ex === k && r.lvl === 1);
+    const al = (dizi) => {
+      if (kcal <= L[0]) return orta(dizi[0]) * kcal / L[0];
+      if (kcal >= L[son]) return orta(dizi[son]) * kcal / L[son];
+      const i = L.findIndex((k) => k >= kcal);
+      if (L[i] === kcal) return orta(dizi[i]);
+      const t = (kcal - L[i - 1]) / (L[i] - L[i - 1]);
+      return orta(dizi[i - 1]) * (1 - t) + orta(dizi[i]) * t;
+    };
+    const out = {};
+    Object.keys(DEG).forEach((k) => { out[k] = al(satir(k).v) * DEG[k]; });
+    out.yag = al(satir('yag').v) / 5;   /* sıvı yağ g/gün; 1 değişim = 5 g */
+    return out;
+  }
+  DA.oruntu.degisim = degisimKarsiligi;
   function compareHtml(i, counts) {
     if (!counts) return '';
     const O = DA.data.tuber.oruntu, rows = [];

@@ -4,17 +4,16 @@
   const { esc, fmt, num, icon } = DA;
 
   /* Bir değişim başına: c = karbonhidrat (g), p = protein (g), f = yağ (g), ex = porsiyon örnekleri.
-     Grup değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır.
-     lo/hi = otomatik dağıtımda aranan makul aralık. */
+     Grup değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır. */
   const GROUPS = [
-    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, lo: 1, hi: 3, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
-    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, lo: 1, hi: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
-    { k: 'et', l: 'Et', c: 0, p: 6, f: 5, lo: 2, hi: 8, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
-    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, lo: 3, hi: 14, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates' },
-    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, lo: 3, hi: 5, ex: '4 yemek kaşığı pişmiş sebze yemeği; 1 kase çiğ salata' },
-    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, lo: 2, hi: 4, ex: '1 küçük boy elma; 1 küçük boy muz; 1 orta boy portakal; 12–15 adet üzüm' },
-    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, lo: 2, hi: 7, ex: '1 tatlı kaşığı zeytinyağı; 5 adet zeytin' },
-    { k: 'tohum', l: 'Yağlı tohum', c: 0, p: 2, f: 5, lo: 0, hi: 2, ex: '2 tam ceviz; 5–6 adet badem' }
+    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
+    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
+    { k: 'et', l: 'Et', c: 0, p: 6, f: 5, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
+    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates' },
+    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, ex: '4 yemek kaşığı pişmiş sebze yemeği; 1 kase çiğ salata' },
+    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, ex: '1 küçük boy elma; 1 küçük boy muz; 1 orta boy portakal; 12–15 adet üzüm' },
+    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, ex: '1 tatlı kaşığı zeytinyağı; 5 adet zeytin' },
+    { k: 'tohum', l: 'Yağlı tohum', c: 0, p: 2, f: 5, ex: '2 tam ceviz; 5–6 adet badem' }
   ];
   const kcalOf = (g) => g.c * 4 + g.p * 4 + g.f * 9;
   const byKey = (k) => GROUPS.find((g) => g.k === k);
@@ -94,81 +93,181 @@
     return t;
   }
 
-  /* ---- otomatik dağıtım ----
-     Kilitli gruplar sabit tutulur; kalanlar makul aralıklarda taranıp hedef enerjiye ve
-     makro yüzdelerine en yakın TAM SAYI kombinasyon seçilir. */
-  /* Süt türü: iki süt grubundan hangisi aranacak.
-     Eskiden yarım yağlı sütün aralığı 0–0'dı; kilitsiz girilen yarım yağlı süt
-     otomatik dağıtımda siliniyor, yerine tam yağlı konuyordu — diyetisyenin
-     süt türü seçimi kayboluyordu. Artık:
-       · ikisi de kilitsizse, planda hangisi çoksa o aranır (eşitse tam yağlı),
-         öteki sıfırlanır;
-       · biri kilitliyse öteki olduğu gibi kalır, aranmaz. */
+  /* ---- otomatik dağıtım: klasik basamaklı hesap ----
+     Derste öğretilen yöntem; her sayının nereden geldiği ekranda adım adım
+     gösterilir.
+       1) Sabit gruplar: süt, sebze, meyve, yağlı tohum — TÜBER Ek 3.1.1
+          örüntüsünden, hedef enerjiye göre (DA.oruntu.degisim)
+       2) Ekmek = (KH hedefi − o ana kadar gelen KH) ÷ 15
+       3) Et    = (protein hedefi − o ana kadar gelen protein) ÷ 6
+       4) Yağ   = (yağ hedefi − o ana kadar gelen yağ) ÷ 5
+       5) Yuvarlamadan kalan enerji farkı ekmekle kapatılır
+     Kilitli gruplar hangi adımda olursa olsun olduğu gibi kalır.
+
+     Eskiden sabit aralıklarda (et 2–8, ekmek 3–14 …) kaba kuvvet arama vardı:
+     2800 kkal ve üstünde hiç çözüm bulamıyordu (erişilebilen en yüksek enerji
+     ~2670 kkal), sonuçlar aralık sınırlarına yapışıyordu (et 8, yağ 2, süt 1)
+     ve neden o sayıların seçildiği görülemiyordu. */
+  const KISA = { sut: 'Süt (tam yağlı)', sutyy: 'Süt (yarım yağlı)', et: 'Et', eyg: 'Ekmek',
+    sebze: 'Sebze', meyve: 'Meyve', yag: 'Yağ', tohum: 'Yağlı tohum' };
+
+  /* Süt türü. Varsayılan yarım yağlı: TÜBER örüntüleri yarım yağlı sütle
+     hesaplanmıştır; tam yağlı süt ise %20 protein hedefinde et yağıyla birlikte
+     yağ bütçesini dolduruyor, eklenecek yağa yer bırakmıyordu. Tür kilitle
+     değişir:
+       · bir süt satırı sıfırdan büyük bir sayıyla kilitliyse süt odur, kilitsiz
+         öteki süt sıfırlanır;
+       · yarım yağlı 0'da kilitliyse süt tam yağlı olarak hesaplanır;
+       · hiçbiri kilitli değilse yarım yağlı. */
   function sutTuru(L) {
-    if (L.sut || L.sutyy) return null;
-    return cnt('sutyy') > cnt('sut') ? 'sutyy' : 'sut';
+    const kilitli = (L.sut ? cnt('sut') : 0) + (L.sutyy ? cnt('sutyy') : 0);
+    if (kilitli > 0) return null;
+    if (!L.sutyy) return 'sutyy';
+    if (!L.sut) return 'sut';
+    return null;
   }
+
   function distribute() {
-    const T = target(), L = locks();
-    const fixed = {}, search = [], tur = sutTuru(L);
-    GROUPS.forEach((g) => {
-      /* Kilitli değer olduğu gibi korunur. Eskiden Math.round'dan geçiyordu:
-         kilitli 1,5 süt 2'ye, 0,5 et 1'e sessizce çevriliyordu. */
-      if (L[g.k]) { fixed[g.k] = cnt(g.k); return; }
-      if (g.k === 'sut' || g.k === 'sutyy') {
-        if (g.k === tur) search.push(g);
-        else fixed[g.k] = tur ? 0 : cnt(g.k);
-        return;
-      }
-      search.push(g);
-    });
-    const base = totals(fixed);
-    const want = { c: T.kcal * T.c / 100 / 4, p: T.kcal * T.p / 100 / 4 };
-    let best = null;
+    const T = target(), L = locks(), A = DA.oruntu.degisim(T.kcal);
+    const hedef = { c: T.kcal * T.c / 400, p: T.kcal * T.p / 400, f: T.kcal * (100 - T.c - T.p) / 900 };
+    const v = {}, adim = [], uyari = [];
+    const topla = (m) => GROUPS.reduce((t, g) => t + (v[g.k] || 0) * g[m], 0);
 
-    const pick = new Array(search.length).fill(0);
-    (function rec(i, acc) {
-      if (i === search.length) {
-        const kcalErr = Math.abs(acc.kcal - T.kcal);
-        if (kcalErr > 120) return;
-        const e = acc.kcal || 1;
-        const dC = Math.abs(acc.c * 4 / e * 100 - T.c);
-        const dP = Math.abs(acc.p * 4 / e * 100 - T.p);
-        const dF = Math.abs(acc.f * 9 / e * 100 - (100 - T.c - T.p));
-        const score = kcalErr + (dC + dP + dF) * 6;
-        if (!best || score < best.score) best = { score, kcalErr, v: pick.slice() };
-        return;
-      }
-      const g = search[i];
-      for (let n = g.lo; n <= g.hi; n++) {
-        pick[i] = n;
-        rec(i + 1, { c: acc.c + n * g.c, p: acc.p + n * g.p, f: acc.f + n * g.f, kcal: acc.kcal + n * kcalOf(g) });
-      }
-    })(0, base);
+    /* Kilitli değer olduğu gibi korunur (yarım değişim dahil). */
+    GROUPS.forEach((g) => { if (L[g.k]) v[g.k] = cnt(g.k); });
 
-    if (!best) return null;
-    const out = Object.assign({}, fixed);
-    search.forEach((g, i) => { out[g.k] = best.v[i]; });
-    alan().ex = out;
+    /* 1) sabit gruplar */
+    const tur = sutTuru(L);
+    ['sut', 'sutyy'].forEach((k) => { if (!L[k]) v[k] = 0; });
+    const sabit = [];
+    if (tur) { v[tur] = Math.round(A.sut); sabit.push(tur); }
+    ['sebze', 'meyve', 'tohum'].forEach((k) => { if (!L[k]) { v[k] = Math.round(A[k]); sabit.push(k); } });
+    adim.push({ tur: 'sabit', kcal: T.kcal,
+      gruplar: sabit.map((k) => [KISA[k], v[k]]),
+      kilitli: GROUPS.filter((g) => L[g.k]).map((g) => [KISA[g.k], v[g.k]]) });
+
+    /* 2–4) ekmek, et, yağ */
+    const hesapla = (k, m, bol, birim) => {
+      if (L[k]) { adim.push({ tur: 'kilit', ad: KISA[k], n: v[k] }); return null; }
+      const gelen = topla(m), ham = (hedef[m] - gelen) / bol;
+      return { gelen, ham, kaydet: (n, not) => { v[k] = n; adim.push({ tur: 'formul', ad: KISA[k], hedef: hedef[m], gelen, bol, ham, n, birim, not }); } };
+    };
+    const ek = hesapla('eyg', 'c', 15, 'g KH');
+    if (ek) {
+      ek.kaydet(Math.max(0, Math.round(ek.ham)));
+      if (ek.ham < -0.5) uyari.push('Karbonhidrat hedefi yalnız sabit gruplarla ' + fmt(-ek.ham * 15, 0) + ' g aşılıyor; ekmek 0.');
+    }
+    /* Et yağ bütçesiyle sınırlı: listedeki et orta yağlıdır (6 g protein + 5 g
+       yağ). %25–30 protein hedefi bu yüzden yağı %40'ın üstüne çıkarmadan
+       tutmuyor; o durumda yağ hedefini aşmayan en yakın plan verilir ve açıkça
+       uyarılır. Yağ grubu kilitli değilse eklenen yağ 0'a kadar inebilir. */
+    let sinirli = false;
+    const et = hesapla('et', 'p', 6, 'g protein');
+    if (et) {
+      const tavan = Math.max(0, Math.floor((hedef.f - topla('f')) / 5 + 0.5));
+      const n = Math.max(0, Math.round(et.ham));
+      sinirli = n > tavan;
+      et.kaydet(Math.min(n, tavan), sinirli ? 'yağ bütçesi ' + tavan + ' değişime izin veriyor' : '');
+    }
+    const yg = hesapla('yag', 'f', 5, 'g yağ');
+    if (yg) {
+      yg.kaydet(Math.max(0, Math.round(yg.ham)));
+      if (yg.ham < -0.5) uyari.push('Yağ hedefi sabit gruplardan ve etten gelen yağla ' + fmt(-yg.ham * 5, 0) + ' g aşılıyor; eklenen yağ 0.');
+    }
+
+    /* 5) enerji: yuvarlamadan kalan fark ekmekle kapatılır */
+    const tol = Math.max(50, T.kcal * 0.03), ekmekKcal = kcalOf(byKey('eyg'));
+    let fark = T.kcal - totals(v).kcal;
+    if (Math.abs(fark) > tol && !L.eyg) {
+      const yeni = Math.max(0, v.eyg + Math.round(fark / ekmekKcal));
+      if (yeni !== v.eyg) { adim.push({ tur: 'enerji', fark, d: yeni - v.eyg }); v.eyg = yeni; }
+      fark = T.kcal - totals(v).kcal;
+    }
+    if (Math.abs(fark) > tol) uyari.push('Enerji hedefe ' + fmt(Math.abs(fark), 0) + ' kcal ' + (fark > 0 ? 'eksik' : 'fazla') + ' kaldı.');
+
+    GROUPS.forEach((g) => { if (v[g.k] == null) v[g.k] = 0; });
+    const t = totals(v), e = t.kcal || 1;
+    const sonuc = { c: t.c * 400 / e, p: t.p * 400 / e, f: t.f * 900 / e };
+    if (sinirli) {
+      uyari.unshift('Protein hedefi (%' + fmt(T.p, 0) + ') bu listeyle yağ hedefi aşılmadan tutmuyor: et orta yağlıdır ' +
+        '(1 değişim 6 g protein + 5 g yağ). Planda protein %' + fmt(sonuc.p, 0) + '. ' +
+        'Proteini artırmak için yağ yüzdesini yükselt ya da et sayısını elle artırıp kilitle.');
+    }
+    /* Eklenen yağ 0 matematikte doğru olabilir ama pratikte "pişirmede hiç yağ
+       yok" demektir; sessiz geçilmez. */
+    if (!L.yag && v.yag === 0 && hedef.f > 0) {
+      uyari.push('Eklenen yağ 0: yağ bütçesinin tamamı et, süt ve yağlı tohumdan geliyor; pişirmede yağ kullanılamaz. ' +
+        'Protein yüzdesini düşürmek ya da yağ yüzdesini artırmak yer açar.');
+    }
+    /* Enerji düzeltmesi ya da sınırlar makroları kaydırabilir; 3 puandan büyük
+       sapma açıkça yazılır. */
+    const sap = [['KH', sonuc.c, T.c], ['protein', sonuc.p, T.p], ['yağ', sonuc.f, 100 - T.c - T.p]]
+      .filter((x) => Math.abs(x[1] - x[2]) > 3);
+    if (sap.length) {
+      uyari.push('Hedeften sapma: ' + sap.map((x) => x[0] + ' %' + fmt(x[1], 0) + ' (hedef %' + fmt(x[2], 0) + ')').join(' · ') + '.');
+    }
+    const a = alan();
+    a.ex = v;
+    a.adim = { sonuc: Object.assign({}, v), satir: adim, uyari };
     DA.save();
-    return { kcalErr: best.kcalErr, kcal: totals(out).kcal, want };
+    return { kcal: t.kcal, kcalErr: Math.abs(t.kcal - T.kcal), uyari };
+  }
+
+  /* Hesap adımları: yalnız plan otomatik dağıtımın sonucuyla aynıyken
+     gösterilir. Elle değiştirilen bir planın yanında eski adımlar yanıltır. */
+  function adimlarHtml() {
+    const a = alan().adim;
+    if (!a || temiz(a.sonuc) !== temiz(counts())) return '';
+    const n1 = (x) => fmt(x, 1), n0 = (x) => fmt(x, 0);
+    const li = a.satir.map((s) => {
+      if (s.tur === 'sabit') {
+        return '<li><b>Sabit gruplar</b> — TÜBER Ek 3.1.1, ' + n0(s.kcal) + ' kkal örüntüsünden: ' +
+          (s.gruplar.length ? s.gruplar.map((x) => esc(x[0]) + ' ' + numText(x[1])).join(' · ') : 'hepsi kilitli') +
+          (s.kilitli.length ? '<div class="muted small">Kilitli: ' + s.kilitli.map((x) => esc(x[0]) + ' ' + numText(x[1])).join(' · ') + '</div>' : '') + '</li>';
+      }
+      if (s.tur === 'kilit') return '<li><b>' + esc(s.ad) + '</b> kilitli: ' + numText(s.n) + '</li>';
+      if (s.tur === 'enerji') {
+        return '<li><b>Enerji düzeltmesi</b> — yuvarlamadan ' + n0(Math.abs(s.fark)) + ' kcal ' + (s.fark > 0 ? 'eksik' : 'fazla') +
+          ' kaldı: ekmek ' + (s.d > 0 ? '+' : '−') + Math.abs(s.d) + '</li>';
+      }
+      return '<li><b>' + esc(s.ad) + '</b> = (' + n0(s.hedef) + ' ' + esc(s.birim) + ' hedefi − ' + n0(s.gelen) + ') ÷ ' + s.bol +
+        ' = ' + n1(s.ham) + ' → <b>' + numText(s.n) + '</b>' + (s.not ? ' <span class="muted small">(' + esc(s.not) + ')</span>' : '') + '</li>';
+    }).join('');
+    /* Aynı durumun uyarıları tek kutuda: üç ayrı kutu görsel olarak ağırdı. */
+    return (a.uyari.length ? '<div class="note warn"><b>Bu hedef bu listeyle tam tutmuyor</b>' +
+      '<ul class="tight">' + a.uyari.map((u) => '<li>' + esc(u) + '</li>').join('') + '</ul></div>' : '') +
+      '<div class="card"><div class="sect" style="margin-top:0">Hesap adımları</div><ol class="adimlar">' + li + '</ol></div>';
   }
 
   /* ---- öğünlere dağıtım ----
-     Varsayılan enerji payları; her grubun toplamı en büyük kalan yöntemiyle tam sayı olarak bölünür. */
+     Varsayılan enerji payları; grup toplamları birebir korunur. */
   const MEALS = [['kahvalti', 'Kahvaltı', 25], ['ara1', 'Ara öğün', 10], ['ogle', 'Öğle', 30], ['ara2', 'Ara öğün', 10], ['aksam', 'Akşam', 25]];
   const meals = () => alan().exMeal;
 
-  /* Her değişim birimini, enerji hedefine göre en çok geride kalan öğüne verir.
-     Grup toplamları birebir korunur; öğün payları enerji bazında dengelenir.
-     (Grupları tek tek bölmek, eşitliklerde hep ilk öğünü kayırıp akşamı aç bırakıyordu.) */
+  /* Grupların öğünlere uygunluğu — Türk mutfağı alışkanlığı:
+     kahvaltıda peynir/yumurta (et grubu), süt, zeytin (yağ), ekmek;
+     ara öğünde meyve, süt/yoğurt/ayran, yağlı tohum;
+     öğle ve akşamda et, sebze, yağ, ekmek/pilav, yoğurt.
+     2 = tercih, 1 = olur, 0,3 = istisna, 0 = hiç.
+     Eskiden gruplar yalnız öğünün enerji açığına göre yerleşiyordu: ara öğüne
+     "ekmek + yağ + sebze" düşüyor, meyve ve süt ana öğünlerde kalıyordu. */
+  const UYGUN = {
+    kahvalti: { sut: 2, sutyy: 2, et: 2, eyg: 2, sebze: 1, meyve: 0.3, yag: 2, tohum: 1 },
+    ara: { sut: 2, sutyy: 2, et: 0.3, eyg: 1, sebze: 0.3, meyve: 2, yag: 0, tohum: 2 },
+    ana: { sut: 1, sutyy: 1, et: 2, eyg: 2, sebze: 2, meyve: 1, yag: 2, tohum: 0.3 }
+  };
+  const ogunTipi = (mk) => (mk === 'kahvalti' ? 'kahvalti' : mk.indexOf('ara') === 0 ? 'ara' : 'ana');
+  /* Esnekliği en az olan grup önce yerleşir (meyve ara öğüne, et ana öğünlere
+     ve kahvaltıya); ekmek en son gelir ve kalan enerji boşluklarını kapatır.
+     Et sütten önce: yoksa süt kahvaltıyı doldurup peynir/yumurtaya yer bırakmıyordu. */
+  const YERLESME = ['meyve', 'et', 'sut', 'sutyy', 'tohum', 'sebze', 'yag', 'eyg'];
+
   function autoMeals() {
     const tot = totals(counts()).kcal || 1;
-    const out = {}, acik = {};
-    MEALS.forEach((m) => { out[m[0]] = {}; acik[m[0]] = tot * m[2] / 100; });
+    const out = {}, acik = {}, pay = {};
+    MEALS.forEach((m) => { out[m[0]] = {}; pay[m[0]] = tot * m[2] / 100; acik[m[0]] = pay[m[0]]; });
 
-    /* Büyük kalorili birimler önce yerleşsin ki küçükler açığı kapatabilsin.
-       Yarım değişim kendi başına bir birimdir; eskiden Math.round ile
+    /* Yarım değişim kendi başına bir birimdir; eskiden Math.round ile
        yuvarlanıyordu: planda 1,5 süt varken öğünlere 2 süt dağıtılıyor ve
        uyuşmazlık uyarısı da çıkmıyordu. */
     const units = [];
@@ -177,11 +276,23 @@
       while (kalan >= 1) { units.push({ g, n: 1 }); kalan -= 1; }
       if (kalan > 0.01) units.push({ g, n: kalan });
     });
-    units.sort((a, b) => kcalOf(b.g) * b.n - kcalOf(a.g) * a.n);
+    units.sort((a, b) => YERLESME.indexOf(a.g.k) - YERLESME.indexOf(b.g.k) || b.n - a.n);
 
+    /* Puan = uygunluk + öğünün boş kalan payı (hedefine ORANLA) − aynı gruptan
+       yığılma. Mutlak kcal açığı kullanılsaydı en büyük öğün (öğle, %30) her
+       şeyi çekerdi: ilk denemede meyve ara öğüne değil öğleye gitti.
+       Ekmek dengeleyici gruptur: yığılma cezası almaz ve açığa daha çok bakar;
+       almadığında öğle payı hedefin 5–6 puan altında kalıyordu. */
     units.forEach((u) => {
-      let best = MEALS[0][0];
-      MEALS.forEach((m) => { if (acik[m[0]] > acik[best]) best = m[0]; });
+      const dengeleyici = u.g.k === 'eyg';
+      let best = null, bs = -Infinity;
+      MEALS.forEach((m) => {
+        const w = UYGUN[ogunTipi(m[0])][u.g.k];
+        if (!w) return;
+        const r = (acik[m[0]] - kcalOf(u.g) * u.n / 2) / pay[m[0]];
+        const s = dengeleyici ? w + 4 * r : w + 1.6 * r - (out[m[0]][u.g.k] || 0) * 0.35;
+        if (s > bs) { bs = s; best = m[0]; }
+      });
       out[best][u.g.k] = (out[best][u.g.k] || 0) + u.n;
       acik[best] -= kcalOf(u.g) * u.n;
     });
@@ -203,7 +314,7 @@
     }).filter(Boolean);
     return '<div class="list">' + MEALS.map((m) => {
       const t = mealTot(m[0]), v = meals()[m[0]] || {};
-      const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(g.l.replace(/ \(.*\)/, '')) + ' ' + numText(v[g.k])).join(' · ');
+      const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(KISA[g.k]) + ' ' + numText(v[g.k])).join(' · ');
       return '<button class="li" data-act="exMealEdit" data-m="' + m[0] + '">' +
         '<span class="grow"><div class="t">' + esc(m[1]) + '</div><div class="s">' + (det || 'boş') + '</div></span>' +
         '<span class="end">' + fmt(t.kcal, 0) + ' kcal<br><span class="tiny">%' + fmt(t.kcal / (totals(counts()).kcal || 1) * 100, 0) + '</span></span></button>';
@@ -262,7 +373,7 @@
       GROUPS.filter((g) => cnt(g.k)).map((g) => '• ' + g.l + ': ' + fmt(cnt(g.k), 1) + ' değişim').join('\n') +
       '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g' +
       (MEALS.some((m) => mealTot(m[0]).n) ? '\n\nÖĞÜNLER\n' + MEALS.map((m) => {
-        const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + numText(mv[g.k])).join(', ');
+        const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => KISA[g.k] + ' ' + numText(mv[g.k])).join(', ');
         return det ? m[1] + ' (' + fmt(mealTot(m[0]).kcal, 0) + ' kcal): ' + det : '';
       }).filter(Boolean).join('\n') : '') +
       '\n\n' + DA.dyt();
@@ -354,7 +465,9 @@
           '<div class="grid2"><label class="fld"><span>Protein %</span><input type="text" inputmode="numeric" name="p" value="' + esc(T.p) + '" data-live="exT"></label>' +
           '<label class="fld"><span>Yağ % (otomatik)</span><input type="text" value="' + esc(100 - T.c - T.p) + '" disabled></label></div>' +
           '<button class="btn block" data-act="exAuto">' + icon('calc') + ' Otomatik dağıt</button>' +
-          '<p class="muted tiny" style="margin-bottom:0">Kilitli gruplar sabit kalır, gerisi hedefe en yakın tam sayılarla doldurulur.</p></div>' +
+          '<p class="muted tiny" style="margin-bottom:0">Süt, sebze, meyve ve yağlı tohum TÜBER örüntüsünden; ekmek KH’den, et proteinden, ' +
+          'yağ yağ hedefinden hesaplanır. Kilitli gruplar sabit kalır. Süt yarım yağlı hesaplanır; tam yağlı için satırını kilitle.</p></div>' +
+          '<div id="exAdim">' + adimlarHtml() + '</div>' +
 
           '<div class="sect">Gruplar</div>' +
           '<div class="list" id="exRows">' + rowsHtml() + '</div>' +
@@ -383,6 +496,8 @@
       const d = tb.querySelector('details'); if (d && open) d.open = true; }
   };
   function ustBilgi() {
+    const ad = DA.$('#exAdim');
+    if (ad) ad.innerHTML = adimlarHtml();
     const dn = DA.$('#exDanisan'), cl = danisan(baglam());
     if (dn && cl) dn.innerHTML = danisanHtml(cl);
     const ho = DA.$('#exHedefOneri');
@@ -435,11 +550,14 @@
     const T = target();
     if (!(T.kcal > 0)) return DA.toast('Önce hedef enerjiyi gir');
     if (T.c + T.p > 95) return DA.toast('Karbonhidrat + protein yüzdesi çok yüksek');
+    if (!DA.oruntu || !DA.data.tuber || !DA.data.tuber.oruntu) {
+      DA.need(['tuber']).then(() => DA.actions.exAuto()).catch(() => DA.toast('TÜBER verisi yüklenemedi'));
+      return;
+    }
     const r = distribute();
-    if (!r) return DA.toast('Bu hedefe uyan dağıtım bulunamadı');
     redraw();
-    DA.toast(r.kcalErr <= 30 ? 'Dağıtıldı: ' + Math.round(r.kcal) + ' kcal (hedefe ' + Math.round(r.kcalErr) + ' kcal)' :
-      'En yakın dağıtım: ' + Math.round(r.kcal) + ' kcal (fark ' + Math.round(r.kcalErr) + ' kcal)');
+    DA.toast('Dağıtıldı: ' + Math.round(r.kcal) + ' kcal' +
+      (r.uyari.length ? ' · ' + r.uyari.length + ' uyarı' : ' (hedefe ' + Math.round(r.kcalErr) + ' kcal)'));
   };
 
   DA.actions.exMealAuto = () => {
@@ -547,7 +665,7 @@
     if (!rows) return '';
     const ogun = MEALS.map((mm) => {
       const mv = (plan.meal || {})[mm[0]] || {};
-      const det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + numText(mv[g.k])).join(', ');
+      const det = GROUPS.filter((g) => mv[g.k]).map((g) => KISA[g.k] + ' ' + numText(mv[g.k])).join(', ');
       return det ? '<div class="sat"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
     }).filter(Boolean).join('');
     return '<div class="blok"><h3>Değişim listesi planı <span class="ince">' +
