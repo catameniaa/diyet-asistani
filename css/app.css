@@ -266,6 +266,8 @@ input[type=checkbox], input[type=radio] { width: 24px; height: 24px; accent-colo
 .macros .vu{font-size:var(--t-xs);margin-left:2px}
 .res .vu{font-size:var(--t-sm)}
 .res.hl .vu{color:var(--pri);opacity:.72}
+/* Kalan yağ eksiye düşerse kutu kırmızı: hedef tutarsız */
+.macros .eksi b,.macros .eksi small{color:var(--bad)}
 .macros small.alt{font-size:var(--t-xs);line-height:var(--lh-xs);color:var(--mute);opacity:.8;margin-top:1px;line-height:1.25}
 
 /* Kilo grafiğinde hedef çizgisi */

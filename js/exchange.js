@@ -62,24 +62,55 @@
      hedef kaydedilse de değişim listesi eskisini göstermeye devam ediyordu.
      Artık daha yeni bir hedef sessizce üzerine yazılmaz, ekranda önerilir. */
   const uygunHedef = (t) => !!(t && t.kcal > 0) && (!t.dan || t.dan === baglam());
-  function hesaptanHedef(t) {
-    return { kcal: t.kcal, c: Math.round(t.c * 4 / t.kcal * 100), p: Math.round(t.p * 4 / t.kcal * 100), ts: t.ts || 0 };
+  /* Hesaplayıcı hedefi gram olarak saklar; iki birim de doldurulur ki
+     diyetisyen hangi birimde çalışıyorsa hedef o birimde gelsin. */
+  function hesaptanHedef(t, birim) {
+    return { kcal: t.kcal, birim: birim || 'yuzde',
+      c: Math.round(t.c * 4 / t.kcal * 100), p: Math.round(t.p * 4 / t.kcal * 100),
+      cg: Math.round(t.c), pg: Math.round(t.p), ts: t.ts || 0 };
   }
   function target() {
     const a = alan();
     if (!a.exT) {
       const t = DA.state().targets;
-      a.exT = uygunHedef(t) ? hesaptanHedef(t) : { kcal: 1800, c: 50, p: 20, ts: 0 };
+      a.exT = uygunHedef(t) ? hesaptanHedef(t) : { kcal: 1800, birim: 'yuzde', c: 50, p: 20, ts: 0 };
     }
     return a.exT;
   }
+
+  /* ---- makro hedefi: tek kaynak ----
+     Karbonhidrat ve protein yüzde ya da gram olarak girilir; yağ kalandır.
+     Girilen birim sabittir, öteki ondan türetilir: gram modunda enerji
+     değişince gramlar yerinde kalır, yüzdeler değişir — "günde 180 g
+     karbonhidrat" diyen diyetisyenin niyeti budur.
+     Eskiden yalnız yüzde vardı ve "Yağ % (otomatik)" alanı hiç
+     güncellenmiyordu: KH %45, P %20 girilince ekran "yağ %30" demeye devam
+     ediyor, algoritma doğru olarak %35 kullanıyordu; çıkan plan girilen
+     yüzdelere uymuyormuş gibi görünüyordu. */
+  const gramMi = (T) => T.birim === 'gram';
+  function makro(T) {
+    const k = T.kcal > 0 ? T.kcal : 0, sayi = (x) => (isFinite(+x) ? +x : 0);
+    const g = gramMi(T) ? { c: sayi(T.cg), p: sayi(T.pg) } : { c: k * sayi(T.c) / 400, p: k * sayi(T.p) / 400 };
+    g.f = (k - 4 * g.c - 4 * g.p) / 9;
+    const y = (x, kat) => (k ? x * kat / k * 100 : 0);
+    return { g, y: { c: y(g.c, 4), p: y(g.p, 4), f: y(g.f, 9) } };
+  }
+  /* Hedefin kullanıcının biriminde yazılışı: "%50" ya da "225 g" */
+  const hedefYazi = (T, M, k) => (gramMi(T) ? fmt(M.g[k], 0) + ' g' : '%' + fmt(M.y[k], 0));
+  /* İki hedef aynı planı mı tarif ediyor: enerji ve gramlar (yuvarlanmış) */
+  function ayniHedef(a, b) {
+    const x = makro(a), y = makro(b), r = Math.round;
+    return a.kcal === b.kcal && r(x.g.c) === r(y.g.c) && r(x.g.p) === r(y.g.p);
+  }
+
   /* Bu bağlama önerilebilecek, şu anki hedeften daha yeni hesaplayıcı hedefi.
-     Başka bir danışan için hesaplanan hedef önerilmez. */
+     Başka bir danışan için hesaplanan hedef önerilmez. Öneri kullanıcının
+     çalıştığı birimde gelir. */
   function yeniHedef() {
     const t = DA.state().targets, T = target();
     if (!uygunHedef(t) || !t.ts || t.ts <= (T.ts || 0)) return null;
-    const h = hesaptanHedef(t);
-    return (h.kcal === T.kcal && h.c === T.c && h.p === T.p) ? null : h;
+    const h = hesaptanHedef(t, T.birim);
+    return ayniHedef(h, T) ? null : h;
   }
   const cnt = (k) => { const n = counts()[k]; return isFinite(n) ? n : 0; };
 
@@ -128,8 +159,8 @@
   }
 
   function distribute() {
-    const T = target(), L = locks(), A = DA.oruntu.degisim(T.kcal);
-    const hedef = { c: T.kcal * T.c / 400, p: T.kcal * T.p / 400, f: T.kcal * (100 - T.c - T.p) / 900 };
+    const T = target(), L = locks(), A = DA.oruntu.degisim(T.kcal), M = makro(T);
+    const hedef = M.g;
     const v = {}, adim = [], uyari = [];
     const topla = (m) => GROUPS.reduce((t, g) => t + (v[g.k] || 0) * g[m], 0);
 
@@ -189,8 +220,8 @@
     const t = totals(v), e = t.kcal || 1;
     const sonuc = { c: t.c * 400 / e, p: t.p * 400 / e, f: t.f * 900 / e };
     if (sinirli) {
-      uyari.unshift('Protein hedefi (%' + fmt(T.p, 0) + ') bu listeyle yağ hedefi aşılmadan tutmuyor: et orta yağlıdır ' +
-        '(1 değişim 6 g protein + 5 g yağ). Planda protein %' + fmt(sonuc.p, 0) + '. ' +
+      uyari.unshift('Protein hedefi (' + hedefYazi(T, M, 'p') + ') bu listeyle yağ hedefi aşılmadan tutmuyor: et orta yağlıdır ' +
+        '(1 değişim 6 g protein + 5 g yağ). Planda protein ' + (gramMi(T) ? fmt(t.p, 0) + ' g' : '%' + fmt(sonuc.p, 0)) + '. ' +
         'Proteini artırmak için yağ yüzdesini yükselt ya da et sayısını elle artırıp kilitle.');
     }
     /* Eklenen yağ 0 matematikte doğru olabilir ama pratikte "pişirmede hiç yağ
@@ -201,23 +232,34 @@
     }
     /* Enerji düzeltmesi ya da sınırlar makroları kaydırabilir; 3 puandan büyük
        sapma açıkça yazılır. */
-    const sap = [['KH', sonuc.c, T.c], ['protein', sonuc.p, T.p], ['yağ', sonuc.f, 100 - T.c - T.p]]
-      .filter((x) => Math.abs(x[1] - x[2]) > 3);
+    /* Sapma kararı yüzde puanla verilir; yazılışı kullanıcının biriminde. */
+    const sap = [['KH', 'c'], ['protein', 'p'], ['yağ', 'f']].filter((x) => Math.abs(sonuc[x[1]] - M.y[x[1]]) > 3);
     if (sap.length) {
-      uyari.push('Hedeften sapma: ' + sap.map((x) => x[0] + ' %' + fmt(x[1], 0) + ' (hedef %' + fmt(x[2], 0) + ')').join(' · ') + '.');
+      uyari.push('Hedeften sapma: ' + sap.map((x) => x[0] + ' ' +
+        (gramMi(T) ? fmt(t[x[1]], 0) + ' g' : '%' + fmt(sonuc[x[1]], 0)) + ' (hedef ' + hedefYazi(T, M, x[1]) + ')').join(' · ') + '.');
     }
     const a = alan();
     a.ex = v;
-    a.adim = { sonuc: Object.assign({}, v), satir: adim, uyari };
+    a.adim = { sonuc: Object.assign({}, v), hedef: Object.assign({}, T), satir: adim, uyari };
     DA.save();
     return { kcal: t.kcal, kcalErr: Math.abs(t.kcal - T.kcal), uyari };
   }
 
   /* Hesap adımları: yalnız plan otomatik dağıtımın sonucuyla aynıyken
-     gösterilir. Elle değiştirilen bir planın yanında eski adımlar yanıltır. */
+     gösterilir. Elle değiştirilen bir planın yanında eski adımlar yanıltır.
+     Hedef dağıtımdan sonra değiştiyse adımlar yerine bunu söyleyen bir not
+     çıkar: tablo yalnız "Otomatik dağıt"la güncellenir (kilitleri ve elle
+     düzeltmeleri ezmemek için kendiliğinden değişmez), ama eskiden bunu
+     hiçbir şey söylemiyordu — yüzdeler değişip tablo aynı kalınca plan
+     girilen yüzdelere uymuyormuş gibi görünüyordu. */
   function adimlarHtml() {
     const a = alan().adim;
     if (!a || temiz(a.sonuc) !== temiz(counts())) return '';
+    if (a.hedef && !ayniHedef(a.hedef, target())) {
+      return '<div class="note warn"><b>Hedef değişti.</b> Tablo önceki hedefe göre dağıtılmıştı ' +
+        '(' + fmt(a.hedef.kcal, 0) + ' kcal). Yeni hedefe göre doldurmak için yeniden dağıt.' +
+        '<button class="btn sm block mt" data-act="exAuto">' + icon('calc') + ' Yeni hedefe göre dağıt</button></div>';
+    }
     const n1 = (x) => fmt(x, 1), n0 = (x) => fmt(x, 0);
     const li = a.satir.map((s) => {
       if (s.tur === 'sabit') {
@@ -401,7 +443,7 @@
     if (!p) return totals(a.ex).n > 0;
     const h = p.hedef || {};
     return temiz(a.ex) !== temiz(p.ex) || temiz(a.exMeal) !== temiz(p.meal) ||
-      T.kcal !== h.kcal || T.c !== h.c || T.p !== h.p;
+      !ayniHedef(T, h) || (T.birim || 'yuzde') !== (h.birim || 'yuzde');
   }
   function danisanHtml(cl) {
     const degisik = kaydedilmemis(cl);
@@ -416,8 +458,41 @@
   function hedefOneriHtml() {
     const h = yeniHedef();
     if (!h) return '';
-    return '<div class="note">Enerji hesaplayıcısında daha yeni bir hedef var: <b>' + fmt(h.kcal, 0) + ' kcal</b> · KH %' +
-      h.c + ' · P %' + h.p + '<button class="btn sm block mt" data-act="exHedefAl">Bu hedefi kullan</button></div>';
+    const M = makro(h);
+    return '<div class="note">Enerji hesaplayıcısında daha yeni bir hedef var: <b>' + fmt(h.kcal, 0) + ' kcal</b> · KH ' +
+      hedefYazi(h, M, 'c') + ' · P ' + hedefYazi(h, M, 'p') +
+      '<button class="btn sm block mt" data-act="exHedefAl">Bu hedefi kullan</button></div>';
+  }
+
+  /* Hedef kartı: enerji, makro birimi (yüzde / gram), KH ve protein alanı.
+     Yağ kalandır ve alan değil, canlı güncellenen bir özet olarak gösterilir:
+     eskiden devre dışı bir alan olarak duruyor ve hiç güncellenmiyordu. */
+  function hedefHtml(T) {
+    const gram = gramMi(T);
+    const girdi = (ad, etiket, deger) => '<label class="fld"><span>' + etiket + '</span>' +
+      '<input type="text" inputmode="decimal" name="' + ad + '" value="' + esc(deger == null ? '' : fmt(+deger, 1)) + '" data-live="exT"></label>';
+    const secim = (b, etiket) => '<button class="chip' + ((T.birim || 'yuzde') === b ? ' on' : '') + '" data-act="exBirim" data-b="' + b +
+      '" aria-pressed="' + ((T.birim || 'yuzde') === b) + '">' + etiket + '</button>';
+    return '<div class="grid2">' + girdi('kcal', 'Enerji (kcal)', T.kcal) +
+      '<div class="fld"><span id="exBirimEt">Makro birimi</span><div class="chips" role="group" aria-labelledby="exBirimEt">' +
+      secim('yuzde', 'Yüzde') + secim('gram', 'Gram') + '</div></div></div>' +
+      '<div class="grid2">' +
+      (gram ? girdi('cg', 'Karbonhidrat (g/gün)', T.cg) : girdi('c', 'Karbonhidrat (%)', T.c)) +
+      (gram ? girdi('pg', 'Protein (g/gün)', T.pg) : girdi('p', 'Protein (%)', T.p)) + '</div>' +
+      '<div id="exMakro" aria-live="polite">' + makroOzetHtml(T) + '</div>';
+  }
+  /* Üç makronun iki birimde karşılığı; yağ kalan olarak. Kullanıcının
+     birimi büyük, öteki birim altta küçük. */
+  function makroOzetHtml(T) {
+    const M = makro(T), gram = gramMi(T);
+    const kutu = (k, etiket) => {
+      const ana = gram ? fmt(M.g[k], 0) + DA.birim('g') : '%' + fmt(M.y[k], 0);
+      const alt = gram ? '%' + fmt(M.y[k], 0) : fmt(M.g[k], 0) + ' g';
+      return '<div' + (M.g[k] < 0 ? ' class="eksi"' : '') + '><b>' + ana + '</b><small>' + etiket + '</small><small class="alt">' + alt + '</small></div>';
+    };
+    return '<div class="macros mb">' + kutu('c', 'karbonhidrat') + kutu('p', 'protein') + kutu('f', 'yağ (kalan)') + '</div>' +
+      (M.g.f < 0 ? '<div class="note bad">Karbonhidrat ve protein enerjinin tamamını aşıyor; yağa yer kalmıyor.</div>'
+        : M.y.f < 5 ? '<div class="note warn">Yağa %5’ten az kalıyor; karbonhidrat ya da protein çok yüksek.</div>' : '');
   }
 
   function outHtml() {
@@ -425,7 +500,7 @@
     if (!t.n) return '<div class="card"><div class="empty">' + icon('table') +
       '<div>Gruplara değişim ekle ya da <b>Otomatik dağıt</b>’a dokun.</div></div></div>';
     const e = t.kcal || 1;
-    const fatPct = 100 - T.c - T.p;
+    const M = makro(T);
     return '<div class="card">' +
       '<div class="res hl"><span class="l">Toplam enerji</span><span class="v">' + fmt(t.kcal, 0) + ' kcal<span class="sub">' + fmt(t.n, 1) + ' değişim</span></span></div>' +
       '<div class="macros mt"><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small><small class="alt">%' + fmt(t.c * 4 / e * 100, 0) + ' enerji</small></div>' +
@@ -434,9 +509,9 @@
       '<div><b>' + fmt(t.c / 15, 1) + '</b><small>KH değişimi</small></div></div>' +
       '<div class="sect">Hedefe göre</div>' +
       barLine('Enerji', t.kcal, T.kcal, 'kcal') +
-      barLine('Karbonhidrat', t.c, T.kcal * T.c / 100 / 4, 'g') +
-      barLine('Protein', t.p, T.kcal * T.p / 100 / 4, 'g') +
-      barLine('Yağ', t.f, T.kcal * fatPct / 100 / 9, 'g') +
+      barLine('Karbonhidrat', t.c, M.g.c, 'g') +
+      barLine('Protein', t.p, M.g.p, 'g') +
+      barLine('Yağ', t.f, Math.max(0, M.g.f), 'g') +
       '</div>' +
       breakdown(v, t) +
       '<button class="btn sec block" data-act="exShare">' + icon('share') + ' Planı paylaş / kopyala</button>' +
@@ -460,10 +535,7 @@
           (cl ? '<div id="exDanisan">' + danisanHtml(cl) + '</div>' : '') +
           '<div class="card"><div class="sect" style="margin-top:0">Hedef</div>' +
           '<div id="exHedefOneri">' + hedefOneriHtml() + '</div>' +
-          '<div class="grid2"><label class="fld"><span>Enerji (kcal)</span><input type="text" inputmode="numeric" name="kcal" value="' + esc(T.kcal) + '" data-live="exT"></label>' +
-          '<label class="fld"><span>Karbonhidrat %</span><input type="text" inputmode="numeric" name="c" value="' + esc(T.c) + '" data-live="exT"></label></div>' +
-          '<div class="grid2"><label class="fld"><span>Protein %</span><input type="text" inputmode="numeric" name="p" value="' + esc(T.p) + '" data-live="exT"></label>' +
-          '<label class="fld"><span>Yağ % (otomatik)</span><input type="text" value="' + esc(100 - T.c - T.p) + '" disabled></label></div>' +
+          hedefHtml(T) +
           '<button class="btn block" data-act="exAuto">' + icon('calc') + ' Otomatik dağıt</button>' +
           '<p class="muted tiny" style="margin-bottom:0">Süt, sebze, meyve ve yağlı tohum TÜBER örüntüsünden; ekmek KH’den, et proteinden, ' +
           'yağ yağ hedefinden hesaplanır. Kilitli gruplar sabit kalır. Süt yarım yağlı hesaplanır; tam yağlı için satırını kilitle.</p></div>' +
@@ -526,11 +598,24 @@
     const T = target(), n = num(el.value);
     if (isFinite(n)) { T[el.name] = Math.max(0, n); T.ts = Date.now(); }
     DA.save();
+    const mk = DA.$('#exMakro'); if (mk) mk.innerHTML = makroOzetHtml(T);
     ustBilgi();
     const o = DA.$('#exOut'); if (o) o.innerHTML = outHtml();
     const tb = DA.$('#exTuber');
     if (tb) { const d0 = tb.querySelector('details'), open = d0 && d0.open; tb.innerHTML = tuberHtml();
       const d = tb.querySelector('details'); if (d && open) d.open = true; }
+  };
+
+  /* Birim değişince değerler karşılığına çevrilir; plan aynı kalır.
+     Hedefin kendisi değişmediği için zaman damgası güncellenmez. */
+  DA.actions.exBirim = (el) => {
+    const T = target(), b = el.dataset.b;
+    if ((T.birim || 'yuzde') === b) return;
+    const M = makro(T);
+    if (b === 'gram') { T.cg = Math.round(M.g.c); T.pg = Math.round(M.g.p); }
+    else { T.c = Math.round(M.y.c); T.p = Math.round(M.y.p); }
+    T.birim = b;
+    DA.save(); DA.render(true);
   };
 
   DA.actions.exHedefAl = () => {
@@ -549,7 +634,7 @@
   DA.actions.exAuto = () => {
     const T = target();
     if (!(T.kcal > 0)) return DA.toast('Önce hedef enerjiyi gir');
-    if (T.c + T.p > 95) return DA.toast('Karbonhidrat + protein yüzdesi çok yüksek');
+    if (makro(T).y.f < 5) return DA.toast('Yağa en az %5 kalmalı: karbonhidrat ya da protein çok yüksek');
     if (!DA.oruntu || !DA.data.tuber || !DA.data.tuber.oruntu) {
       DA.need(['tuber']).then(() => DA.actions.exAuto()).catch(() => DA.toast('TÜBER verisi yüklenemedi'));
       return;
@@ -638,6 +723,14 @@
         DA.dipnot('bu plan bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
   };
+  /* Kayıtta girilen birim ve iki birimdeki karşılık birlikte tutulur: plan
+     yeniden açıldığında aynı birimde, rapor ise iki birimde okunabilsin. */
+  function kayitHedefi(T) {
+    const M = makro(T), b1 = (x) => Math.round(x * 10) / 10;
+    return { kcal: T.kcal, birim: T.birim || 'yuzde',
+      c: gramMi(T) ? b1(M.y.c) : T.c, p: gramMi(T) ? b1(M.y.p) : T.p,
+      cg: gramMi(T) ? T.cg : b1(M.g.c), pg: gramMi(T) ? T.pg : b1(M.g.p) };
+  }
   DA.actions.exSaveClient = (el) => {
     const c = danisan(el.dataset.id);
     if (!c) return DA.toast('Danışan bulunamadı');
@@ -648,7 +741,7 @@
     const t = totals(counts());
     if (!t.n) return DA.toast('Önce gruplara değişim ekle');
     const T = target();
-    c.plan = { d: DA.today(), ts: Date.now(), hedef: { kcal: T.kcal, c: T.c, p: T.p }, ex: Object.assign({}, counts()),
+    c.plan = { d: DA.today(), ts: Date.now(), hedef: kayitHedefi(T), ex: Object.assign({}, counts()),
       meal: JSON.parse(JSON.stringify(meals())),
       top: { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) } };
     DA.save();

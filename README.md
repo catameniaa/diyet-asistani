@@ -7,7 +7,8 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - 15 hesaplayıcı: BKİ, enerji (BMH/TEH, makrolar), ideal kilo, bel/kalça ve vücut yağı, kilo kaybı %,
   sıvı, enteral, GIR, gebelik/laktasyon, stres faktörü, çocuk enerji-protein, glisemik indeks ve yük
 - Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
-- Değişim listesi: sayaçlı giriş; klasik basamaklı otomatik dağıtım (süt, sebze, meyve, yağlı tohum
+- Değişim listesi: sayaçlı giriş; makro hedefi yüzde ya da gram olarak (yağ kalan, canlı gösterilir);
+  klasik basamaklı otomatik dağıtım (süt, sebze, meyve, yağlı tohum
   TÜBER Ek 3.1.1 örüntüsünden; ekmek KH'den, et proteinden, yağ yağ hedefinden) ve hesap adımlarının
   gösterimi; grup kilitleme, yarım yağlı süt varsayılanı, ulaşılamayan hedefte açık uyarı;
   öğünlere gruba uygun bölme (ara öğüne meyve/süt/yağlı tohum, ana öğünlere et/sebze/yağ);

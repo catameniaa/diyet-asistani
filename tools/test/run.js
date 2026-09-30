@@ -1124,6 +1124,114 @@ function ornekDurum(tema) {
   uiEkle('Öğünler: yalnız yağlı planda bile ara öğüne yağ gitmiyor', 0, kl.zorYag);
   uiEkle('Öğünler: yalnız meyveli planda iki ara öğünde meyve', true, kl.zorMeyve);
 
+  /* ---- değişim listesi: hedef yüzde ya da gram ----
+     Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,
+     plan girilen yüzdelere uymuyormuş gibi görünüyordu. Giriş gerçek "input"
+     olayıyla yapılır; olay bağlantısı da sınanmış olur. */
+  const gr = await sayfa.evaluate(() => {
+    const ui = DA.state().ui, o = {};
+    const eski = DA.toast; const tostlar = []; DA.toast = (m) => tostlar.push(m);
+    ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+    const G = ui.exAlan[''];
+    G.ex = {}; G.exLock = {}; G.exMeal = {}; G.adim = null; G.exT = { kcal: 1800, birim: 'yuzde', c: 50, p: 20, ts: 1 };
+    DA.render(false);
+    /* Öğe yoksa test çökmesin, ölçüm başarısız sayılsın: çökme sonraki bütün
+       testleri koşturmadan durdurur ve başka hataları gizler. */
+    const $ = (sel) => document.querySelector(sel);
+    const deger = (sel) => { const e = $(sel); return e ? e.value : null; };
+    const metin = (sel) => { const e = $(sel); return e ? e.textContent : ''; };
+    const bas = (sel) => { const e = $(sel); if (e) e.click(); return !!e; };
+    const yaz = (ad, d) => { const e = $('input[name=' + ad + '][data-live=exT]');
+      if (e) { e.value = d; e.dispatchEvent(new Event('input', { bubbles: true })); } };
+    const serit = () => Array.from(document.querySelectorAll('#exMakro .macros > div')).map((d) => (d.querySelector('b') || {}).textContent || '').map((x) => x.trim());
+    const tikla = (b) => bas('button[data-act=exBirim][data-b=' + b + ']');
+
+    /* 1) yüzde modunda yağ canlı güncelleniyor: 100 − 45 − 20 = 35 */
+    yaz('c', '45'); yaz('p', '20');
+    o.yagCanli = serit()[2];
+    /* 2) grama geçiş: 1800 × 45 ÷ 400 = 202,5 → 203 g · 1800 × 20 ÷ 400 = 90 g */
+    tikla('gram');
+    o.gramaGecis = deger('input[name=cg]') + '/' + deger('input[name=pg]');
+    /* 3) gram modunda dağıtım — elle: yağ hedefi (1800 − 720 − 320) ÷ 9 = 84,4 g
+       sabitler KH 105, P (24 + 8 + 4) = 36, Y (12 + 10) = 22
+       ekmek (180 − 105) ÷ 15 = 5 · et (80 − 36 − 10) ÷ 6 = 5,7 → 6
+       yağ (84,4 − 22 − 30) ÷ 5 = 6,5 → 6 · toplam KH 180 · P 82 · Y 82 · 1786 kcal */
+    yaz('cg', '180'); yaz('pg', '80');
+    o.gramSerit = serit().join(' ');
+    bas('button[data-act=exAuto]');
+    const t = DA.exchange.totals(G.ex);
+    o.gramSonuc = [G.ex.eyg, G.ex.et, G.ex.yag, Math.round(t.c), Math.round(t.p), Math.round(t.f), Math.round(t.kcal)].join(',');
+    o.gramAdim = Array.from(document.querySelectorAll('#exAdim li')).some((x) => /Ekmek = \(180 g KH hedefi − 105\)/.test(x.textContent));
+    /* 4) hedef değişince tablo eski hedefe göre kalır ve bu söylenir */
+    yaz('cg', '200');
+    o.bayatNot = /Hedef değişti/.test(metin('#exAdim'));
+    o.bayatAdimGizli = !$('#exAdim li');
+    o.notDugmesi = bas('#exAdim button[data-act=exAuto]');
+    o.yenidenDagitildi = Math.round(DA.exchange.totals(G.ex).c);
+    o.notKalkti = !/Hedef değişti/.test(metin('#exAdim'));
+    /* 5) gram modunda enerji değişince gramlar sabit, yüzde değişir:
+       200 × 4 ÷ 2000 = %40 */
+    yaz('cg', '180'); yaz('kcal', '2000');
+    o.gramSabit = G.exT.cg;
+    o.yuzdeDegisti = metin('#exMakro .macros > div small.alt').trim();
+    /* 6) yüzdeye dönüş: 180 × 4 ÷ 2000 = %36 · 80 × 4 ÷ 2000 = %16 */
+    tikla('yuzde');
+    o.yuzdeyeDonus = deger('input[name=c]') + '/' + deger('input[name=p]');
+    /* 7) tutarsız hedef: 400 g + 100 g × 4 = 2000 kcal > 1800 → yağ eksi */
+    tikla('gram'); yaz('kcal', '1800'); yaz('cg', '400'); yaz('pg', '100');
+    o.eksiNot = /enerjinin tamamını aşıyor/.test(metin('#exMakro'));
+    const once = JSON.stringify(G.ex); tostlar.length = 0;
+    bas('button[data-act=exAuto]');
+    o.eksiReddedildi = JSON.stringify(G.ex) === once && /Yağa en az %5/.test(tostlar.join(' '));
+    /* 8) gram modunda uyarı gram ile yazılır: 1500 kcal, P 120 g ulaşılamaz */
+    yaz('kcal', '1500'); yaz('cg', '170'); yaz('pg', '120');
+    bas('button[data-act=exAuto]');
+    o.gramUyari = (G.adim.uyari || []).join(' | ');
+
+    /* 9) danışana gram modunda kayıt ve yeniden açınca aynı birim */
+    DA.state().clients = [{ id: 'gk', name: 'Gram Kişi', sex: 'K', h: 160, meas: [] }];
+    location.hash = 'hesapla/degisim?c=gk'; DA.render(false);
+    const A = ui.exAlan.gk;
+    A.exT = { kcal: 1800, birim: 'gram', cg: 180, pg: 80, ts: 2 }; A.exLock = {};
+    DA.render(false);
+    bas('button[data-act=exAuto]');
+    DA.actions.exSaveClient({ dataset: { id: 'gk' } });
+    const ph = (DA.state().clients[0].plan || {}).hedef || {};
+    o.kayitBirim = ph.birim + ' ' + ph.cg + '/' + ph.pg + ' (%' + ph.c + '/%' + ph.p + ')';
+    delete ui.exAlan.gk; ui.exClient = null;                        /* sonraki açılış dosyadan kurulsun */
+    location.hash = 'hesapla/degisim?c=gk'; DA.render(false);
+    o.yenidenAcilis = (($('button[data-act=exBirim].on') || {}).dataset || {}).b + ' ' + deger('input[name=cg]');
+    o.yenidenAyni = /Dosyadaki planla aynı/.test(metin('#exDanisan'));
+
+    /* 10) hesaplayıcı hedefi gram modunda gramla önerilir (300 g, 120 g) */
+    DA.state().targets = { kcal: 2400, c: 300, p: 120, f: 80, dan: '', ts: Date.now() + 1000 };
+    ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+    ui.exAlan[''].exT.birim = 'gram'; DA.render(false);
+    o.oneriGram = metin('#exHedefOneri');
+    DA.toast = eski;
+    return o;
+  });
+  uiEkle('Yüzde girilince yağ canlı güncelleniyor', '%35', gr.yagCanli);
+  uiEkle('Grama geçişte değerler çevriliyor', '203/90', gr.gramaGecis);
+  uiEkle('Gram modunda şerit (KH P Y)', '180g 80g 84g', gr.gramSerit);
+  uiEkle('Gram hedefiyle dağıtım (ekmek,et,yağ,KH,P,Y,kcal)', '5,6,6,180,82,82,1786', gr.gramSonuc);
+  uiEkle('Adımlar gram hedefini gösteriyor', true, gr.gramAdim);
+  uiEkle('Hedef değişince "Hedef değişti" notu', true, gr.bayatNot);
+  uiEkle('Hedef değişince eski adımlar gizleniyor', true, gr.bayatAdimGizli);
+  uiEkle('Notta yeniden dağıt düğmesi var', true, gr.notDugmesi);
+  uiEkle('Nottaki düğme yeni hedefe göre dağıtıyor (KH g)', true, Math.abs(gr.yenidenDagitildi - 200) <= 8);
+  uiEkle('Yeniden dağıtınca not kalkıyor', true, gr.notKalkti);
+  uiEkle('Gram modunda enerji değişince gram sabit', 180, gr.gramSabit);
+  uiEkle('Gram modunda enerji değişince yüzde güncelleniyor', '%36', gr.yuzdeDegisti);
+  uiEkle('Yüzdeye dönüşte değerler çevriliyor', '36/16', gr.yuzdeyeDonus);
+  uiEkle('Tutarsız hedefte kırmızı not', true, gr.eksiNot);
+  uiEkle('Tutarsız hedefte dağıtım reddediliyor', true, gr.eksiReddedildi);
+  kosulUi('Gram modunda uyarı gramla yazılıyor', /Protein hedefi \(120 g\)/.test(gr.gramUyari), gr.gramUyari);
+  uiEkle('Danışana gram modunda kayıt', 'gram 180/80 (%40/%17,8)'.replace(',', '.'), gr.kayitBirim);
+  uiEkle('Yeniden açınca aynı birim ve değer', 'gram 180', gr.yenidenAcilis);
+  uiEkle('Yeniden açınca dosyayla aynı', true, gr.yenidenAyni);
+  kosulUi('Hesaplayıcı hedefi gram modunda gramla öneriliyor', /KH 300 g · P 120 g/.test(gr.oneriGram), gr.oneriGram);
+
   /* Enerji hesaplayıcısı hedefe kim için ve ne zaman hesaplandığını işliyor —
      değişim listesinin öneri kuralı bu damgaya dayanıyor. */
   await sayfa.evaluate(() => DA.need(['pal']));
