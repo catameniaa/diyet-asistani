@@ -278,7 +278,10 @@
   DA.actions.saveTargets = () => {
     const c = byId('enerji');
     if (!c._last) return DA.toast('Önce değerleri gir');
-    DA.state().targets = Object.assign({}, c._last); DA.save();
+    /* Hedefe kim için ve ne zaman hesaplandığı işlenir. Değişim listesi bunu
+       kullanarak yeni hedefi yalnızca aynı kişinin planına önerir; başka bir
+       danışan için hesaplanan hedef bir başkasının planına sızmaz. */
+    DA.state().targets = Object.assign({}, c._last, { dan: curClient || '', ts: Date.now() }); DA.save();
     DA.toast('Kaydedildi: ' + c._last.kcal + ' kcal · menü planlayıcıda hedef olarak kullanılacak');
   };
 

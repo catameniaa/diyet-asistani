@@ -797,6 +797,178 @@ function ornekDurum(tema) {
   uiEkle('Tablo satırları bölünmüyor', 'avoid', basKural.satir);
   uiEkle('Tablo başlığı her sayfada yineleniyor', 'table-header-group', basKural.thead);
 
+  /* ---- değişim listesi: bağlam, kilit, süt türü, hedef ----
+     Her senaryo sahada bulunan bir hatanın kendisidir. */
+  /* Önceki testlerden biri sayfayı yeniden yükleyebiliyor; o zaman tembel veri
+     düşer ve değişim listesi iskelette kalır. Ekranın verisi burada yüklenir. */
+  await sayfa.evaluate(() => DA.need(['tuber', 'hedef']));
+  const dg = await sayfa.evaluate(() => {
+    const S = DA.state(), ui = S.ui, o = {};
+    const ac = (h) => { location.hash = h; DA.render(false); };
+    const girdi = (ad) => { const e = document.querySelector('input[name=' + ad + '][data-live=exT]'); return e ? e.value : null; };
+    const alanEx = (k) => (ui.exAlan[k] || {}).ex || {};
+    S.clients = [
+      { id: 'ayse', name: 'Ayşe', sex: 'K', h: 160, meas: [],
+        plan: { d: '2026-09-01', ts: 1000, hedef: { kcal: 1400, c: 50, p: 20 },
+          ex: { sut: 2, et: 4, eyg: 6, sebze: 4, meyve: 3, yag: 3 }, meal: {}, top: { kcal: 1400, c: 0, p: 0, f: 0 } } },
+      { id: 'mehmet', name: 'Mehmet', sex: 'E', h: 180, meas: [] }
+    ];
+    /* Eski biçim: tek ortak alan, içinde başka birinin 2400 kcal planı */
+    delete ui.exAlan;
+    ui.ex = { sut: 3, et: 8, eyg: 13, sebze: 5, meyve: 3, yag: 4, tohum: 2 };
+    ui.exT = { kcal: 2400, c: 50, p: 20 };
+    ui.exClient = null;
+    DA.save();
+
+    /* 1) Ayşe'nin dosyasından açılınca Ayşe'nin planı gelmeli */
+    ac('hesapla/degisim?c=ayse');
+    o.ayseHedef = girdi('kcal');
+    o.ayseSut = alanEx('ayse').sut; o.ayseEt = alanEx('ayse').et;
+    o.eskiGenele = alanEx('').eyg;                    /* eski ortak alan genel bağlama taşındı */
+    o.eskiAlanSilindi = !('ex' in ui) && !('exT' in ui);
+    o.notAyni = /Dosyadaki planla aynı/.test((document.querySelector('#exDanisan') || {}).textContent || '');
+
+    /* 2) Değiştirmeden kaydetmek Ayşe'nin planını bozmamalı */
+    DA.actions.exSaveClient({ dataset: { id: 'ayse' } });
+    o.kayitSonraKcal = S.clients[0].plan.hedef.kcal;
+    o.kayitSonraEt = S.clients[0].plan.ex.et;
+
+    /* 2b) Artırıp geri azaltmak "değişiklik" sayılmamalı: sayaç 0'a inince
+       alanda tohum: 0 kalır, dosyada tohum hiç yoktur — ikisi aynı plandır. */
+    DA.actions.exInc({ dataset: { k: 'tohum' } }); DA.actions.exDec({ dataset: { k: 'tohum' } });
+    o.sifirAyniSayiliyor = /Dosyadaki planla aynı/.test(document.querySelector('#exDanisan').textContent);
+
+    /* 3) Ayşe'de değişiklik: uyarı çıkmalı, genel alan etkilenmemeli */
+    DA.actions.exInc({ dataset: { k: 'sut' } });
+    o.degisiklikUyarisi = /Kaydedilmemiş/.test(document.querySelector('#exDanisan').textContent);
+    o.dosyaHenuzEski = S.clients[0].plan.ex.sut;
+    o.genelEtkilenmedi = alanEx('').sut;
+
+    /* 4) Yanlış bağlamdan gelen kaydet düğmesi başka dosyaya yazmamalı */
+    DA.actions.exSaveClient({ dataset: { id: 'mehmet' } });
+    o.mehmeteYazilmadi = !S.clients[1].plan;
+
+    /* 5) Dosyadaki plana dön, sonra geri al */
+    DA.actions.exPlanaDon();
+    o.donunceSut = alanEx('ayse').sut;
+    const geriAl = document.querySelector('.toast .gbtn');
+    if (geriAl) geriAl.click();
+    o.geriAlSut = alanEx('ayse').sut;
+
+    /* 6) Kaydet: artık dosya güncel */
+    DA.actions.exSaveClient({ dataset: { id: 'ayse' } });
+    o.kayitGuncel = S.clients[0].plan.ex.sut;
+    o.notAyniTekrar = /Dosyadaki planla aynı/.test(document.querySelector('#exDanisan').textContent);
+
+    /* 7) Kilitli yarım değişim korunmalı (eskiden 1,5 → 2, 0,5 → 1) */
+    ac('hesapla/degisim');
+    const G = ui.exAlan[''];
+    G.ex = { sut: 1.5, et: 0.5 }; G.exLock = { sut: true, et: true }; G.exT = { kcal: 1800, c: 50, p: 20, ts: 1 };
+    DA.actions.exAuto();
+    o.kilitSut = G.ex.sut; o.kilitEt = G.ex.et;
+
+    /* 8) Süt türü korunmalı (eskiden yarım yağlı silinip tam yağlı konuyordu) */
+    G.ex = { sutyy: 2 }; G.exLock = {};
+    DA.actions.exAuto();
+    o.yyKaldi = G.ex.sutyy > 0; o.tamYagliEklenmedi = G.ex.sut || 0;
+    /* tam yağlı kilitliyken kilitsiz yarım yağlı olduğu gibi kalmalı */
+    G.ex = { sut: 1, sutyy: 1 }; G.exLock = { sut: true };
+    DA.actions.exAuto();
+    o.yyKilitYaninda = G.ex.sutyy;
+
+    /* 9) Öğünlerde yarım değişim: 1,5 süt öğünlere 1,5 olarak dağılmalı */
+    G.ex = { sut: 1.5, et: 3, eyg: 6, sebze: 3, meyve: 2, yag: 3 }; G.exLock = {};
+    DA.actions.exMealAuto();
+    o.ogunSut = Object.keys(G.exMeal).reduce((t, m) => t + (G.exMeal[m].sut || 0), 0);
+    o.uyusmazlikYok = !/uyuşmuyor/.test(document.querySelector('#exMeals').textContent);
+
+    /* 10) Hesaplayıcıda daha yeni hedef: sessizce yazılmaz, önerilir */
+    G.exT = { kcal: 1800, c: 50, p: 20, ts: 1000 };
+    S.targets = { kcal: 2400, c: 300, p: 120, f: 80, dan: '', ts: 2000 };
+    ac('hesapla/degisim');
+    o.hedefSessizKaldi = girdi('kcal');
+    o.oneriVar = /2400 kcal/.test((document.querySelector('#exHedefOneri') || {}).textContent || '');
+    DA.actions.exHedefAl();
+    o.oneriAlininca = girdi('kcal');
+    o.oneriKayboldu = !(document.querySelector('#exHedefOneri') || {}).textContent;
+    /* başka danışan için hesaplanan hedef Ayşe'ye önerilmemeli */
+    S.targets = { kcal: 3000, c: 375, p: 150, f: 100, dan: 'mehmet', ts: 5000 };
+    ac('hesapla/degisim?c=ayse');
+    o.baskasininHedefiYok = !(document.querySelector('#exHedefOneri') || {}).textContent;
+    /* elle düzeltme hesaplayıcıdaki eski hedeften daha yenidir */
+    S.targets = { kcal: 2000, c: 250, p: 100, f: 67, dan: 'ayse', ts: 6000 };
+    ac('hesapla/degisim?c=ayse');
+    o.ayseyeOneri = /2000 kcal/.test(document.querySelector('#exHedefOneri').textContent);
+    const k = document.querySelector('input[name=kcal][data-live=exT]');
+    k.value = '1500'; DA.live.exT(k);
+    o.elleSonraOneriYok = !document.querySelector('#exHedefOneri').textContent;
+
+    /* 11) Yazdırma ekrandakini basar; kaydedilmemişse uyarır */
+    DA.actions.exInc({ dataset: { k: 'meyve' } });
+    const meyve = alanEx('ayse').meyve;
+    ac('yazdir/degisim/ayse');
+    const d = document.querySelector('.printdoc');
+    const satir = d ? Array.from(d.querySelectorAll('tr')).find((tr) => /Meyve/.test(tr.textContent)) : null;
+    o.basilanMeyve = satir ? satir.querySelector('td.n').textContent.trim() : null;
+    o.beklenenMeyve = String(meyve);
+    o.basimUyarisi = /kaydedilmedi/.test(document.querySelector('#app').textContent);
+    return o;
+  });
+  uiEkle('Danışan planı açılıyor: hedef', '1400', dg.ayseHedef);
+  uiEkle('Danışan planı açılıyor: süt', 2, dg.ayseSut);
+  uiEkle('Danışan planı açılıyor: et', 4, dg.ayseEt);
+  uiEkle('Eski ortak alan genel bağlama taşındı', 13, dg.eskiGenele);
+  uiEkle('Eski ortak alan kaldırıldı', true, dg.eskiAlanSilindi);
+  uiEkle('Değişmemiş plan "aynı" gösteriliyor', true, dg.notAyni);
+  uiEkle('Kaydet başka planla ezmiyor: hedef', 1400, dg.kayitSonraKcal);
+  uiEkle('Kaydet başka planla ezmiyor: et', 4, dg.kayitSonraEt);
+  uiEkle('Sıfıra inen sayaç değişiklik sayılmıyor', true, dg.sifirAyniSayiliyor);
+  uiEkle('Kaydedilmemiş değişiklik gösteriliyor', true, dg.degisiklikUyarisi);
+  uiEkle('Kaydetmeden dosya değişmiyor', 2, dg.dosyaHenuzEski);
+  uiEkle('Danışan düzenlemesi genel alana sızmıyor', 3, dg.genelEtkilenmedi);
+  uiEkle('Yanlış bağlamdan kaydet başka dosyaya yazmıyor', true, dg.mehmeteYazilmadi);
+  uiEkle('Dosyadaki plana dönülüyor', 2, dg.donunceSut);
+  uiEkle('Dosyaya dönüş geri alınabiliyor', 3, dg.geriAlSut);
+  uiEkle('Kaydet dosyayı güncelliyor', 3, dg.kayitGuncel);
+  uiEkle('Kayıttan sonra "aynı" gösteriliyor', true, dg.notAyniTekrar);
+  uiEkle('Kilitli 1,5 süt korunuyor', 1.5, dg.kilitSut);
+  uiEkle('Kilitli 0,5 et korunuyor', 0.5, dg.kilitEt);
+  uiEkle('Yarım yağlı süt seçimi korunuyor', true, dg.yyKaldi);
+  uiEkle('Yarım yağlı yerine tam yağlı eklenmiyor', 0, dg.tamYagliEklenmedi);
+  uiEkle('Tam yağlı kilitliyken yarım yağlı olduğu gibi kalıyor', 1, dg.yyKilitYaninda);
+  uiEkle('Yarım değişim öğünlere tam dağılıyor', 1.5, dg.ogunSut);
+  uiEkle('Yarım değişimde uyuşmazlık uyarısı yok', true, dg.uyusmazlikYok);
+  uiEkle('Yeni hedef sessizce yazılmıyor', '1800', dg.hedefSessizKaldi);
+  uiEkle('Yeni hedef öneriliyor', true, dg.oneriVar);
+  uiEkle('Önerilen hedef alınabiliyor', '2400', dg.oneriAlininca);
+  uiEkle('Alınan hedef artık önerilmiyor', true, dg.oneriKayboldu);
+  uiEkle('Başka danışanın hedefi önerilmiyor', true, dg.baskasininHedefiYok);
+  uiEkle('Aynı danışanın yeni hedefi öneriliyor', true, dg.ayseyeOneri);
+  uiEkle('Elle düzeltme sonrası eski hedef önerilmiyor', true, dg.elleSonraOneriYok);
+  uiEkle('Yazdırma ekrandaki planı basıyor', dg.beklenenMeyve, dg.basilanMeyve);
+  uiEkle('Kaydedilmemiş plan basılırken uyarı var', true, dg.basimUyarisi);
+
+  /* Enerji hesaplayıcısı hedefe kim için ve ne zaman hesaplandığını işliyor —
+     değişim listesinin öneri kuralı bu damgaya dayanıyor. */
+  await sayfa.evaluate(() => DA.need(['pal']));
+  const damga = await sayfa.evaluate(() => {
+    const once = Date.now();
+    const kaydet = (hash) => {
+      location.hash = hash; DA.render(false);
+      const f = document.querySelector('form[data-calc=enerji]');
+      [['age', '30'], ['h', '165'], ['w', '60']].forEach(([ad, d]) => {
+        const e = f.querySelector('[name=' + ad + ']'); e.value = d; DA.live.calc(e); });
+      DA.actions.saveTargets();
+      return Object.assign({}, DA.state().targets);
+    };
+    const dan = kaydet('hesapla/enerji?c=ayse');
+    const genel = kaydet('hesapla/enerji');
+    return { dan: dan.dan, danTs: dan.ts >= once, genel: genel.dan, kcal: genel.kcal > 0 };
+  });
+  uiEkle('Danışan için kaydedilen hedef danışanla damgalanıyor', 'ayse', damga.dan);
+  uiEkle('Kaydedilen hedef zaman damgası taşıyor', true, damga.danTs);
+  uiEkle('Genel kaydedilen hedef kimseye ait değil', '', damga.genel);
+
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
   uiEkle('Depolama durumu raporlanıyor', true,

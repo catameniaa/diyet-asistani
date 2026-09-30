@@ -8,7 +8,7 @@
      lo/hi = otomatik dağıtımda aranan makul aralık. */
   const GROUPS = [
     { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, lo: 1, hi: 3, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
-    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, lo: 0, hi: 0, ex: 'Aynı porsiyonların yarım yağlısı' },
+    { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, lo: 1, hi: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
     { k: 'et', l: 'Et', c: 0, p: 6, f: 5, lo: 2, hi: 8, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
     { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, lo: 3, hi: 14, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates' },
     { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, lo: 3, hi: 5, ex: '4 yemek kaşığı pişmiş sebze yemeği; 1 kase çiğ salata' },
@@ -21,17 +21,66 @@
   const numText = (n) => (n % 1 === 0 ? String(n) : fmt(n, 1)); // 2 / 2,5
 
 
-  /* ---- durum ---- */
+  /* ---- durum ----
+     Çalışma alanı bağlama göre ayrıdır: '' = genel, aksi hâlde danışan kimliği.
+     Eskiden tek bir ortak alan vardı: Ayşe'nin dosyasından "Düzenle" denince
+     ekranda son çalışılan (başka bir danışanın) plan duruyor, "Planı danışana
+     kaydet" de Ayşe'nin kayıtlı planını onunla eziyordu. */
   const S = () => DA.state().ui;
-  const counts = () => (S().ex = S().ex || {});
-  const locks = () => (S().exLock = S().exLock || {});
-  function target() {
-    if (!S().exT) {
-      const t = DA.state().targets;
-      const kcal = (t && t.kcal) || 1800;
-      S().exT = { kcal, c: t && t.kcal ? Math.round(t.c * 4 / t.kcal * 100) : 50, p: t && t.kcal ? Math.round(t.p * 4 / t.kcal * 100) : 20 };
+  const baglam = () => S().exClient || '';
+  const danisan = (id) => (DA.state().clients || []).find((x) => x.id === id) || null;
+  function alanlar() {
+    const u = S();
+    if (!u.exAlan) {
+      u.exAlan = {};
+      /* Eski biçimdeki tek ortak alan genel bağlama taşınır; hiçbir şey kaybolmaz. */
+      if (u.ex || u.exT || u.exLock || u.exMeal) {
+        u.exAlan[''] = { ex: u.ex || {}, exT: u.exT || null, exLock: u.exLock || {}, exMeal: u.exMeal || {} };
+      }
+      delete u.ex; delete u.exT; delete u.exLock; delete u.exMeal;
     }
-    return S().exT;
+    return u.exAlan;
+  }
+  /* Danışanın ilk açılışında çalışma alanı kayıtlı planından kurulur. */
+  function yeniAlan(k) {
+    const p = k && danisan(k) ? danisan(k).plan : null;
+    if (p) return { ex: Object.assign({}, p.ex), exT: Object.assign({}, p.hedef, { ts: p.ts || 0 }),
+      exLock: {}, exMeal: JSON.parse(JSON.stringify(p.meal || {})) };
+    return { ex: {}, exT: null, exLock: {}, exMeal: {} };
+  }
+  function alan() {
+    const A = alanlar(), k = baglam();
+    if (!A[k]) A[k] = yeniAlan(k);
+    return A[k];
+  }
+  const counts = () => alan().ex;
+  const locks = () => alan().exLock;
+
+  /* ---- hedef ----
+     ts = hedefin en son açıkça belirlendiği an: hesaplayıcıdan alındığında,
+     elle düzeltildiğinde ya da kayıtlı plandan yüklendiğinde. Eskiden hedef ilk
+     açılışta bir kez kopyalanıp takılı kalıyordu; enerji hesaplayıcısında yeni
+     hedef kaydedilse de değişim listesi eskisini göstermeye devam ediyordu.
+     Artık daha yeni bir hedef sessizce üzerine yazılmaz, ekranda önerilir. */
+  const uygunHedef = (t) => !!(t && t.kcal > 0) && (!t.dan || t.dan === baglam());
+  function hesaptanHedef(t) {
+    return { kcal: t.kcal, c: Math.round(t.c * 4 / t.kcal * 100), p: Math.round(t.p * 4 / t.kcal * 100), ts: t.ts || 0 };
+  }
+  function target() {
+    const a = alan();
+    if (!a.exT) {
+      const t = DA.state().targets;
+      a.exT = uygunHedef(t) ? hesaptanHedef(t) : { kcal: 1800, c: 50, p: 20, ts: 0 };
+    }
+    return a.exT;
+  }
+  /* Bu bağlama önerilebilecek, şu anki hedeften daha yeni hesaplayıcı hedefi.
+     Başka bir danışan için hesaplanan hedef önerilmez. */
+  function yeniHedef() {
+    const t = DA.state().targets, T = target();
+    if (!uygunHedef(t) || !t.ts || t.ts <= (T.ts || 0)) return null;
+    const h = hesaptanHedef(t);
+    return (h.kcal === T.kcal && h.c === T.c && h.p === T.p) ? null : h;
   }
   const cnt = (k) => { const n = counts()[k]; return isFinite(n) ? n : 0; };
 
@@ -48,12 +97,29 @@
   /* ---- otomatik dağıtım ----
      Kilitli gruplar sabit tutulur; kalanlar makul aralıklarda taranıp hedef enerjiye ve
      makro yüzdelerine en yakın TAM SAYI kombinasyon seçilir. */
+  /* Süt türü: iki süt grubundan hangisi aranacak.
+     Eskiden yarım yağlı sütün aralığı 0–0'dı; kilitsiz girilen yarım yağlı süt
+     otomatik dağıtımda siliniyor, yerine tam yağlı konuyordu — diyetisyenin
+     süt türü seçimi kayboluyordu. Artık:
+       · ikisi de kilitsizse, planda hangisi çoksa o aranır (eşitse tam yağlı),
+         öteki sıfırlanır;
+       · biri kilitliyse öteki olduğu gibi kalır, aranmaz. */
+  function sutTuru(L) {
+    if (L.sut || L.sutyy) return null;
+    return cnt('sutyy') > cnt('sut') ? 'sutyy' : 'sut';
+  }
   function distribute() {
-    const T = target(), L = locks(), cur = counts();
-    const fixed = {}, search = [];
+    const T = target(), L = locks();
+    const fixed = {}, search = [], tur = sutTuru(L);
     GROUPS.forEach((g) => {
-      if (L[g.k]) { fixed[g.k] = Math.round(cnt(g.k)); return; }
-      if (g.lo === 0 && g.hi === 0) { fixed[g.k] = 0; return; }
+      /* Kilitli değer olduğu gibi korunur. Eskiden Math.round'dan geçiyordu:
+         kilitli 1,5 süt 2'ye, 0,5 et 1'e sessizce çevriliyordu. */
+      if (L[g.k]) { fixed[g.k] = cnt(g.k); return; }
+      if (g.k === 'sut' || g.k === 'sutyy') {
+        if (g.k === tur) search.push(g);
+        else fixed[g.k] = tur ? 0 : cnt(g.k);
+        return;
+      }
       search.push(g);
     });
     const base = totals(fixed);
@@ -83,7 +149,7 @@
     if (!best) return null;
     const out = Object.assign({}, fixed);
     search.forEach((g, i) => { out[g.k] = best.v[i]; });
-    S().ex = out;
+    alan().ex = out;
     DA.save();
     return { kcalErr: best.kcalErr, kcal: totals(out).kcal, want };
   }
@@ -91,7 +157,7 @@
   /* ---- öğünlere dağıtım ----
      Varsayılan enerji payları; her grubun toplamı en büyük kalan yöntemiyle tam sayı olarak bölünür. */
   const MEALS = [['kahvalti', 'Kahvaltı', 25], ['ara1', 'Ara öğün', 10], ['ogle', 'Öğle', 30], ['ara2', 'Ara öğün', 10], ['aksam', 'Akşam', 25]];
-  const meals = () => (S().exMeal = S().exMeal || {});
+  const meals = () => alan().exMeal;
 
   /* Her değişim birimini, enerji hedefine göre en çok geride kalan öğüne verir.
      Grup toplamları birebir korunur; öğün payları enerji bazında dengelenir.
@@ -101,21 +167,25 @@
     const out = {}, acik = {};
     MEALS.forEach((m) => { out[m[0]] = {}; acik[m[0]] = tot * m[2] / 100; });
 
-    /* Büyük kalorili birimler önce yerleşsin ki küçükler açığı kapatabilsin */
+    /* Büyük kalorili birimler önce yerleşsin ki küçükler açığı kapatabilsin.
+       Yarım değişim kendi başına bir birimdir; eskiden Math.round ile
+       yuvarlanıyordu: planda 1,5 süt varken öğünlere 2 süt dağıtılıyor ve
+       uyuşmazlık uyarısı da çıkmıyordu. */
     const units = [];
     GROUPS.forEach((g) => {
-      const n = Math.round(cnt(g.k));
-      for (let i = 0; i < n; i++) units.push(g);
+      let kalan = cnt(g.k);
+      while (kalan >= 1) { units.push({ g, n: 1 }); kalan -= 1; }
+      if (kalan > 0.01) units.push({ g, n: kalan });
     });
-    units.sort((a, b) => kcalOf(b) - kcalOf(a));
+    units.sort((a, b) => kcalOf(b.g) * b.n - kcalOf(a.g) * a.n);
 
-    units.forEach((g) => {
+    units.forEach((u) => {
       let best = MEALS[0][0];
       MEALS.forEach((m) => { if (acik[m[0]] > acik[best]) best = m[0]; });
-      out[best][g.k] = (out[best][g.k] || 0) + 1;
-      acik[best] -= kcalOf(g);
+      out[best][u.g.k] = (out[best][u.g.k] || 0) + u.n;
+      acik[best] -= kcalOf(u.g) * u.n;
     });
-    S().exMeal = out; DA.save();
+    alan().exMeal = out; DA.save();
   }
   const mealTot = (mk) => totals(meals()[mk] || {});
   /* Bir grubun öğünlere dağıtılmış toplamı */
@@ -128,12 +198,12 @@
     if (!any) return '<div class="card"><div class="empty">' + icon('menu') +
       '<div>Değişimleri öğünlere bölmek için <b>Öğünlere dağıt</b>’a dokun.</div></div></div>';
     const eksik = GROUPS.map((g) => {
-      const d = Math.round(cnt(g.k)) - assigned(g.k);
-      return d ? esc(g.l) + ': ' + (d > 0 ? d + ' dağıtılmadı' : (-d) + ' fazla') : '';
+      const d = cnt(g.k) - assigned(g.k);
+      return Math.abs(d) > 0.01 ? esc(g.l) + ': ' + (d > 0 ? numText(d) + ' dağıtılmadı' : numText(-d) + ' fazla') : '';
     }).filter(Boolean);
     return '<div class="list">' + MEALS.map((m) => {
       const t = mealTot(m[0]), v = meals()[m[0]] || {};
-      const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(g.l.replace(/ \(.*\)/, '')) + ' ' + v[g.k]).join(' · ');
+      const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(g.l.replace(/ \(.*\)/, '')) + ' ' + numText(v[g.k])).join(' · ');
       return '<button class="li" data-act="exMealEdit" data-m="' + m[0] + '">' +
         '<span class="grow"><div class="t">' + esc(m[1]) + '</div><div class="s">' + (det || 'boş') + '</div></span>' +
         '<span class="end">' + fmt(t.kcal, 0) + ' kcal<br><span class="tiny">%' + fmt(t.kcal / (totals(counts()).kcal || 1) * 100, 0) + '</span></span></button>';
@@ -192,7 +262,7 @@
       GROUPS.filter((g) => cnt(g.k)).map((g) => '• ' + g.l + ': ' + fmt(cnt(g.k), 1) + ' değişim').join('\n') +
       '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g' +
       (MEALS.some((m) => mealTot(m[0]).n) ? '\n\nÖĞÜNLER\n' + MEALS.map((m) => {
-        const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + mv[g.k]).join(', ');
+        const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + numText(mv[g.k])).join(', ');
         return det ? m[1] + ' (' + fmt(mealTot(m[0]).kcal, 0) + ' kcal): ' + det : '';
       }).filter(Boolean).join('\n') : '') +
       '\n\n' + DA.dyt();
@@ -202,6 +272,41 @@
   function tuberHtml() {
     if (!DA.oruntu || !DA.data.tuber || !DA.data.tuber.oruntu) return '';
     return DA.oruntu.panel(target().kcal, counts());
+  }
+
+  /* Çalışma alanı dosyadaki plandan farklı mı. Sıfır değerler ve anahtar
+     sırası yok sayılır; yoksa "0 süt" ile "süt yok" farklı sayılırdı. */
+  function temiz(v) {
+    const o = {};
+    Object.keys(v || {}).sort().forEach((k) => {
+      const x = v[k];
+      if (x && typeof x === 'object') { const t = temiz(x); if (t !== '{}') o[k] = JSON.parse(t); }
+      else if (x) o[k] = x;
+    });
+    return JSON.stringify(o);
+  }
+  function kaydedilmemis(cl) {
+    const a = alan(), p = cl.plan, T = target();
+    if (!p) return totals(a.ex).n > 0;
+    const h = p.hedef || {};
+    return temiz(a.ex) !== temiz(p.ex) || temiz(a.exMeal) !== temiz(p.meal) ||
+      T.kcal !== h.kcal || T.c !== h.c || T.p !== h.p;
+  }
+  function danisanHtml(cl) {
+    const degisik = kaydedilmemis(cl);
+    return '<div class="note ' + (degisik ? 'warn' : 'ok') + '"><b>' + esc(cl.name) + '</b> için plan. ' +
+      (cl.avoid ? 'Kaçınılan: ' + esc(cl.avoid) + '. ' : '') +
+      (degisik ? '<br><b>Kaydedilmemiş değişiklik var.</b>' : cl.plan ? '<br>Dosyadaki planla aynı.' : '') +
+      '<button class="btn sm block mt" data-act="exSaveClient" data-id="' + esc(cl.id) + '">' +
+      icon('save') + ' Planı danışana kaydet</button>' +
+      (degisik && cl.plan ? '<button class="btn sm ghost block mt-s" data-act="exPlanaDon">Dosyadaki plana dön</button>' : '') +
+      '</div>';
+  }
+  function hedefOneriHtml() {
+    const h = yeniHedef();
+    if (!h) return '';
+    return '<div class="note">Enerji hesaplayıcısında daha yeni bir hedef var: <b>' + fmt(h.kcal, 0) + ' kcal</b> · KH %' +
+      h.c + ' · P %' + h.p + '<button class="btn sm block mt" data-act="exHedefAl">Bu hedefi kullan</button></div>';
   }
 
   function outHtml() {
@@ -233,19 +338,17 @@
     id: 'degisim', data: ['tuber','hedef'], title: 'Değişim listesi', desc: 'Sayaçlı giriş, otomatik dağıtım, porsiyon örnekleri', ico: 'swap',
     view(parts, q) {
       const cid = q && q.get('c');
-      const cl = cid ? (DA.state().clients || []).find((x) => x.id === cid) : null;
+      const cl = cid ? danisan(cid) : null;
       S().exClient = cl ? cl.id : null;
       const T = target();
       return {
-        title: 'Değişim listesi', tab: 'hesapla', back: 'hesapla', ico: 'swap',
+        title: 'Değişim listesi', tab: 'hesapla', ico: 'swap',
         fav: { h: '#/hesapla/degisim', t: 'Değişim listesi', ico: 'swap' },
         back: cl ? 'danisan/' + cl.id : 'hesapla',
         html:
-          (cl ? '<div class="note ok"><b>' + esc(cl.name) + '</b> için plan. ' +
-            (cl.avoid ? 'Kaçınılan: ' + esc(cl.avoid) + '. ' : '') +
-            '<button class="btn sm block" style="margin-top:10px" data-act="exSaveClient" data-id="' + esc(cl.id) + '">' +
-            icon('save') + ' Planı danışana kaydet</button></div>' : '') +
+          (cl ? '<div id="exDanisan">' + danisanHtml(cl) + '</div>' : '') +
           '<div class="card"><div class="sect" style="margin-top:0">Hedef</div>' +
+          '<div id="exHedefOneri">' + hedefOneriHtml() + '</div>' +
           '<div class="grid2"><label class="fld"><span>Enerji (kcal)</span><input type="text" inputmode="numeric" name="kcal" value="' + esc(T.kcal) + '" data-live="exT"></label>' +
           '<label class="fld"><span>Karbonhidrat %</span><input type="text" inputmode="numeric" name="c" value="' + esc(T.c) + '" data-live="exT"></label></div>' +
           '<div class="grid2"><label class="fld"><span>Protein %</span><input type="text" inputmode="numeric" name="p" value="' + esc(T.p) + '" data-live="exT"></label>' +
@@ -272,18 +375,25 @@
   /* ---- etkileşim ---- */
   const redraw = () => {
     const r = DA.$('#exRows'), o = DA.$('#exOut'), m = DA.$('#exMeals'), tb = DA.$('#exTuber');
+    ustBilgi();
     if (r) r.innerHTML = rowsHtml();
     if (o) o.innerHTML = outHtml();
     if (m) m.innerHTML = mealsHtml();
     if (tb) { const open = tb.querySelector('details') && tb.querySelector('details').open; tb.innerHTML = tuberHtml();
       const d = tb.querySelector('details'); if (d && open) d.open = true; }
   };
+  function ustBilgi() {
+    const dn = DA.$('#exDanisan'), cl = danisan(baglam());
+    if (dn && cl) dn.innerHTML = danisanHtml(cl);
+    const ho = DA.$('#exHedefOneri');
+    if (ho) ho.innerHTML = hedefOneriHtml();
+  }
   const setCount = (k, n) => { counts()[k] = Math.max(0, Math.round(n * 2) / 2); DA.save(); redraw(); };
 
   DA.actions.exInc = (el) => setCount(el.dataset.k, cnt(el.dataset.k) + 1);
   DA.actions.exDec = (el) => setCount(el.dataset.k, cnt(el.dataset.k) - 1);
   DA.actions.exLock = (el) => { const L = locks(), k = el.dataset.k; L[k] = !L[k]; DA.save(); redraw(); };
-  DA.actions.exReset = () => { S().ex = {}; S().exLock = {}; S().exMeal = {}; DA.save(); redraw(); DA.toast('Sıfırlandı'); };
+  DA.actions.exReset = () => { const a = alan(); a.ex = {}; a.exLock = {}; a.exMeal = {}; DA.save(); redraw(); DA.toast('Sıfırlandı'); };
 
   DA.actions.exSet = (el) => {
     const k = el.dataset.k, g = byKey(k);
@@ -299,12 +409,26 @@
 
   DA.live.exT = (el) => {
     const T = target(), n = num(el.value);
-    if (isFinite(n)) T[el.name] = Math.max(0, n);
+    if (isFinite(n)) { T[el.name] = Math.max(0, n); T.ts = Date.now(); }
     DA.save();
+    ustBilgi();
     const o = DA.$('#exOut'); if (o) o.innerHTML = outHtml();
     const tb = DA.$('#exTuber');
     if (tb) { const d0 = tb.querySelector('details'), open = d0 && d0.open; tb.innerHTML = tuberHtml();
       const d = tb.querySelector('details'); if (d && open) d.open = true; }
+  };
+
+  DA.actions.exHedefAl = () => {
+    const h = yeniHedef();
+    if (!h) return;
+    alan().exT = h; DA.save(); DA.render(true);
+    DA.toast('Hedef güncellendi: ' + h.kcal + ' kcal');
+  };
+  /* Kaydedilmemiş değişiklikleri atar; geri alınabilir. */
+  DA.actions.exPlanaDon = () => {
+    const k = baglam(), A = alanlar(), eski = A[k];
+    delete A[k]; DA.save(); DA.render(true);
+    DA.silGeriAl('Dosyadaki plana dönüldü', () => { alanlar()[k] = eski; DA.save(); DA.render(true); });
   };
 
   DA.actions.exAuto = () => {
@@ -328,63 +452,89 @@
     DA.sheet(m[1], '<div id="exMealBody">' + mealEditHtml(mk, v) + '</div>');
   };
   function mealEditHtml(mk, v) {
-    return GROUPS.filter((g) => Math.round(cnt(g.k)) > 0).map((g) => {
-      const n = v[g.k] || 0, kalan = Math.round(cnt(g.k)) - assigned(g.k);
+    return GROUPS.filter((g) => cnt(g.k) > 0).map((g) => {
+      const n = v[g.k] || 0, kalan = cnt(g.k) - assigned(g.k);
       return '<div class="xrow"><span class="grow"><div class="t">' + esc(g.l) + '</div>' +
-        '<div class="s">planda ' + Math.round(cnt(g.k)) + ' · dağıtılmamış ' + kalan + '</div></span>' +
+        '<div class="s">planda ' + numText(cnt(g.k)) + ' · dağıtılmamış ' + numText(Math.max(0, kalan)) + '</div></span>' +
         '<span class="stepper"><button data-act="exMealDec" data-m="' + mk + '" data-k="' + g.k + '"' + (n <= 0 ? ' disabled' : '') + '>−</button>' +
-        '<button class="n' + (n ? '' : ' z') + '" disabled>' + n + '</button>' +
-        '<button data-act="exMealInc" data-m="' + mk + '" data-k="' + g.k + '"' + (kalan <= 0 ? ' disabled' : '') + '>+</button></span></div>';
+        '<button class="n' + (n ? '' : ' z') + '" disabled>' + numText(n) + '</button>' +
+        '<button data-act="exMealInc" data-m="' + mk + '" data-k="' + g.k + '"' + (kalan <= 0.01 ? ' disabled' : '') + '>+</button></span></div>';
     }).join('') + '<p class="muted tiny">Bu öğünün toplamı: <b>' + fmt(mealTot(mk).kcal, 0) + ' kcal</b></p>';
   }
   function setMeal(mk, gk, n) {
     const M = meals();
     M[mk] = M[mk] || {};
+    n = Math.round(n * 2) / 2;
     if (n <= 0) delete M[mk][gk]; else M[mk][gk] = n;
     DA.save();
     const b = DA.$('#exMealBody');
     if (b) b.innerHTML = mealEditHtml(mk, M[mk]);
     redraw();
   }
-  DA.actions.exMealInc = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) + 1);
-  DA.actions.exMealDec = (el) => setMeal(el.dataset.m, el.dataset.k, ((meals()[el.dataset.m] || {})[el.dataset.k] || 0) - 1);
+  /* Artırma kalan kadar, en çok 1; azaltma önce yarımı söker. Böylece planda
+     1,5 süt varsa öğünlere 1 + 0,5 olarak dağıtılabilir. */
+  const ogunDeger = (mk, gk) => (meals()[mk] || {})[gk] || 0;
+  DA.actions.exMealInc = (el) => {
+    const mk = el.dataset.m, gk = el.dataset.k, kalan = cnt(gk) - assigned(gk);
+    if (kalan > 0.01) setMeal(mk, gk, ogunDeger(mk, gk) + Math.min(1, kalan));
+  };
+  DA.actions.exMealDec = (el) => {
+    const mk = el.dataset.m, gk = el.dataset.k, n = ogunDeger(mk, gk), kesir = n % 1;
+    setMeal(mk, gk, n - (kesir > 0.01 ? kesir : 1));
+  };
 
   DA.actions.exShare = () => DA.shareText('Değişim listesi planı', planText());
 
   /* ---- Yazdırma: danışana verilebilir tek sayfalık plan ---- */
   DA.views._printExchange = (parts) => {
     const cid = parts[0];
-    const cl = cid ? (DA.state().clients || []).find((x) => x.id === cid) : null;
-    const plan = cl && cl.plan ? cl.plan
-      : { d: DA.today(), hedef: target(), ex: counts(), meal: S().exMeal || {},
-          top: (() => { const t = totals(counts()); return { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) }; })() };
-    if (!plan.top.kcal) return { title: 'Plan', back: 'hesapla/degisim',
-      html: '<div class="card">Önce değişim listesinde bir plan oluştur.</div>' };
+    const cl = cid ? danisan(cid) : null;
+    /* Ekranda ne varsa o basılır: bu bağlamın çalışma alanı. Eskiden danışan
+       çıktısı her zaman dosyadaki planı basıyordu; düzenleme ekranındaki
+       "Yazdır" başka, ekrandaki plan başka çıkıyordu. Kaydedilmemiş fark
+       varsa çıktının üstünde (kâğıda basılmayan) uyarı görünür. */
+    S().exClient = cl ? cl.id : null;
+    const t0 = totals(counts()), T = target();
+    const plan = { d: DA.today(), hedef: T, ex: counts(), meal: meals(),
+      top: { kcal: Math.round(t0.kcal), c: Math.round(t0.c), p: Math.round(t0.p), f: Math.round(t0.f) } };
+    if (!plan.top.kcal) return { title: 'Plan', back: cl ? 'danisan/' + cl.id : 'hesapla/degisim',
+      html: DA.emptyState('swap', { baslik: 'Basılacak plan yok',
+        aciklama: 'Değişim listesinde gruplara değişim ekle ya da otomatik dağıt.',
+        eylem: { href: '#/hesapla/degisim' + (cl ? '?c=' + esc(cl.id) : ''), etiket: 'Değişim listesine git', ico: 'swap' } }) };
+    const uyari = cl && kaydedilmemis(cl)
+      ? '<div class="note warn noprint"><b>Bu plan ' + esc(cl.name) + '’in dosyasına kaydedilmedi.</b> ' +
+        'Çıktı ekrandaki hâlidir; dosyadaki plan farklı.</div>' : '';
     const orn = GROUPS.filter((g) => plan.ex[g.k]).map((g) =>
       '<tr><td>' + esc(g.l) + '</td><td class="n">' + fmt(plan.ex[g.k], 1) + '</td><td>' + esc(g.ex) + '</td></tr>').join('');
     return {
       title: 'Değişim planı', tab: 'hesapla', back: cl ? 'danisan/' + cl.id : 'hesapla/degisim', noRecent: true,
-      html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
+      html: uyari + '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="exShare">Metin olarak paylaş</button></div>' +
         '<div class="printdoc">' + DA.antet() + '<h2>Değişim listesi planı</h2>' +
         '<div class="alt">' + (cl ? esc(cl.name) + ' · ' : '') + esc(DA.fdate(plan.d)) +
         ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</div>' +
         (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan) : '') +
-        '<div style="margin-top:14px"><b>1 değişim ne kadar?</b>' +
+        '<div class="blok"><h3>1 değişim ne kadar?</h3>' +
         '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' +
         (cl && cl.avoid ? '<div class="sat"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
         DA.dipnot('bu plan bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
   };
   DA.actions.exSaveClient = (el) => {
-    const c = (DA.state().clients || []).find((x) => x.id === el.dataset.id);
+    const c = danisan(el.dataset.id);
     if (!c) return DA.toast('Danışan bulunamadı');
+    /* Yalnızca bu danışanın kendi çalışma alanı kaydedilir. Ekran başka bir
+       bağlamdayken gelen düğme (eski bir sekme, geri tuşu) başka bir planı
+       yanlış dosyaya yazmasın. */
+    if (baglam() !== c.id) return DA.toast('Bu plan ' + c.name + ' için açılmamış; dosyasından yeniden aç');
     const t = totals(counts());
     if (!t.n) return DA.toast('Önce gruplara değişim ekle');
-    c.plan = { d: DA.today(), hedef: Object.assign({}, target()), ex: Object.assign({}, counts()),
-      meal: JSON.parse(JSON.stringify(S().exMeal || {})),
+    const T = target();
+    c.plan = { d: DA.today(), ts: Date.now(), hedef: { kcal: T.kcal, c: T.c, p: T.p }, ex: Object.assign({}, counts()),
+      meal: JSON.parse(JSON.stringify(meals())),
       top: { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) } };
     DA.save();
+    ustBilgi();
     DA.toast(c.name + ' dosyasına kaydedildi');
   };
   /* Rapor ve başka ekranlar için: kayıtlı planı okunabilir tabloya çevir */
@@ -397,7 +547,7 @@
     if (!rows) return '';
     const ogun = MEALS.map((mm) => {
       const mv = (plan.meal || {})[mm[0]] || {};
-      const det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + mv[g.k]).join(', ');
+      const det = GROUPS.filter((g) => mv[g.k]).map((g) => g.l.replace(/ \(.*\)/, '') + ' ' + numText(mv[g.k])).join(', ');
       return det ? '<div class="sat"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
     }).filter(Boolean).join('');
     return '<div class="blok"><h3>Değişim listesi planı <span class="ince">' +
