@@ -430,7 +430,9 @@
 
   DA.actions.restoreMerge = () => {
     if (!_yedek) return;
-    const S = DA.state(), o = _yedek, ekle = { danisan: 0, menu: 0, staj: 0, besin: 0 };
+    /* Birleştirme kayıtları doğrudan ekler, replaceState'ten geçmez;
+       denetim burada da çalışmalı. */
+    const S = DA.state(), o = DA.veriDenetle(_yedek), ekle = { danisan: 0, menu: 0, staj: 0, besin: 0 };
     const birlestir = (alan, ad) => {
       const mevcut = S[alan] || (S[alan] = []);
       const idx = {}; mevcut.forEach((x) => { idx[x.id] = 1; });

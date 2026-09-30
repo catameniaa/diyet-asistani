@@ -14,9 +14,62 @@
      Bunun yerine kaydetme kilitlenir; kullanıcı ham metni indirip karar verene kadar
      diskteki veri olduğu gibi durur. */
   let _kilit = '', _ham = '';
+
+  /* ---- dışarıdan gelen verinin denetimi ----
+     Kayıt kimlikleri HTML özniteliklerine (href="#/danisan/…", data-id="…")
+     doğrudan yazılıyor. Uygulamanın ürettiği kimlikler güvenli ([a-z0-9]) ama
+     yedek dosyası dışarıdan gelebilir: kimliğine " onmouseover=… eklenmiş bir
+     kayıt danışan, menü ve staj listelerine öznitelik enjekte ediyordu.
+     Kimlikler güvenli karakterlere indirgenir; aynı ham kimlik her yerde aynı
+     sonuca indiği için kayıtlar arası bağlar (menüdeki besin → eklenen besin)
+     korunur. Favori ve son açılan bağlantılar yalnız uygulama içi rota
+     olabilir: "javascript:" adresi HTML kaçırmayla engellenmez.
+     Denetim üç girişte çalışır: depodan okuma, yedeği üzerine yazma, birleştirme. */
+  const KIMLIK = /^[\w-]+$/;
+  const ROTA = /^#\/[\w\/?=&%.-]*$/;
+  function kimlik(x) {
+    const s = x == null ? '' : String(x);
+    if (KIMLIK.test(s)) return s;
+    const t = s.replace(/[^\w-]/g, '_');
+    return t || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+  }
+  function kayitlar(a) { return Array.isArray(a) ? a.filter((x) => x && typeof x === 'object') : a; }
+  DA.veriDenetle = (o) => {
+    if (!o || typeof o !== 'object') return o;
+    ['clients', 'menus', 'journal', 'customFoods', 'customCards'].forEach((k) => {
+      if (o[k] == null) return;
+      if (!Array.isArray(o[k])) { delete o[k]; return; }          /* varsayılan boş liste gelsin */
+      o[k] = kayitlar(o[k]);
+      o[k].forEach((x) => { x.id = kimlik(x.id); });
+    });
+    (o.clients || []).forEach((c) => {
+      ['meas', 'calcs'].forEach((k) => {
+        if (!Array.isArray(c[k])) return;
+        c[k] = kayitlar(c[k]);
+        c[k].forEach((x) => { x.id = kimlik(x.id); });
+      });
+    });
+    (o.menus || []).forEach((m) => {
+      if (!m.meals || typeof m.meals !== 'object') return;
+      Object.keys(m.meals).forEach((k) => {
+        if (!Array.isArray(m.meals[k])) return;
+        m.meals[k] = kayitlar(m.meals[k]);
+        m.meals[k].forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
+      });
+    });
+    const ui = o.ui;
+    if (ui && typeof ui === 'object') {
+      ['fav', 'recent'].forEach((k) => {
+        if (Array.isArray(ui[k])) ui[k] = ui[k].filter((x) => x && typeof x.h === 'string' && ROTA.test(x.h));
+      });
+      if (ui.exClient != null) ui.exClient = kimlik(ui.exClient);
+    }
+    return o;
+  };
+
   try {
     const raw = localStorage.getItem(KEY);
-    state = Object.assign(defaults(), raw ? JSON.parse(raw) : {});
+    state = Object.assign(defaults(), raw ? DA.veriDenetle(JSON.parse(raw)) : {});
   } catch (e) {
     state = defaults();
     try { _ham = localStorage.getItem(KEY) || ''; } catch (e2) { _ham = ''; }
@@ -44,7 +97,7 @@
       return false;
     }
   };
-  DA.replaceState = (o) => { state = Object.assign(defaults(), o); DA.save(); DA.applyTheme(); };
+  DA.replaceState = (o) => { state = Object.assign(defaults(), DA.veriDenetle(o)); DA.save(); DA.applyTheme(); };
 
   /* ---- marka ---- */
   DA.APP = 'Diyet Asistanı';

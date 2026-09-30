@@ -1253,6 +1253,97 @@ function ornekDurum(tema) {
   uiEkle('Kaydedilen hedef zaman damgası taşıyor', true, damga.danTs);
   uiEkle('Genel kaydedilen hedef kimseye ait değil', '', damga.genel);
 
+  /* ---- dışarıdan gelen veri: kimlik ve bağlantı denetimi ----
+     Bulunan açık: kayıt kimlikleri özniteliklere (href, data-id) kaçırılmadan
+     yazılıyordu; kimliği " data-… eklenmiş bir yedek danışan, menü ve staj
+     listelerine öznitelik enjekte ediyordu. Favorideki "javascript:" adresi
+     de dokununca betik çalıştırabiliyordu. Üç giriş yolu da sınanır: depodan
+     okuma, yedeği üzerine yazma, birleştirme. Ayrı bağlamda: ana testlerin
+     depolamasına dokunmaz. */
+  /* Service worker kapalı: yeni bağlamda ilk kayıt "controllerchange" ile
+     sayfayı yeniden yüklüyor ve ölçümün ortasında bağlam kayboluyordu. */
+  const gv = await tarayici.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  gv.on('dialog', (d) => d.accept());
+  const zehir = (on) => {
+    const zid = (x) => on + x + '" data-xss="' + on + x + '" x="';
+    return {
+      v: 1,
+      clients: [{ id: zid('c'), name: 'Zehirli Danışan', sex: 'K', h: 160,
+        meas: [{ id: zid('m'), d: '2026-01-10', w: 60 }], calcs: [{ id: zid('h'), d: '2026-01-10', t: 'BKİ', s: 'BKİ: 23' }] }],
+      /* menüdeki besin eklenen besine aynı ham kimlikle bağlı: denetimden sonra da bağlı kalmalı */
+      menus: [{ id: zid('mm'), title: 'Zehirli menü', date: '2026-01-10', meals: { 'Kahvaltı': [{ id: 'c_ö"x', g: 50 }] } }],
+      customFoods: [{ id: 'c_ö"x', n: 'Özel Besin Adı', cat: 'Eklediklerim', kcal: 100, p: 1, c: 1, f: 1, fib: 0, u: [] }],
+      journal: [{ id: zid('j'), d: '2026-01-10', type: 'Klinik', place: 'x', hours: 1, title: 'Zehirli kayıt', text: 'x' }],
+      ui: { fav: [{ h: 'javascript:window.__xss=["fav"]', t: 'kötü', ico: 'star' }, { h: '#/hesapla/bki', t: 'BKİ', ico: 'calc' }],
+        recent: [{ h: 'javascript:void(0)', t: 'kötü son', ico: 'calc' }], exClient: 'x" data-xss="ex' }
+    };
+  };
+  const tara = async (rotalar) => {
+    const bulgu = [];
+    for (const r of rotalar) {
+      await gv.goto(B + r, { waitUntil: 'domcontentloaded' });
+      await gv.waitForFunction(() => window.DA && DA.state, null, { timeout: 10000 });
+      await gv.waitForTimeout(80);
+      const x = await gv.evaluate(() => ({ e: document.querySelectorAll('[data-xss]').length, b: (window.__xss || []).length }));
+      if (x.e || x.b) bulgu.push(r + ':' + x.e + '/' + x.b);
+    }
+    return bulgu.join(' ');
+  };
+  const denetimSonucu = () => gv.evaluate(() => {
+    const S = DA.state(), tum = [];
+    S.clients.forEach((c) => { tum.push(c.id); (c.meas || []).forEach((m) => tum.push(m.id)); (c.calcs || []).forEach((m) => tum.push(m.id)); });
+    S.menus.forEach((m) => tum.push(m.id)); S.journal.forEach((j) => tum.push(j.id)); S.customFoods.forEach((f) => tum.push(f.id));
+    return { kimlikTemiz: tum.every((x) => /^[\w-]+$/.test(x)), sayi: tum.length,
+      fav: (S.ui.fav || []).map((x) => x.h).join(' '), son: (S.ui.recent || []).length };
+  });
+  const ROTA_G = ['#/danisan', '#/menu', '#/staj', '#/ana', '#/besin'];
+
+  /* 1) depodan okuma */
+  await gv.goto(B + '#/ana', { waitUntil: 'domcontentloaded' });
+  await gv.waitForFunction(() => window.DA && DA.state);
+  await gv.evaluate((o) => localStorage.setItem('dyt.v1', JSON.stringify(o)), zehir('a'));
+  await gv.reload({ waitUntil: 'domcontentloaded' });
+  await gv.waitForFunction(() => window.DA && DA.state);
+  const d1 = await denetimSonucu();
+  uiEkle('Açılış: kimlikler güvenli karakterlerde', true, d1.kimlikTemiz && d1.sayi >= 6);
+  uiEkle('Açılış: javascript: favorisi atıldı', '#/hesapla/bki', d1.fav);
+  uiEkle('Açılış: javascript: son açılan atıldı', 0, d1.son);
+  uiEkle('Açılış: hiçbir ekranda enjeksiyon yok', '', await tara(ROTA_G));
+  const menuId = await gv.evaluate(() => DA.state().menus[0].id);
+  await gv.goto(B + '#/menu/' + menuId, { waitUntil: 'domcontentloaded' });
+  await gv.waitForFunction(() => window.DA && DA.state);
+  await gv.evaluate(() => DA.need(['porsiyonBesin', 'hedef']));
+  await gv.waitForTimeout(150);
+  uiEkle('Denetimden sonra menüdeki besin bağı korunuyor', true,
+    await gv.evaluate(() => /Özel Besin Adı/.test(document.querySelector('#app').textContent)));
+
+  /* 2) yedeği üzerine yazma — gerçek dosya seçiciyle */
+  const yukle = async (o) => {
+    await gv.goto(B + '#/daha', { waitUntil: 'domcontentloaded' });
+    await gv.waitForSelector('input[data-change=restore]', { state: 'attached', timeout: 10000 });
+    await gv.setInputFiles('input[data-change=restore]', { name: 'yedek.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(o)) });
+    await gv.waitForSelector('[data-act=restoreReplace]', { timeout: 10000 });
+  };
+  await gv.evaluate(() => { DA.replaceState({}); });
+  await yukle(zehir('b'));
+  await gv.click('[data-act=restoreReplace]');
+  await gv.waitForTimeout(150);
+  const d2 = await denetimSonucu();
+  uiEkle('Üzerine yaz: kimlikler güvenli', true, d2.kimlikTemiz && d2.sayi >= 6);
+  uiEkle('Üzerine yaz: javascript: favorisi atıldı', '#/hesapla/bki', d2.fav);
+  uiEkle('Üzerine yaz: hiçbir ekranda enjeksiyon yok', '', await tara(ROTA_G));
+
+  /* 3) birleştirme — kayıtlar replaceState'ten geçmeden eklenir */
+  await gv.evaluate(() => { DA.replaceState({ clients: [{ id: 'temiz1', name: 'Temiz', sex: 'E', h: 170, meas: [] }] }); });
+  await yukle(zehir('c'));
+  await gv.click('[data-act=restoreMerge]');
+  await gv.waitForTimeout(150);
+  const d3 = await denetimSonucu();
+  uiEkle('Birleştir: kimlikler güvenli', true, d3.kimlikTemiz);
+  uiEkle('Birleştir: kayıtlar eklendi', true, await gv.evaluate(() => DA.state().clients.length === 2));
+  uiEkle('Birleştir: hiçbir ekranda enjeksiyon yok', '', await tara(ROTA_G));
+  await gv.close();
+
   /* Depolama teşhisi okunabiliyor */
   const durum = await sayfa.evaluate(() => DA.depoDurum());
   uiEkle('Depolama durumu raporlanıyor', true,
