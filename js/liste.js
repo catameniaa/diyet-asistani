@@ -221,7 +221,10 @@
         '<div class="grid2"><label class="fld"><span>Tarih</span><input type="date" value="' + esc(l.d) + '" data-live="listeMeta" data-f="d" data-l="' + lid + '"></label>' +
         '<div class="fld"><span>Danışan</span><div class="small" style="padding-top:12px">' +
           (c ? '<a href="#/danisan/' + esc(c.id) + '">' + esc(c.name) + '</a>' : '<span class="muted">genel</span>') + '</div></div></div>' +
-        '<div class="small muted" id="listeGun">' + gunOzetHtml(l, y, t) + '</div></div>' +
+        '<div class="halka-satir mt-s">' + DA.halka(l.hedef && l.hedef.kcal > 0 ? t.kcal / l.hedef.kcal : 0,
+          '<b>' + fmt(t.kcal, 0) + '</b><small>kcal yazıldı</small>',
+          { boyut: 96, etiket: 'Yazılan ' + fmt(t.kcal, 0) + ' kcal' + (l.hedef && l.hedef.kcal ? ', plan ' + fmt(l.hedef.kcal, 0) + ' kcal' : '') }) +
+        '<div class="grow small muted" id="listeGun">' + gunOzetHtml(l, y, t) + '</div></div></div>' +
         (bos ? '' : kural) +
         gorunen.map((o) => ogunKarti(l, o)).join('') +
         (kalan.length ? '<div class="card"><div class="small muted mb">Başka öğüne satır ekle</div><div class="chips">' +

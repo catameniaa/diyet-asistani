@@ -117,8 +117,15 @@
 
     const takip = DA.takipGereken ? DA.takipGereken().length : 0;
     const hafta = DA.sonGunOlcum ? DA.sonGunOlcum(7) : 0;
-    const hero = '<div class="hero"><div class="hi">' + esc(greeting()) + '</div><h2>' + esc(DA.APP) + '</h2>' +
-      '<div class="by">' + esc(DA.dyt()) + '</div>' +
+    /* Halka: takibi açık danışanların kaçı zamanında. Toplam danışan sayısı
+       her gün aynıdır; oran ise yapılacak işi gösterir. */
+    const aktif = (S.clients || []).filter((c) => (c.aralik == null ? 21 : c.aralik) > 0).length;
+    const zamaninda = Math.max(0, aktif - takip);
+    const halka = DA.halka(aktif ? zamaninda / aktif : 0,
+      aktif ? '<b>' + zamaninda + '/' + aktif + '</b><small>zamanında</small>' : '<b>—</b><small>danışan yok</small>',
+      { boyut: 96, etiket: aktif ? 'Takipte zamanında: ' + zamaninda + ' / ' + aktif + ' danışan' : 'Henüz takipte danışan yok' });
+    const hero = '<div class="hero"><div class="ust"><div><div class="hi">' + esc(greeting()) + '</div><h2>' + esc(DA.APP) + '</h2>' +
+      '<div class="by">' + esc(DA.dyt()) + '</div></div>' + halka + '</div>' +
       '<div class="stats">' +
         /* Envanter sayıları ("23 danışan") her gün aynıydı; hiçbir şey
            söylemiyordu. Kutular artık bugün yapılacak işi gösteriyor.
@@ -126,7 +133,7 @@
         stat('#/danisan', takip, 'takip bekliyor', takip ? 'uyari' : '') +
         stat('#/danisan', hafta, 'bu hafta ölçüm', hafta ? 'iyi' : '') +
         stat('#/kart', due, due ? 'kart bekliyor' : 'kart günü', due ? 'uyari' : '') +
-      '</div></div>';
+      '</div>' + haftaSeridi(S) + '</div>';
 
     return {
       title: DA.APP, tab: 'ana',
@@ -148,6 +155,39 @@
         '<p class="muted tiny center">Verilerin yalnızca bu cihazda saklanır. Ayarlar → Yedek ile yedek al.</p>'
     };
   };
+  /* Son yedi gün (bugün dahil), her gün kaç ölçüm girildi. Gün sınırı
+     DA.sonGunOlcum ile aynı: yerel takvim günü. */
+  function haftaSeridi(S) {
+    const say = {};
+    (S.clients || []).forEach((c) => (c.meas || []).forEach((m) => { if (m && m.d) say[m.d] = (say[m.d] || 0) + 1; }));
+    const yerel = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const gunler = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - i); gunler.push(d); }
+    return '<div class="hafta" aria-label="Son yedi günde girilen ölçümler">' + gunler.map((d, i) => {
+      const n = say[yerel(d)] || 0, k = Math.min(n, 3);
+      return '<div class="gun' + (i === 6 ? ' bugun' : '') + '" data-gun="' + yerel(d) + '" data-n="' + n + '" aria-label="' +
+        esc(d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ': ' + n + ' ölçüm') + '">' +
+        '<small>' + esc(d.toLocaleDateString('tr-TR', { weekday: 'short' })) + '</small><b>' + d.getDate() + '</b>' +
+        '<i style="--nokta:' + (k ? k * 7 - 2 : 0) + 'px"></i></div>';
+    }).join('') + '</div>';
+  }
+
+  /* Yuvarlak "+" düğmesi: sayfanın kendi ekleme düğmesi yokken açılır. En sık
+     başlatılan işler tek dokunuşta. */
+  DA.actions.hizliIslem = () => {
+    const satir = (h, ico, t, d) => (h.charAt(0) === '#'
+      ? '<a class="li chev" href="' + h + '">' : '<button class="li" data-act="' + h + '">') +
+      '<span class="ic">' + icon(ico) + '</span><span class="grow"><div class="t">' + esc(t) + '</div><div class="s">' + esc(d) + '</div></span>' +
+      (h.charAt(0) === '#' ? '</a>' : '</button>');
+    DA.sheet('Hızlı işlem', '<div class="list">' +
+      satir('clientNew', 'users', 'Yeni danışan', 'Ad, cinsiyet, boy, takip aralığı') +
+      satir('quickMeas', 'scale', 'Ölçüm ekle', 'Danışan seç; kilo, bel, yağ oranı') +
+      satir('#/hesapla/degisim', 'swap', 'Diyet listesi yaz', 'Değişim planı → öğün öğün liste') +
+      satir('menuNew', 'menu', 'Yeni menü', 'Besinlerle öğün öğün planla') +
+      satir('#/hesapla/enerji', 'calc', 'Enerji hesapla', 'BMH, TEH ve makrolar') +
+      satir('#/staj', 'note', 'Staj notu', 'Vaka ve saat kaydı') + '</div>');
+  };
+
   DA.actions.hideInstall = () => { DA.state().ui.hideInstall = true; DA.save(); DA.render(true); };
 
   /* Favori aç/kapa — hesaplayıcı ve diğer sayfalardan çağrılır */

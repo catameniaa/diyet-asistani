@@ -179,7 +179,7 @@
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches);
     const m = document.querySelector('meta[name=theme-color]');
-    if (m) m.setAttribute('content', dark ? '#15211b' : '#0e7a50');
+    if (m) m.setAttribute('content', dark ? '#1a0d06' : '#f7efe8');
   };
   DA.setTheme = (t) => { state.ui.theme = t; DA.save(); DA.applyTheme(); };
   DA.applyTheme();
@@ -211,6 +211,26 @@
   const SAYI_RE = /^([%‰]?\s*[-−+]?\d[\d.,]*(?:\s*[–—-]\s*[-−+]?\d[\d.,]*)?)\s*(.*)$/;
   /* Sayının yanına küçük ve soluk yazılan birim. */
   DA.birim = (u) => '<i class="vu">' + DA.esc(u) + '</i>';
+  /* ---- halka gösterge ----
+     Oran 0–1 arası yay; ortada değer ve etiket. Yay degradesi her halkada
+     ayrı kimlikle: aynı sayfada iki halka aynı id'yi paylaşınca ikincisi
+     birincinin degradesini (ya da hiçbirini) çiziyordu. Oran 1'i aşarsa yay
+     dolu çizilir, aşım ortadaki metinde söylenir. */
+  let _halkaNo = 0;
+  DA.halka = (oran, orta, o) => {
+    o = o || {};
+    const r = 42, cevre = 2 * Math.PI * r, x = isFinite(oran) ? Math.max(0, Math.min(1, oran)) : 0;
+    const id = 'hk' + (++_halkaNo);
+    return '<div class="halka' + (o.sinif ? ' ' + o.sinif : '') + '"' + (o.boyut ? ' style="--boyut:' + o.boyut + 'px"' : '') +
+      ' role="img" aria-label="' + DA.esc(o.etiket || '') + '">' +
+      '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" style="stop-color:var(--pri-2)"/><stop offset="1" style="stop-color:var(--pri)"/></linearGradient></defs>' +
+      '<circle class="iz" cx="50" cy="50" r="' + r + '"/>' +
+      '<circle class="yay" cx="50" cy="50" r="' + r + '" stroke="url(#' + id + ')" stroke-dasharray="' +
+        (cevre * x).toFixed(1) + ' ' + cevre.toFixed(1) + '"' + (x === 0 ? ' style="stroke-linecap:butt"' : '') + '/></svg>' +
+      '<div class="orta">' + (orta || '') + '</div></div>';
+  };
+
   DA.sayiVurgu = (metin) => {
     const t = String(metin == null ? '' : metin).trim();
     const m = SAYI_RE.exec(t);
@@ -444,6 +464,10 @@
       fb.setAttribute('aria-label', on ? 'Favorilerden çıkar' : 'Favorilere ekle');
       fb.dataset.h = out.fav.h; fb.dataset.t = out.fav.t; fb.dataset.ico = out.fav.ico || 'calc';
     }
+    /* Yuvarlak eylem yuvası: sayfanın kendi "+" düğmesi varsa genel hızlı
+       işlem düğmesi gizlenir, ikisi üst üste binmesin. */
+    const hz = DA.$('#hizliBtn');
+    if (hz) hz.hidden = !!app.querySelector('.fab') || root === 'yazdir';
     if (out.mount) out.mount(app);
     if (parts.length > 1 && out.title && !out.noRecent) {
       const h = '#/' + parts.map(encodeURIComponent).join('/'), r = DA.recents();

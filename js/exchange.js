@@ -623,8 +623,13 @@
       '<div>Gruplara değişim ekle ya da <b>Otomatik dağıt</b>’a dokun.</div></div></div>';
     const e = t.kcal || 1;
     const M = makro(T);
-    return '<div class="card">' +
-      '<div class="res hl"><span class="l">Toplam enerji</span><span class="v">' + fmt(t.kcal, 0) + ' kcal<span class="sub">' + fmt(t.n, 1) + ' değişim</span></span></div>' +
+    /* Halka: planın enerjisi hedefin yüzde kaçı. Hedefi aşan plan dolu yay
+       ve ortada "%104" gibi; renk tek başına bilgi taşımasın diye sayı yazılı. */
+    const oran = T.kcal > 0 ? t.kcal / T.kcal : 0;
+    return '<div class="card"><div class="halka-satir">' +
+      DA.halka(oran, '<b>' + fmt(t.kcal, 0) + '</b><small>kcal · %' + fmt(oran * 100, 0) + '</small>',
+        { boyut: 104, etiket: 'Plan enerjisi ' + fmt(t.kcal, 0) + ' kcal, hedefin yüzde ' + fmt(oran * 100, 0) + '’i' }) +
+      '<div class="grow"><div class="res hl" style="margin:0"><span class="l">Toplam enerji</span><span class="v">' + fmt(t.kcal, 0) + ' kcal<span class="sub">' + fmt(t.n, 1) + ' değişim · hedef ' + fmt(T.kcal, 0) + '</span></span></div></div></div>' +
       '<div class="macros mt"><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small><small class="alt">%' + fmt(t.c * 4 / e * 100, 0) + ' enerji</small></div>' +
       '<div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small><small class="alt">%' + fmt(t.p * 4 / e * 100, 0) + ' enerji</small></div>' +
       '<div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small><small class="alt">%' + fmt(t.f * 9 / e * 100, 0) + ' enerji</small></div>' +

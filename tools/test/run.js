@@ -580,6 +580,70 @@ function ornekDurum(tema) {
   uiEkle('Kopyadaki değişiklik aslını bozmuyor (gram)', 50, kopya.aslindaGram);
   uiEkle('Kopyadaki ekleme aslını bozmuyor (öğün)', 0, kopya.aslindaOgle);
 
+  /* ---- renk kontrastı (WCAG AA, 4,5:1) ----
+     Değerler sayfadaki gerçek tokenlardan okunur. Cam yüzeyler yarı saydam
+     olduğu için kart rengi zeminin üstüne bindirilerek hesaplanır; zemin
+     sabit olduğundan kartlar üstteki parıltının (--zemin-tepe) üstünden de
+     geçer, ikisi de ölçülür. İlk denemede koyu temada soluk metin parıltı
+     üstünde 3,6:1, açık temada düğme degradesinin açık ucu beyaz yazıyla
+     3,2:1 çıkmıştı. */
+  const kontrastOlc = (tema) => sayfa.evaluate((tema) => {
+    DA.setTheme(tema);
+    const cs = getComputedStyle(document.documentElement), v = (k) => cs.getPropertyValue(k).trim();
+    const renk = (s) => {
+      let m = /^#([0-9a-f]{6})$/i.exec(s);
+      if (m) return [0, 2, 4].map((i) => parseInt(m[1].substr(i, 2), 16)).concat(1);
+      m = /^rgba?\(([^)]+)\)$/.exec(s);
+      if (m) { const p = m[1].split(',').map((x) => parseFloat(x)); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+      return null;
+    };
+    const ust = (on, alt) => [0, 1, 2].map((i) => on[i] * on[3] + alt[i] * (1 - on[3])).concat(1);
+    const L = (c) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+      return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const oran = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const kotu = [], okunamayan = [];
+    const R = (k) => { const c = renk(v(k)); if (!c) okunamayan.push(k + '=' + v(k)); return c || [0, 0, 0, 1]; };
+    const kontrol = (ad, on, alt) => { const o = oran(on, alt); if (o < 4.5) kotu.push(ad + ' ' + o.toFixed(2)); };
+    const beyaz = [255, 255, 255, 1];
+    [R('--bg'), R('--zemin-tepe')].forEach((z, zi) => {
+      const kart = ust(R('--card'), z), yer = zi ? '@parıltı' : '@zemin';
+      ['--ink', '--ink-2', '--mute', '--pri', '--acc'].forEach((k) => {
+        kontrol(k + yer, R(k), z); kontrol(k + '/kart' + yer, R(k), kart);
+      });
+      [['--ok', '--ok-bg'], ['--warn', '--warn-bg'], ['--bad', '--bad-bg'], ['--info', '--info-bg'], ['--pri', '--pri-soft']]
+        .forEach((x) => kontrol(x[0] + '/' + x[1] + yer, R(x[0]), ust(R(x[1]), kart)));
+      ['--hero-a', '--hero-b', '--hero-c'].forEach((h) => kontrol('beyaz/' + h + yer, beyaz, ust(R(h), z)));
+    });
+    ['--grad-a', '--grad-b'].forEach((g) => kontrol('--pri-ink/' + g, R('--pri-ink'), R(g)));
+    return { kotu: kotu.join(', '), okunamayan: okunamayan.join(', ') };
+  }, tema);
+  for (const tema of ['light', 'dark']) {
+    const k = await kontrastOlc(tema);
+    uiEkle('Kontrast AA (' + tema + '): 4,5 altı çift yok', '', k.kotu);
+    uiEkle('Kontrast (' + tema + '): tüm tokenlar okunuyor', '', k.okunamayan);
+  }
+  await sayfa.evaluate(() => DA.setTheme('light'));
+
+  /* Koyu tema iki blokta yazılı (sistem ayarı ve elle seçim). Biri
+     değişip öteki unutulursa sistemi koyu olan kullanıcı başka renk görür. */
+  const TOKENLAR = ['--bg', '--bg-2', '--card', '--card-2', '--card-opak', '--ink', '--ink-2', '--mute', '--line', '--line-2',
+    '--pri', '--pri-2', '--pri-ink', '--pri-soft', '--pri-line', '--acc', '--acc-soft', '--ok', '--ok-bg', '--warn', '--warn-bg',
+    '--bad', '--bad-bg', '--info', '--info-bg', '--grad-a', '--grad-b', '--hero-a', '--hero-b', '--hero-c', '--hero-kenar',
+    '--cam', '--parlak', '--parilti', '--zemin-tepe', '--zemin-kose', '--zemin-ust', '--zemin-alt', '--sh-1', '--sh-2', '--sh-3', 'color-scheme'];
+  const tokenOku = (pg) => pg.evaluate((T) => { const cs = getComputedStyle(document.documentElement);
+    return T.map((k) => k + '=' + (k === 'color-scheme' ? cs.colorScheme : cs.getPropertyValue(k).trim())); }, TOKENLAR);
+  const sistemKoyu = await tarayici.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', serviceWorkers: 'block' });
+  await sistemKoyu.goto(B + '#/ana', { waitUntil: 'domcontentloaded' });
+  await sistemKoyu.waitForFunction(() => window.DA && DA.state);
+  await sistemKoyu.evaluate(() => DA.setTheme('auto'));
+  const otomatikKoyu = await tokenOku(sistemKoyu);
+  await sistemKoyu.evaluate(() => DA.setTheme('dark'));
+  const elleKoyu = await tokenOku(sistemKoyu);
+  await sistemKoyu.close();
+  uiEkle('Sistem koyu teması elle seçilen koyu temayla aynı', '',
+    otomatikKoyu.filter((x, i) => x !== elleKoyu[i]).join(' | '));
+  uiEkle('Sistem koyu teması gerçekten koyu', 'color-scheme=dark', otomatikKoyu[otomatikKoyu.length - 1]);
+
   /* ---- Hareket ve reduced-motion ---- */
   const hareket = await sayfa.evaluate(() => {
     const k = getComputedStyle(document.documentElement);
@@ -724,9 +788,22 @@ function ornekDurum(tema) {
       takipVurgulu: kutu[0] ? kutu[0].classList.contains('uyari') : false,
       /* Sıfır olan kutu vurgulanmamalı: vurgu bilgi taşımalı */
       kartVurgulu: kutu[2] ? kutu[2].classList.contains('uyari') : false,
-      kartDeger: kutu[2] ? kutu[2].querySelector('b').textContent.trim() : null
+      kartDeger: kutu[2] ? kutu[2].querySelector('b').textContent.trim() : null,
+      /* Halka: takibi açık 2 danışandan 1'i gecikmiş → 1/2 zamanında;
+         yay uzunluğu çevrenin yarısı: 2π·42 = 263,9 → 131,9 */
+      halkaMetin: ((document.querySelector('.hero .halka .orta') || {}).textContent || '').trim(),
+      halkaYay: ((document.querySelector('.hero .halka .yay') || { getAttribute: () => '' }).getAttribute('stroke-dasharray') || '').split(' ')[0],
+      /* Hafta şeridi: yedi gün, sonuncusu bugün; 6 gün önce 1, bugün 1 ölçüm,
+         7 gün önceki şeritte yok */
+      haftaGun: document.querySelectorAll('.hero .hafta .gun').length,
+      haftaUclar: Array.from(document.querySelectorAll('.hero .hafta .gun')).filter((x, i, a) => i === 0 || i === a.length - 1)
+        .map((x) => x.dataset.n + (x.classList.contains('bugun') ? 'b' : '')).join(',')
     };
   });
+  uiEkle('Hero halkası: takipte zamanında', '1/2zamanında', kahraman.halkaMetin);
+  uiEkle('Hero halkası: yay oranı (çevrenin yarısı)', '131.9', kahraman.halkaYay);
+  uiEkle('Hafta şeridi yedi gün', 7, kahraman.haftaGun);
+  uiEkle('Hafta şeridi: ilk gün 1 ölçüm, son gün bugün ve 1 ölçüm', '1,1b', kahraman.haftaUclar);
   uiEkle('Bu hafta ölçüm sayısı doğru', 2, kahraman.hafta);
   uiEkle('Takip bekleyen sayısı doğru', 1, kahraman.takip);
   uiEkle('Hero üç kutu gösteriyor', 3, kahraman.adet);
