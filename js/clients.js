@@ -259,6 +259,7 @@
           aciklama: 'İlk ölçümü girdikten sonra kilo grafiği, değişim ve hedefe kalan otomatik çıkar.',
           eylem: { act: 'measNew', veri: 'data-id="' + c.id + '"', etiket: 'Ölçüm ekle', ico: 'plus' } })) +
         planHtml(c) +
+        (DA.liste ? DA.liste.danisanKarti(c) : '') +
         savedCalcs(c) +
         '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>' +
         '<a class="btn block" href="#/yazdir/danisan/' + c.id + '">' + DA.icon('share') + ' Danışan raporu (PDF / Paylaş)</a>'

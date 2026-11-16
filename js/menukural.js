@@ -68,12 +68,18 @@
   const turler = (liste) => (liste || []).map((it) => tur(besin(it)));
   const herhangi = (ts, k) => ts.some((t) => t[k]);
 
-  /* Menüyü kurallara göre tarar. Dönen her kayıt: k = kural, d = 'uyari' |
-     'bilgi', t = metin, ogun = öğün (birden çok öğünü kapsayanlarda dizi). */
+  /* Öğün → tür dizisi eşlemesini kurallara göre tarar. Menü planlayıcı türü
+     besinden, diyet listesi satırın adından ve değişim grubundan çıkarır;
+     kurallar ikisinde de aynı kalsın diye tek yerde. Dönen her kayıt:
+     k = kural, d = 'uyari' | 'bilgi', t = metin, ogun = öğün (birden çok
+     öğünü kapsayanlarda dizi). */
   function denetle(m) {
-    const out = [], M = m.meals || {};
-    const T = {};
+    const T = {}, M = (m && m.meals) || {};
     ogunler().forEach((o) => { T[o] = turler(M[o]); });
+    return denetleTur(T);
+  }
+  function denetleTur(T) {
+    const out = [];
 
     ARA.forEach((o) => {
       const ts = T[o] || [];
@@ -135,7 +141,10 @@
   function kartHtml(m) {
     const dolu = ogunler().some((o) => ((m.meals || {})[o] || []).length);
     if (!dolu) return '';
-    const s = denetle(m);
+    return kartHtmlSonuc(denetle(m), '<button class="btn sec sm block" data-act="menuDiz" data-m="' + esc(m.id) + '">Yazım sırasına diz</button>');
+  }
+  /* Kural sonucunu kart olarak çizer; dizDugmesi yalnız sıra notu varken görünür. */
+  function kartHtmlSonuc(s, dizDugmesi) {
     if (!s.length) {
       return '<div class="note ok" id="menuKural"><b>Menü yazım kurallarına uygun.</b> ' +
         'Ara öğünler, gece öğünü ve yazım sırası kontrol edildi.</div>';
@@ -145,7 +154,7 @@
     return '<div class="card" id="menuKural"><div class="sect" style="margin-top:0">Menü yazım kuralları</div>' +
       (uy.length ? '<div class="note warn"><ul class="tight" style="margin:0">' + uy.map(liste).join('') + '</ul></div>' : '') +
       (bi.length ? '<div class="note"><ul class="tight" style="margin:0">' + bi.map(liste).join('') + '</ul></div>' : '') +
-      (s.some((x) => x.k === 'sira') ? '<button class="btn sec sm block" data-act="menuDiz" data-m="' + esc(m.id) + '">Yazım sırasına diz</button>' : '') +
+      (s.some((x) => x.k === 'sira') ? (dizDugmesi || '') : '') +
       '</div>';
   }
 
@@ -159,5 +168,5 @@
     DA.silGeriAl('Öğünler yazım sırasına dizildi', () => { m.meals = eski; });
   };
 
-  DA.menuKural = { tur, denetle, diz, kartHtml };
+  DA.menuKural = { tur, denetle, denetleTur, diz, kartHtml, kartHtmlSonuc, sira };
 })();

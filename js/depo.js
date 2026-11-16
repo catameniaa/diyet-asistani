@@ -43,6 +43,7 @@
   const ozet = (S) => ({
     danisan: (S.clients || []).length,
     menu: (S.menus || []).length,
+    liste: (S.listeler || []).length,
     staj: (S.journal || []).length,
     besin: (S.customFoods || []).length
   });

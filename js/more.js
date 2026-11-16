@@ -371,6 +371,7 @@
   /* ---- Yedek yükleme: önce içeriği göster, sonra üzerine yaz ya da birleştir ---- */
   let _yedek = null;
   const sayi = (o) => ({ danisan: (o.clients || []).length, menu: (o.menus || []).length,
+    liste: (o.listeler || []).length,
     staj: (o.journal || []).length, besin: (o.customFoods || []).length });
 
   /* Şifreli dosya geldiğinde metin burada bekletilir, parola alınınca çözülür. */
@@ -418,7 +419,7 @@
         const sat = (l, a, b) => '<tr><td>' + l + '</td><td class="n">' + a + '</td><td class="n muted">' + b + '</td></tr>';
         DA.sheet('Yedek dosyası', '<p class="muted small">' + esc(ad) + '</p>' +
           '<table class="t"><thead><tr><th></th><th class="n">Dosyada</th><th class="n">Şu an</th></tr></thead><tbody>' +
-          sat('Danışan', y.danisan, m.danisan) + sat('Menü', y.menu, m.menu) +
+          sat('Danışan', y.danisan, m.danisan) + sat('Menü', y.menu, m.menu) + sat('Diyet listesi', y.liste, m.liste) +
           sat('Staj kaydı', y.staj, m.staj) + sat('Eklenen besin', y.besin, m.besin) +
           '</tbody></table>' +
           (/^\d{4}-\d{2}-\d{2}$/.test(String(o.yedekTarihi || '')) ? '<p class="muted tiny">Yedek tarihi: ' + esc(DA.fdate(o.yedekTarihi)) + '</p>' : '') +
@@ -440,16 +441,17 @@
     if (!_yedek) return;
     /* Birleştirme kayıtları doğrudan ekler, replaceState'ten geçmez;
        denetim burada da çalışmalı. */
-    const S = DA.state(), o = DA.veriDenetle(_yedek), ekle = { danisan: 0, menu: 0, staj: 0, besin: 0 };
+    const S = DA.state(), o = DA.veriDenetle(_yedek), ekle = { danisan: 0, menu: 0, liste: 0, esdeger: 0, staj: 0, besin: 0 };
     const birlestir = (alan, ad) => {
       const mevcut = S[alan] || (S[alan] = []);
       const idx = {}; mevcut.forEach((x) => { idx[x.id] = 1; });
       (o[alan] || []).forEach((x) => { if (x && x.id && !idx[x.id]) { mevcut.push(x); ekle[ad]++; } });
     };
     birlestir('clients', 'danisan'); birlestir('menus', 'menu');
+    birlestir('listeler', 'liste'); birlestir('esdegerler', 'esdeger');
     birlestir('journal', 'staj'); birlestir('customFoods', 'besin');
     DA.save(); _yedek = null; DA.closeSheet();
-    DA.toast('Eklendi: ' + ekle.danisan + ' danışan, ' + ekle.menu + ' menü, ' + ekle.staj + ' staj, ' + ekle.besin + ' besin');
+    DA.toast('Eklendi: ' + ekle.danisan + ' danışan, ' + ekle.menu + ' menü, ' + ekle.liste + ' liste, ' + ekle.staj + ' staj, ' + ekle.besin + ' besin');
     if (DA.foodsInvalidate) DA.foodsInvalidate();
     DA.render(false);
   };

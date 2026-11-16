@@ -5,7 +5,7 @@
   const KEY = 'dyt.v1';
 
   const defaults = () => ({
-    v: 1, clients: [], menus: [], journal: [], customFoods: [], customCards: [],
+    v: 1, clients: [], menus: [], listeler: [], esdegerler: [], journal: [], customFoods: [], customCards: [],
     cardProgress: {}, targets: { kcal: 2000, p: 100, c: 250, f: 67 }, profile: {}, ui: {}
   });
   let state;
@@ -67,15 +67,46 @@
       m.meals[k].forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
     });
   }
+  /* Diyet listesi: öğün anahtarları ve satırlar ekrana ve kâğıda doğrudan
+     yazılır; sayı olması gereken alan sayı değilse 1 (çarpan) ya da 0 olur. */
+  const sayiMi = (x) => typeof x === 'number' && isFinite(x);
+  function degisimDenetle(d) {
+    if (!nesneMi(d)) return {};
+    Object.keys(d).forEach((k) => { if (!sayiMi(d[k]) || d[k] < 0) delete d[k]; });
+    return d;
+  }
+  function listeDenetle(l) {
+    l.id = kimlik(l.id);
+    l.ad = metin(l.ad);
+    l.not = metin(l.not);
+    l.d = metin(l.d);
+    l.c = l.c ? kimlik(l.c) : '';
+    l.ex = degisimDenetle(l.ex);
+    if (!nesneMi(l.ayar)) l.ayar = {};
+    ['meal', 'ogun'].forEach((k) => { if (!nesneMi(l[k])) l[k] = {}; });
+    Object.keys(l.meal).forEach((k) => { l.meal[k] = degisimDenetle(l.meal[k]); });
+    Object.keys(l.ogun).forEach((k) => {
+      l.ogun[k] = nesneDizisi(l.ogun[k]);
+      l.ogun[k].forEach((x) => {
+        x.id = kimlik(x.id); x.t = metin(x.t); x.d = degisimDenetle(x.d);
+        if (!sayiMi(x.n) || x.n <= 0) x.n = 1;
+      });
+    });
+  }
+  function esdegerDenetle(e) {
+    e.id = kimlik(e.id); e.t = metin(e.t); e.d = degisimDenetle(e.d);
+  }
   DA.veriDenetle = (o) => {
     if (!nesneMi(o)) return {};
-    ['clients', 'menus', 'journal', 'customFoods', 'customCards'].forEach((k) => {
+    ['clients', 'menus', 'listeler', 'esdegerler', 'journal', 'customFoods', 'customCards'].forEach((k) => {
       /* dizi değilse (null dahil) silinir; varsayılan boş liste gelir */
       if (!Array.isArray(o[k])) { delete o[k]; return; }
       o[k] = nesneDizisi(o[k]);
     });
     (o.clients || []).forEach(danisanDenetle);
     (o.menus || []).forEach(menuDenetle);
+    (o.listeler || []).forEach(listeDenetle);
+    (o.esdegerler || []).forEach(esdegerDenetle);
     ['journal', 'customFoods', 'customCards'].forEach((k) => (o[k] || []).forEach((x) => { x.id = kimlik(x.id); }));
     ['cardProgress', 'targets', 'profile', 'ui'].forEach((k) => { if (o[k] != null && !nesneMi(o[k])) delete o[k]; });
     const ui = o.ui;

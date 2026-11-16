@@ -12,7 +12,8 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   TÜBER Ek 3.1.1 örüntüsünden; ekmek KH'den, et proteinden, yağ yağ hedefinden) ve hesap adımlarının
   gösterimi; grup kilitleme, yarım yağlı süt varsayılanı, ulaşılamayan hedefte açık uyarı;
   kuru baklagil ayrı değişim (15 g KH + 5 g protein; girildiği gibi kalır, ekmek ve et hesabından düşülür);
-  öğünlere gruba uygun bölme (ara öğüne meyve/süt/kuruyemiş, ana öğünlere et/baklagil/sebze/yağ);
+  öğünlere gruba uygun bölme (ara öğüne meyve/süt/kuruyemiş, ana öğünlere et/baklagil/sebze/yağ,
+  gece süt/meyve); altı öğün (kahvaltı, kuşluk, öğle, ikindi, akşam, gece) ve değiştirilebilir öğün payları;
   her danışanın kendi planı; porsiyon örnekleri, yemeklerin değişim karşılığı (çorba = 1 ekmek + 1 yağ,
   zeytinyağlı sebze yemeği = 1 sebze + 1 yağ, pilav yalnız ekmek…) ekranda ve çıktıda,
   menü hedefi ile karşılaştırma
@@ -21,7 +22,12 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Favoriler, son açılanlar ve açık/koyu/otomatik tema
 - Yedek hatırlatması (son yedekten 14 gün geçince uyarır) ve yeni sürüm bildirimi
 - 74 çalışma kartı (aralıklı tekrar): TEMD, TÜBER, değişim listesi, WHO persentil eşikleri
-- Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
+- Diyet listesi yazıcı: değişim planından öğün öğün liste; satırlar ev ölçüsüyle ("1 su bardağı yarım
+  yağlı süt", "3 yemek kaşığı bulgur pilavı"), öğünde kalan değişim canlı, yeni satır yazım sırasındaki
+  yerine girer, kendi satırını yazıp seçeneklerine kaydetme; danışan dosyasına bağlı, A4 çıktı
+  (isteğe göre enerji/makro ve değişim tablosu) ve metin paylaşımı
+- Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş; besinin miktarı ve ölçüsü
+  sonradan düzenlenir, çıktıya ev ölçüsü basılır ("3 dilim (75 g)")
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
   eşleme, gece peynir/peynir-ekmek yok, bulgur pilavının yanına ekmek yok, meyve ara öğünde;
   çorba ve sıvılar başa, ekmek sona — tek dokunuşla yazım sırasına dizme (geri alınabilir)
@@ -77,7 +83,7 @@ node tools/test/run.js
 ```
 
 Hesaplayıcılarda bilinen girdi-çıktı doğrulaması, TÜBER tablolarında satır-sütun
-ve çapraz tutarlılık kontrolü, tarama araçlarında puan-band testi ve 57 rotanın
+ve çapraz tutarlılık kontrolü, tarama araçlarında puan-band testi ve 60 rotanın
 iki temada taranması. Ayrıntı: `tools/test/README.md`.
 Besin değerleri yaklaşık ortalamalardır; klinik çalışmada TürKomp ile doğrulayın.
 

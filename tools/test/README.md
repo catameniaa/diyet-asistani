@@ -46,7 +46,7 @@ değilken bile toplamın hedefe eşitlenmesi), çocuk persentil eğrisinin
 çizilmesi, aramanın tembel yüklenen kaynakları kapsaması.
 
 **4. Rota taraması** (`run.js`)
-57 rota iki temada açılır; çökme, boş ekran, eksik başlık, yatay taşma ve
+60 rota iki temada açılır; çökme, boş ekran, eksik başlık, yatay taşma ve
 konsol hatası aranır.
 
 ## Yeni test eklemek

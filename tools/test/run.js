@@ -40,7 +40,8 @@ const ROTALAR = [
   '#/hesapla/pal', '#/hesapla/ornekmenu', '#/hesapla/enerjiref', '#/hesapla/yontem', '#/hesapla/vejetaryen',
   '#/hesapla/porsiyon?t=olcu&ara=ceviz', '#/hesapla/ornekmenu?m=ek53',
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
-  '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53'
+  '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
+  '#/liste', '#/liste/ll', '#/yazdir/liste/ll'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -80,6 +81,9 @@ function ornekDurum(tema) {
   S.menus = [{ id: 'mm', title: 'Test menü', date: DA.today(), client: 'Çocuk Danışan', note: 'not',
     meals: { 'Kahvaltı': [{ id: 'beyaz-ekmek', g: 50 }, { id: 'yumurta', g: 60 }] } }];
   S.targets = { kcal: 2000, p: 100, c: 250, f: 67 };
+  S.listeler = [{ id: 'll', ad: 'Test listesi', d: DA.today(), c: 'c1', ex: { sutyy: 1, eyg: 2 }, hedef: { kcal: 223 }, not: 'Su iç.',
+    ayar: { enerji: true, degisim: true }, meal: { kahvalti: { sutyy: 1, eyg: 2 } },
+    ogun: { kahvalti: [{ id: 's1', t: '1 su bardağı yarım yağlı süt', n: 1, d: { sutyy: 1 } }, { id: 's2', t: '1 ince dilim ekmek', n: 2, d: { eyg: 1 } }] } }];
   DA.save();
 }
 
@@ -356,7 +360,7 @@ function ornekDurum(tema) {
     };
     /* chip, stepper, kilit ve segment düğmelerinin hepsinin görüldüğü rota kümesi */
     ['ana', 'hesapla', 'hesapla/degisim', 'hesapla/vejetaryen', 'hesapla/enerjiref',
-      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha'].forEach(say);
+      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha', 'liste', 'liste/ll'].forEach(say);
     return kucuk;
   });
   kosulUi('Dokunma hedefleri en az 44 px', a11y.length === 0, a11y.slice(0, 3).join(' · '));
@@ -1328,6 +1332,345 @@ function ornekDurum(tema) {
   uiEkle('Menü çıktısı: basılmayan kural notu', true, mk.ciktiNot);
   uiEkle('Menü çıktısı: uygun menüde not yok', true, mk.ciktiNotYok);
 
+  /* ---- menü planlayıcı: ev ölçüsü ve miktar düzenleme ----
+     Elle: yarım yağlı süt 1 su bardağı = 200 g → 2 su bardağı 400 g, ½ su
+     bardağı 100 g; beyaz ekmek 1 dilim = 25 g → 3 dilim 75 g. Ölçüsüz eski
+     öğe yalnız gramla basılır. */
+  const olc = await sayfa.evaluate(async () => {
+    await DA.need(['porsiyonBesin']); DA.foodsInvalidate();
+    const S = DA.state(), o = {};
+    const eskiPay = DA.shareText; let paylasilan = ''; DA.shareText = (t, x) => { paylasilan = x; };
+    const besin = (ad) => DA.foods.all().find((x) => x.n === ad) || {};
+    const sut = besin('Süt (yarım yağlı)'), ekmek = besin('Beyaz ekmek');
+    const bos = {}; DA.foods.ogunler.forEach((k) => { bos[k] = []; });
+    S.menus.unshift({ id: 'mo', title: 'Ölçü', date: DA.today(), client: '', note: '', meals: bos });
+    DA.save(); location.hash = 'menu/mo'; DA.render(false);
+    const olcuSec = (form, ad) => { const x = Array.from(form.unit.options).find((y) => y.dataset.ad === ad);
+      if (x) x.selected = true; form.unit.dispatchEvent(new Event('input', { bubbles: true })); return !!x; };
+    /* seçiciden: 2 su bardağı süt */
+    DA.actions.pickFood({ dataset: { id: sut.id, m: 'mo', k: 'Kahvaltı' } });
+    let form = document.querySelector('#amtForm');
+    form.amt.value = '2'; o.sutOlcuVar = olcuSec(form, '1 su bardağı');
+    DA.actions.pickConfirm();
+    /* besin ayrıntısından: 3 dilim ekmek */
+    DA.actions.foodDetail({ dataset: { id: ekmek.id } });
+    form = document.querySelector('#amtForm');
+    form.menu.value = 'mo'; form.meal.value = 'Kahvaltı'; form.amt.value = '3'; olcuSec(form, '1 dilim');
+    DA.actions.foodToMenu();
+    const m = S.menus.find((x) => x.id === 'mo'), K = m.meals['Kahvaltı'];
+    const oz = (it) => [it.g, it.o, it.a].join('|');
+    o.sut = oz(K[0]); o.ekmek = oz(K[1]);
+    /* düzenleme: süt ½ su bardağına iner; form mevcut ölçüyle açılır */
+    DA.render(false);
+    DA.actions.menuItemEdit({ dataset: { m: 'mo', k: 'Kahvaltı', i: '1' } });
+    form = document.querySelector('#amtForm');
+    o.formDolu = form.amt.value + '|' + ((form.unit.selectedOptions[0] || {}).dataset || {}).ad;
+    DA.closeSheet();
+    DA.actions.menuItemEdit({ dataset: { m: 'mo', k: 'Kahvaltı', i: '0' } });
+    form = document.querySelector('#amtForm');
+    form.amt.value = '0,5'; form.amt.dispatchEvent(new Event('input', { bubbles: true }));
+    DA.actions.menuItemSave({ dataset: { m: 'mo', k: 'Kahvaltı', i: '0' } });
+    o.yarim = oz(K[0]);
+    o.satir = Array.from(document.querySelectorAll('#app .res .duzen .sub')).map((x) => x.textContent.trim()).join(' / ');
+    /* sıra: ekmek yukarı */
+    DA.actions.menuItemMove({ dataset: { m: 'mo', k: 'Kahvaltı', i: '1', yon: '-1' } });
+    o.sira = m.meals['Kahvaltı'].map((x) => x.n).join(' > ');
+    /* ölçüsüz eski öğe */
+    m.meals['Öğle'].push({ id: ekmek.id, n: ekmek.n, g: 50 });
+    DA.save();
+    location.hash = 'yazdir/menu/mo'; DA.render(false);
+    o.cikti = Array.from(document.querySelectorAll('.printdoc tbody tr:not(.mh) td:nth-child(2)')).map((x) => x.textContent.trim()).join(' / ');
+    DA.actions.menuShare({ dataset: { m: 'mo' } });
+    o.paylas = /• Beyaz ekmek — 3 dilim \(75 g\)/.test(paylasilan) && /• Süt \(yarım yağlı\) — ½ su bardağı \(100 g\)/.test(paylasilan);
+    DA.shareText = eskiPay;
+    S.menus = S.menus.filter((x) => x.id !== 'mo'); DA.save();
+    return o;
+  });
+  uiEkle('Menü: ölçü seçeneği bulundu', true, olc.sutOlcuVar);
+  uiEkle('Menü: 2 su bardağı süt (g|ölçü|adet)', '400|1 su bardağı|2', olc.sut);
+  uiEkle('Menü: 3 dilim ekmek besin ayrıntısından', '75|1 dilim|3', olc.ekmek);
+  uiEkle('Menü: düzenleme formu mevcut ölçüyle açılıyor', '3|1 dilim', olc.formDolu);
+  uiEkle('Menü: süt ½ su bardağına iniyor', '100|1 su bardağı|0.5', olc.yarim);
+  uiEkle('Menü: satırda ev ölçüsü ve gram', '½ su bardağı · 100 g / 3 dilim · 75 g', olc.satir);
+  uiEkle('Menü: besin yukarı taşınıyor', 'Beyaz ekmek > Süt (yarım yağlı)', olc.sira);
+  uiEkle('Menü çıktısı: ev ölçüsü basılıyor, ölçüsüz öğe gram', '3 dilim (75 g) / ½ su bardağı (100 g) / 50 g', olc.cikti);
+  uiEkle('Menü metni: ev ölçüsü paylaşılıyor', true, olc.paylas);
+
+  /* ---- değişim listesi: öğün payları ve gece öğünü ----
+     Varsayılan paylar değişmedi (25/10/30/10/25, gece 0). Elle girilen
+     25/10/30/10/20/5 ile her öğün kendi payının ±3 puanında; gece yalnız
+     süt, meyve, galeta ya da kuruyemiş alır (et, yağ, sebze, baklagil yok).
+     Toplam 110 girilince 100'e oranlanır: 30/110 = %27,3 · 10/110 = %9,1. */
+  const pay = await sayfa.evaluate(() => {
+    const ui = DA.state().ui, o = {}, eski = DA.toast; DA.toast = () => {};
+    /* Kendi danışanı: önceki testler danışan listesini değiştiriyor */
+    const S0 = DA.state(); S0.clients = (S0.clients || []).filter((c) => c.id !== 'pc');
+    S0.clients.push({ id: 'pc', name: 'Pay Danışan', sex: 'K', h: 160, meas: [] }); delete (ui.exAlan || {}).pc; DA.save();
+    ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+    const G = ui.exAlan[''], T = DA.exchange.totals;
+    G.ex = {}; G.exLock = {}; G.exMeal = {}; delete G.exPay; G.exT = { kcal: 1800, birim: 'yuzde', c: 50, p: 20, ts: 1 };
+    DA.actions.exAuto(); DA.render(false);
+    const metin = (sel) => ((document.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+    o.varsayilan = metin('#exMealBtn');
+    DA.actions.exMealAuto();
+    o.geceVarsayilan = T(G.exMeal.gece || {}).kcal;
+    const yaz = (ad, d) => { const e = document.querySelector('input[data-live=exPay][name=' + ad + ']');
+      if (e) { e.value = d; e.dispatchEvent(new Event('input', { bubbles: true })); } };
+    yaz('aksam', '20'); yaz('gece', '5');
+    o.etiket = metin('#exMealBtn'); o.toplam = metin('#exPaySum');
+    DA.actions.exMealAuto();
+    const sap = (P, top) => { const tk = T(G.ex).kcal;
+      return Math.max.apply(null, Object.keys(P).map((k) => Math.abs(T(G.exMeal[k] || {}).kcal / tk * 100 - P[k] * 100 / top))); };
+    o.payMaks = sap({ kahvalti: 25, ara1: 10, ogle: 30, ara2: 10, aksam: 20, gece: 5 }, 100);
+    const gece = G.exMeal.gece || {};
+    o.geceDolu = T(gece).kcal > 0;
+    o.geceYasak = ['et', 'yag', 'sebze', 'baklagil'].filter((k) => gece[k]).join(',');
+    const top = {}; Object.keys(G.exMeal).forEach((m) => Object.keys(G.exMeal[m]).forEach((k) => { top[k] = (top[k] || 0) + G.exMeal[m][k]; }));
+    o.korundu = Object.keys(G.ex).every((k) => Math.abs((top[k] || 0) - (G.ex[k] || 0)) < 0.01);
+    yaz('kahvalti', '30'); yaz('aksam', '30'); yaz('gece', '0');
+    o.uyari = metin('#exPaySum');
+    DA.actions.exMealAuto();
+    o.oranMaks = sap({ kahvalti: 30, ara1: 10, ogle: 30, ara2: 10, aksam: 30 }, 110);
+    o.gece0 = T(G.exMeal.gece || {}).kcal;
+    /* Oranı aynı paylar aynı dağılımı vermeli: 5/2/6/2/5 (toplam 20) oranlanınca
+       25/10/30/10/25 olur. Oranlanmasaydı paylar beşte bire iner ve açık puanı
+       uygunluğu ezerek başka bir dağılım çıkarırdı. */
+    delete G.exPay; DA.actions.exMealAuto();
+    const varsayilanDagilim = JSON.stringify(G.exMeal);
+    G.exPay = { kahvalti: 5, ara1: 2, ogle: 6, ara2: 2, aksam: 5, gece: 0 };
+    DA.actions.exMealAuto();
+    o.oranAyni = JSON.stringify(G.exMeal) === varsayilanDagilim;
+    DA.actions.exPayVarsayilan();
+    o.donus = metin('#exMealBtn') === o.varsayilan && !G.exPay;
+    /* danışan planıyla kaydedilip geri yükleniyor */
+    location.hash = 'hesapla/degisim?c=pc'; DA.render(false);
+    const C = ui.exAlan.pc; C.ex = { sutyy: 2, et: 3, eyg: 4 }; C.exPay = { kahvalti: 25, ara1: 10, ogle: 30, ara2: 10, aksam: 20, gece: 5 };
+    DA.actions.exSaveClient({ dataset: { id: 'pc' } });
+    delete ui.exAlan.pc; DA.render(false);
+    o.geriYuklendi = (ui.exAlan.pc.exPay || {}).gece;
+    o.ayni = /Dosyadaki planla aynı/.test(metin('#exDanisan'));
+    /* yalnız pay değişince de "kaydedilmemiş" denir */
+    const ge = document.querySelector('input[data-live=exPay][name=gece]');
+    if (ge) { ge.value = '8'; ge.dispatchEvent(new Event('input', { bubbles: true })); }
+    o.payFarki = /Kaydedilmemiş değişiklik/.test(metin('#exDanisan'));
+    /* Zorlayıcı: yalnız kahvaltı ve gece açık, plan et + süt. Enerji açığı
+       geceyi çekse de et geceye gitmez; süt gider. Yalnız gece açıkken birim
+       kaybolmaz (uygun öğün yoksa en büyük paylıya gider). */
+    location.hash = 'hesapla/degisim'; ui.exClient = null; DA.render(false);
+    G.exPay = { kahvalti: 50, ara1: 0, ogle: 0, ara2: 0, aksam: 0, gece: 50 };
+    G.ex = { et: 4, sutyy: 2 }; DA.actions.exMealAuto();
+    o.zorGeceEt = (G.exMeal.gece || {}).et || 0;
+    o.zorGeceSut = (G.exMeal.gece || {}).sutyy || 0;
+    G.exPay = { kahvalti: 0, ara1: 0, ogle: 0, ara2: 0, aksam: 0, gece: 100 };
+    G.ex = { et: 2 }; DA.actions.exMealAuto();
+    o.kayipYok = Object.keys(G.exMeal).reduce((t, m) => t + (G.exMeal[m].et || 0), 0);
+    delete G.exPay; G.ex = {}; G.exMeal = {};
+    DA.toast = eski;
+    return o;
+  });
+  uiEkle('Paylar: varsayılan etiket değişmedi', 'Öğünlere dağıt (%25 · %10 · %30 · %10 · %25)', pay.varsayilan);
+  uiEkle('Paylar: varsayılanda geceye bir şey gitmiyor', 0, pay.geceVarsayilan);
+  uiEkle('Paylar: etiket girilen paylarla', 'Öğünlere dağıt (%25 · %10 · %30 · %10 · %20 · %5)', pay.etiket);
+  uiEkle('Paylar: toplam %100', 'Toplam %100', pay.toplam);
+  uiEkle('Paylar: her öğün kendi payının ±3 puanında', true, pay.payMaks <= 3);
+  uiEkle('Gece öğününe değişim gidiyor', true, pay.geceDolu);
+  uiEkle('Gece öğününe et, yağ, sebze, baklagil gitmiyor', '', pay.geceYasak);
+  uiEkle('Paylar: grup toplamları korunuyor', true, pay.korundu);
+  uiEkle('Paylar: toplam 110 uyarısı', 'Toplam %110 — dağıtımda %100’e oranlanır', pay.uyari);
+  uiEkle('Paylar: 110 toplamı oranlanıyor (±3 puan)', true, pay.oranMaks <= 3);
+  uiEkle('Paylar: payı 0 olan geceye bir şey gitmiyor', 0, pay.gece0);
+  uiEkle('Paylar: oranı aynı paylar (toplam 20) aynı dağılımı veriyor', true, pay.oranAyni);
+  uiEkle('Paylar: varsayılana dönülüyor', true, pay.donus);
+  uiEkle('Paylar: danışan planıyla kaydedilip geri geliyor', 5, pay.geriYuklendi);
+  uiEkle('Paylar: kayıttan sonra plan "aynı" görünüyor', true, pay.ayni);
+  uiEkle('Paylar: yalnız pay değişince kaydedilmemiş deniyor', true, pay.payFarki);
+  uiEkle('Gece (zorlayıcı): et geceye gitmiyor', 0, pay.zorGeceEt);
+  uiEkle('Gece (zorlayıcı): süt geceye gidiyor', true, pay.zorGeceSut >= 1);
+  uiEkle('Paylar: uygun öğün yoksa birim kaybolmuyor', 2, pay.kayipYok);
+
+  /* ---- diyet listesi yazıcı ----
+     Elle: satır çarpımı "1 …" → n, aralık iki ucuyla çarpılır, tam çıkmayan
+     sayı uydurulmaz. Kahvaltı hedefi süt yy 1 · et 1 · ekmek 2 · yağ 1;
+     ekmek, peynir, süt sırayla eklenince yazım sırası süt > peynir > ekmek
+     (sıvı başa, ekmek sona); ekmek 2 birim yapılınca yalnız 1 yağ eksik kalır.
+     Çıktı listesi (A4 denemesindeki): süt yy 3, et 4, baklagil 2, ekmek 7,
+     sebze 3, meyve 2, yağ 5, kuruyemiş 1 →
+       kcal 3·87 + 4·69 + 2·80 + 7·68 + 3·32 + 2·60 + 5·45 + 53 = 1667
+       KH 27 + 30 + 105 + 18 + 30 = 210 · P 18 + 24 + 10 + 14 + 6 + 2 = 74
+       Y 9 + 20 + 25 + 5 = 59 */
+  const ls = await sayfa.evaluate(() => {
+    const S = DA.state(), ui = S.ui, o = {}, eski = DA.toast; DA.toast = () => {};
+    const C = DA.liste.carp;
+    const TU = DA.liste.satirTur, tu = (t, d) => { const x = TU({ t, n: 1, d }); return [x.kh, x.esli, x.meyve].map((b) => (b ? 1 : 0)).join(''); };
+    /* adı hiçbir şey söylemeyen satırda tür değişim grubundan */
+    o.grupTur = [tu('1 porsiyon A', { sutyy: 1 }), tu('1 porsiyon B', { eyg: 1 }), tu('1 porsiyon C', { meyve: 1 }),
+      tu('1 porsiyon D', { et: 1 }), tu('1 porsiyon E', { baklagil: 1 }), tu('1 porsiyon F', { yag: 1 })].join(',');
+    o.carp = [C('1 ince dilim ekmek', 2), C('12–15 adet üzüm', 2), C('1 su bardağı süt', 0.5), C('1 su bardağı süt', 1.5),
+      C('5 adet zeytin', 2), C('5 adet zeytin', 0.5), C('200 g yoğurt', 1.5), C('kendi metnim', 2), C('1 kase çorba', 1)].join(' | ');
+
+    /* 1) değişim listesinden: öğünler dağıtılmamışsa önce dağıtılır, plan kopyalanır */
+    location.hash = 'hesapla/degisim?c=pc'; DA.render(false);
+    const G = ui.exAlan.pc; G.ex = { sutyy: 2, et: 3, eyg: 4 }; G.exMeal = {}; G.exLock = {};
+    const once = S.listeler.length;
+    DA.actions.exListe();
+    const yeni = S.listeler[0];
+    o.olustu = S.listeler.length - once;
+    o.bagli = yeni.c;
+    o.ogunKopya = Object.keys(yeni.meal).length > 0 && JSON.stringify(yeni.meal) === JSON.stringify(G.exMeal);
+    o.hash = location.hash === '#/liste/' + yeni.id;
+    G.ex.et = 9; o.bagimsiz = yeni.ex.et;
+
+    /* 2) hedefli liste: ekleme, yazım sırası, çarpan, durum */
+    const L = { id: 'lt', ad: 'Test listesi', d: DA.today(), c: 'pc', ex: {}, hedef: {}, not: '', ayar: {}, ogun: {},
+      meal: { kahvalti: { sutyy: 1, et: 1, eyg: 2, yag: 1 }, ara1: { meyve: 1, tohum: 1 }, ogle: { et: 2, eyg: 2 } } };
+    S.listeler.unshift(L); DA.save();
+    location.hash = 'liste/lt'; DA.render(false);
+    const sec = (ogun, e) => DA.actions.listeSec({ dataset: { l: 'lt', o: ogun, e } });
+    sec('kahvalti', 'h-ekmek'); sec('kahvalti', 'h-peynir'); sec('kahvalti', 'h-sut-yy');
+    o.sira = L.ogun.kahvalti.map((x) => x.t).join(' > ');
+    DA.actions.listeSatir({ dataset: { l: 'lt', o: 'kahvalti', i: '2' } });
+    let f = document.querySelector('form[data-form=listeSatir]');
+    f.n.value = '2'; DA.forms.listeSatir(f);
+    o.carpan = L.ogun.kahvalti[2].n;
+    DA.render(false);
+    const cip = (k) => Array.from(document.querySelectorAll('[data-ogun=' + k + '] .durum .badge')).map((b) => b.textContent.trim()).join(' | ');
+    o.cipKahvalti = cip('kahvalti');
+    o.satirMetni = Array.from(document.querySelectorAll('[data-ogun=kahvalti] .li .t')).map((x) => x.textContent).join(' / ');
+    /* seçici: eksik grup önde ve sayfa açık kalıyor */
+    DA.actions.listeEkle({ dataset: { l: 'lt', o: 'ara1' } });
+    o.kalan = (document.querySelector('#listeKalan') || {}).textContent;
+    o.ilkSecenek = ((document.querySelector('#listeSecenek .li .s') || {}).textContent || '').replace(/\s+/g, ' ').split(' · ')[0];
+    sec('ara1', 'h-elma');
+    o.sayfaAcik = !document.querySelector('#sheet').hidden && /Kalan: 1\sk/.test((document.querySelector('#listeKalan') || {}).textContent);
+
+    /* 3) kurallar: kuşlukta elma tek başına, gece peynir, öğlede bulgur + ekmek */
+    sec('gece', 'h-peynir'); sec('ogle', 'h-bulgur'); sec('ogle', 'h-ekmek');
+    DA.closeSheet(); DA.render(false);
+    const kurallar = () => Array.from(document.querySelectorAll('#menuKural li[data-kural]')).map((x) => x.dataset.kural).sort().join(',');
+    o.kural1 = kurallar();
+    sec('ara1', 'h-badem'); DA.render(false);
+    o.kural2 = kurallar();
+    /* elle sıra bozulunca sıra notu ve düğme; diz ve geri al. Zeytin peynirle
+       aynı sırada: dizince peynirin ardında kalmalı (kararlılık). */
+    sec('kahvalti', 'h-zeytin');
+    o.zeytinYeri = L.ogun.kahvalti.map((x) => x.t).join(' > ');
+    DA.actions.listeTasi({ dataset: { l: 'lt', o: 'kahvalti', i: '3', yon: '-1' } });
+    DA.actions.listeTasi({ dataset: { l: 'lt', o: 'kahvalti', i: '2', yon: '-1' } });
+    DA.actions.listeTasi({ dataset: { l: 'lt', o: 'kahvalti', i: '1', yon: '-1' } });
+    DA.render(false);
+    o.bozuk = L.ogun.kahvalti.map((x) => x.t).join(' > ');
+    o.dizVar = !!document.querySelector('#menuKural button[data-act=listeDiz]');
+    DA.actions.listeDiz({ dataset: { l: 'lt' } });
+    o.dizildi = L.ogun.kahvalti.map((x) => x.t).join(' > ');
+    DA.actions.geriAl();
+    o.geriAlindi = S.listeler.find((x) => x.id === 'lt').ogun.kahvalti.map((x) => x.t).join(' > ');
+
+    /* 4) kendi satırı ve seçeneklerim */
+    DA.actions.listeKendi({ dataset: { l: 'lt', o: 'ara2' } });
+    f = document.querySelector('form[data-form=listeKendi]');
+    f.t.value = 'grup girilmemiş'; DA.forms.listeKendi(f);
+    o.grupsuzReddedildi = !(S.listeler.find((x) => x.id === 'lt').ogun.ara2 || []).length;
+    f.t.value = '2 adet galeta'; f.g_eyg.value = '1'; f.kaydet.checked = true; DA.forms.listeKendi(f);
+    const L2 = S.listeler.find((x) => x.id === 'lt');
+    o.kendi = (L2.ogun.ara2 || []).map((x) => x.t + ':' + JSON.stringify(x.d)).join(',');
+    o.kaydedildi = S.esdegerler.some((e) => e.t === '2 adet galeta' && e.d.eyg === 1);
+    DA.actions.listeEkle({ dataset: { l: 'lt', o: 'ara2' } });
+    o.secenekte = Array.from(document.querySelectorAll('#listeSecenek .li')).some((x) => /2 adet galeta/.test(x.textContent) && /seçeneğim/.test(x.textContent));
+    DA.closeSheet();
+
+    /* 5) danışan dosyası */
+    location.hash = 'danisan/pc'; DA.render(false);
+    o.dosyada = !!document.querySelector('#app a[href="#/liste/lt"]');
+
+    /* 6) çıktı: plana uyan liste, enerji ve değişim tablosu seçenekli */
+    const sat = (t, d, n) => ({ id: 's' + Math.random().toString(36).slice(2, 7), t, n: n || 1, d });
+    const P = { id: 'lp', ad: 'Çıktı listesi', d: '2026-11-17', c: 'pc', ex: {}, hedef: {}, not: 'Günde 2 litre su iç.', ayar: {},
+      ogun: { kahvalti: [sat('1 su bardağı yarım yağlı süt', { sutyy: 1 }), sat('1 dilim beyaz peynir', { et: 1 }), sat('5 adet zeytin', { yag: 1 }), sat('1 ince dilim ekmek', { eyg: 1 }, 2)],
+        ara1: [sat('1 küçük boy elma', { meyve: 1 }), sat('5–6 adet badem', { tohum: 1 })],
+        ogle: [sat('1 kase çorba', { eyg: 1, yag: 1 }), sat('1 köfte kadar tavuk', { et: 1 }, 3), sat('1 kase zeytinyağlı salata', { sebze: 1, yag: 1 }), sat('3 yemek kaşığı bulgur pilavı', { eyg: 1 }, 2)],
+        ara2: [sat('200 g yarım yağlı yoğurt', { sutyy: 1 }), sat('1 orta boy portakal', { meyve: 1 })],
+        aksam: [sat('1 kase zeytinyağlı sebze yemeği', { sebze: 1, yag: 1 }, 2), sat('4 yemek kaşığı nohut', { baklagil: 1 }, 2), sat('1 ince dilim ekmek', { eyg: 1 }, 2)],
+        gece: [sat('1 su bardağı yarım yağlı süt', { sutyy: 1 })] },
+      meal: { kahvalti: { sutyy: 1, et: 1, yag: 1, eyg: 2 }, ara1: { meyve: 1, tohum: 1 }, ogle: { eyg: 3, yag: 2, et: 3, sebze: 1 },
+        ara2: { sutyy: 1, meyve: 1 }, aksam: { sebze: 2, yag: 2, baklagil: 2, eyg: 2 }, gece: { sutyy: 1 } } };
+    S.listeler.unshift(P); DA.save();
+    const cikti = () => { location.hash = 'yazdir/liste/lp'; DA.render(false);
+      return { doc: (document.querySelector('.printdoc') || {}).textContent || '', not: Array.from(document.querySelectorAll('.note.noprint')).map((x) => x.textContent).join(' | ') }; };
+    let c = cikti();
+    o.sade = [/kcal/.test(c.doc), /Günlük değişim sayıları/.test(c.doc), /plana uymuyor/.test(c.not), /yazım kuralı/.test(c.not)].join(',');
+    o.ogunSirasi = Array.from(document.querySelectorAll('.printdoc .ogun h3')).map((x) => x.textContent).join(',');
+    o.ogleSatir = Array.from(document.querySelectorAll('.printdoc .ogun'))[2].querySelectorAll('li')[1].textContent;
+    P.ayar = { enerji: true, degisim: true }; DA.save();
+    c = cikti();
+    o.enerji = (c.doc.match(/Günlük:\s*([^D]*?g · yağ \d+ g)/) || [])[1] || '';
+    o.tablo = Array.from(document.querySelectorAll('.printdoc .degisim-cift td')).map((x) => x.textContent).join('|');
+    P.ogun.gece.push(sat('1 dilim beyaz peynir', { et: 1 })); DA.save();
+    c = cikti();
+    o.uyumsuz = (c.not.match(/Gece: [^·.|]*/) || [''])[0].trim();
+    o.kuralNotu = /1 yazım kuralı notu/.test(c.not);
+    /* paylaşım metni */
+    o.metin = DA.liste.metin(P).split('\n').slice(4, 9).join(' / ');
+
+    /* hedefsiz liste: plana göre karşılaştırma yapılmaz */
+    S.listeler.unshift({ id: 'lq', ad: 'Hedefsiz', d: DA.today(), c: '', ex: {}, hedef: {}, not: '', ayar: {}, meal: {},
+      ogun: { kahvalti: [sat('1 su bardağı yarım yağlı süt', { sutyy: 1 })] } });
+    DA.save();
+    location.hash = 'yazdir/liste/lq'; DA.render(false);
+    o.hedefsizNot = /plana uymuyor/.test(Array.from(document.querySelectorAll('.note.noprint')).map((x) => x.textContent).join(' '));
+    location.hash = 'liste/lq'; DA.render(false);
+    o.hedefsizCip = document.querySelectorAll('.durum .badge').length;
+    S.listeler = S.listeler.filter((x) => x.id !== 'lq');
+
+    /* 7) silme ve geri alma */
+    location.hash = 'liste/lp'; DA.render(false);
+    DA.actions.listeSil({ dataset: { l: 'lp' } });
+    o.silindi = !S.listeler.some((x) => x.id === 'lp');
+    DA.actions.geriAl();
+    o.geriGeldi = DA.state().listeler.some((x) => x.id === 'lp');
+    DA.state().listeler = DA.state().listeler.filter((x) => ['lt', 'lp'].indexOf(x.id) < 0 && x.id !== yeni.id);
+    DA.state().esdegerler = [];
+    DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Liste: adı boş satırda tür değişim grubundan (kh/eş/meyve)', '010,100,101,010,110,000', ls.grupTur);
+  uiEkle('Liste: satır çarpımı', '2 ince dilim ekmek | 24–30 adet üzüm | ½ su bardağı süt | 1½ su bardağı süt | 10 adet zeytin | ' +
+    '½ × 5 adet zeytin | 300 g yoğurt | 2 × kendi metnim | 1 kase çorba', ls.carp);
+  uiEkle('Liste: değişim listesinden oluşturuluyor', 1, ls.olustu);
+  uiEkle('Liste: danışana bağlı', 'pc', ls.bagli);
+  uiEkle('Liste: dağıtılmamış plan önce öğünlere dağıtılıp kopyalanıyor', true, ls.ogunKopya);
+  uiEkle('Liste: oluşturulunca listeye gidiliyor', true, ls.hash);
+  uiEkle('Liste: plan sonradan değişse de liste kopyası değişmiyor', 3, ls.bagimsiz);
+  uiEkle('Liste: yeni satır yazım sırasındaki yerine giriyor', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 1 ince dilim ekmek', ls.sira);
+  uiEkle('Liste: çarpan kaydediliyor', 2, ls.carpan);
+  uiEkle('Liste: öğün durumu (hedefe göre)', 'Süt (yarım yağlı) 1/1 ✓ | Et 1/1 ✓ | Ekmek 2/2 ✓ | Yağ 0/1 eksik', ls.cipKahvalti);
+  uiEkle('Liste: satır metni çarpanla', '1 su bardağı yarım yağlı süt / 1 dilim beyaz peynir / 2 ince dilim ekmek', ls.satirMetni);
+  uiEkle('Liste: seçicide kalan değişim', 'Kalan: 1 meyve · 1 kuruyemiş', ls.kalan);
+  uiEkle('Liste: seçicide eksik grup önde', '1 meyve', ls.ilkSecenek);
+  uiEkle('Liste: seçimden sonra sayfa açık, kalan güncel', true, ls.sayfaAcik);
+  uiEkle('Liste kuralları: elma tek, gece peynir, bulgur + ekmek', 'araEs,bulgurEkmek,gecePeynir', ls.kural1);
+  uiEkle('Liste kuralları: bademle eşlenince not kalkıyor', 'bulgurEkmek,gecePeynir', ls.kural2);
+  uiEkle('Liste: zeytin peynirin ardına, ekmeğin önüne giriyor', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin > 1 ince dilim ekmek', ls.zeytinYeri);
+  uiEkle('Liste: elle bozulan sıra', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin', ls.bozuk);
+  uiEkle('Liste: sıra notunda diz düğmesi', true, ls.dizVar);
+  uiEkle('Liste: yazım sırasına diziliyor (aynı sıradakiler yer değiştirmiyor)', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin > 1 ince dilim ekmek', ls.dizildi);
+  uiEkle('Liste: dizme geri alınıyor', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin', ls.geriAlindi);
+  uiEkle('Liste: grupsuz kendi satırı reddediliyor', true, ls.grupsuzReddedildi);
+  uiEkle('Liste: kendi satırı ekleniyor', '2 adet galeta:{"eyg":1}', ls.kendi);
+  uiEkle('Liste: kendi satırı seçeneklere kaydediliyor', true, ls.kaydedildi);
+  uiEkle('Liste: kaydedilen seçenek seçicide', true, ls.secenekte);
+  uiEkle('Liste: danışan dosyasında görünüyor', true, ls.dosyada);
+  uiEkle('Liste çıktısı: varsayılan sade (kcal, tablo, uyumsuzluk, kural)', 'false,false,false,false', ls.sade);
+  uiEkle('Liste çıktısı: öğün sırası', 'Kahvaltı,Kuşluk,Öğle,İkindi,Akşam,Gece', ls.ogunSirasi);
+  uiEkle('Liste çıktısı: çarpılmış satır', '3 köfte kadar tavuk', ls.ogleSatir);
+  uiEkle('Liste çıktısı: günlük enerji ve makrolar', 'yaklaşık 1667 kcal · karbonhidrat 210 g · protein 74 g · yağ 59 g', ls.enerji);
+  uiEkle('Liste çıktısı: iki sütunlu değişim tablosu', 'Süt (yarım yağlı)|3|Sebze|3|Et|4|Meyve|2|Kuru baklagil|2|Yağ|5|Ekmek ve yerine geçenler|7|Kuruyemiş (yağlı tohum)|1', ls.tablo);
+  uiEkle('Liste çıktısı: plana uymayan öğün basılmayan notta', 'Gece: 1 et fazla', ls.uyumsuz);
+  uiEkle('Liste çıktısı: kural notu sayısı', true, ls.kuralNotu);
+  uiEkle('Liste metni: öğün başlığı ve satırlar', 'KAHVALTI / • 1 su bardağı yarım yağlı süt / • 1 dilim beyaz peynir / • 5 adet zeytin / • 2 ince dilim ekmek', ls.metin);
+  uiEkle('Liste: hedefsiz listede plana göre not yok', false, ls.hedefsizNot);
+  uiEkle('Liste: hedefsiz listede durum etiketi yok', 0, ls.hedefsizCip);
+  uiEkle('Liste: silinince geri alınabiliyor', 'true/true', ls.silindi + '/' + ls.geriGeldi);
+
   /* ---- değişim listesi: hedef yüzde ya da gram ----
      Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,
      plan girilen yüzdelere uymuyormuş gibi görünüyordu. Giriş gerçek "input"
@@ -1570,10 +1913,13 @@ function ornekDurum(tema) {
         calcs: [{ id: 'k1', d: t, t: 'BKİ', s: 'BKİ: 18', ico: 'scale', k: 'BKİ', v: 18, u: 'kg/m²' }],
         plan: { d: t, ts: 1, hedef: { kcal: 1800, birim: 'yuzde', c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 }, meal: { kahvalti: { sutyy: 1 } }, top: { kcal: 1800, c: 225, p: 90, f: 60 } } }],
       menus: [{ id: 'mm', title: 'Menü', date: t, client: 'Ayşe', note: 'n', target: { kcal: 1800, p: 90, c: 225, f: 60 },
-        meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50 }], 'Öğle': [{ id: 'c_o', g: 100 }] } }],
+        meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50, o: '1 adet', a: 1 }], 'Öğle': [{ id: 'c_o', g: 100 }] } }],
       journal: [{ id: 'j1', d: t, type: 'Klinik', place: 'Hastane', hours: 2, title: 'Vaka', text: 'metin' }],
       customFoods: [{ id: 'c_o', n: 'Özel', cat: 'Eklediklerim', kcal: 100, p: 5, c: 10, f: 3, fib: 1, u: [['1 porsiyon', 50]] }],
       customCards: [{ id: 'cc1', q: 'Soru', a: 'Cevap', tag: 'x' }],
+      listeler: [{ id: 'll', ad: 'Liste', d: t, c: 'c1', ex: { sutyy: 1 }, hedef: { kcal: 87 }, not: 'n', ayar: { enerji: true, degisim: true },
+        meal: { kahvalti: { sutyy: 1 } }, ogun: { kahvalti: [{ id: 's1', t: '1 su bardağı süt', n: 2, d: { sutyy: 1 } }] } }],
+      esdegerler: [{ id: 'e1', t: '2 adet galeta', d: { eyg: 1 } }],
       cardProgress: {}, targets: { kcal: 2000, p: 100, c: 250, f: 67 }, profile: { dyt: 'Dyt. X', iletisim: 'tel' },
       ui: { fav: [{ h: '#/hesapla/bki', t: 'BKİ', ico: 'calc' }], recent: [{ h: '#/danisan/c1', t: 'Ayşe', ico: 'users' }], lastBackup: t }
     });
@@ -1582,7 +1928,9 @@ function ornekDurum(tema) {
       menus: ['ana', 'menu', 'menu/mm', 'yazdir/menu/mm', 'ara'],
       journal: ['ana', 'staj', 'yazdir/staj'],
       customFoods: ['besin', 'menu/mm', 'yazdir/menu/mm'],
-      customCards: ['ana', 'kart']
+      customCards: ['ana', 'kart'],
+      listeler: ['liste', 'liste/ll', 'yazdir/liste/ll', 'danisan/c1', 'ara'],
+      esdegerler: ['liste/ll']
     };
     const yollar = [];
     const gez = (kok, o, yol) => {
@@ -1640,6 +1988,18 @@ function ornekDurum(tema) {
   });
   uiEkle('Sınır denetimi kaydın şeklini düzeltiyor (10 madde)', '1111111111', katman.denetim);
   uiEkle('Tarihsiz ölçüm (bellekte) ekranları çökertmiyor', '', katman.cok);
+
+  /* Diyet listesi ve seçenekler de sınırda denetleniyor: kimlik HTML'e yazılır,
+     satır metni ve çarpanı ekrana basılır. */
+  const listeSinir = await sayfa.evaluate(() => {
+    const o = DA.veriDenetle({ listeler: [{ id: 'a b"', ad: null, c: 5, meal: 'x', ex: { eyg: 'iki', yag: 2 }, ayar: 3,
+      ogun: { kahvalti: 'x', ogle: [{ id: 'z"', t: 3, n: 'x', d: { eyg: 'iki', yag: 1, et: -2 } }, 'çöp', null] } }],
+      esdegerler: [{ id: 'e"', t: null, d: { eyg: -1, sut: 1 } }, 7] });
+    const l = o.listeler[0], s = l.ogun.ogle[0], e = o.esdegerler[0];
+    return [l.id, l.ad, l.c, JSON.stringify(l.meal), JSON.stringify(l.ex), JSON.stringify(l.ayar), JSON.stringify(l.ogun.kahvalti),
+      l.ogun.ogle.length, s.id, s.t, s.n, JSON.stringify(s.d), o.esdegerler.length, e.id, e.t, JSON.stringify(e.d)].join(' | ');
+  });
+  uiEkle('Sınır denetimi: diyet listesi ve seçenekler', 'a_b_ |  | 5 | {} | {"yag":2} | {} | [] | 1 | z_ | 3 | 1 | {"yag":1} | 1 | e_ |  | {"sut":1}', listeSinir);
 
   /* "top" alanı olmayan eski plan: toplam değişimlerden hesaplanır — elle:
      yarım yağlı süt 3 × 87 + et 5 × 69 + ekmek 8 × 68 = 1150 kcal;

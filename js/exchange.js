@@ -76,8 +76,12 @@
   /* Danışanın ilk açılışında çalışma alanı kayıtlı planından kurulur. */
   function yeniAlan(k) {
     const p = k && danisan(k) ? danisan(k).plan : null;
-    if (p) return { ex: Object.assign({}, p.ex), exT: Object.assign({}, p.hedef, { ts: p.ts || 0 }),
-      exLock: {}, exMeal: JSON.parse(JSON.stringify(p.meal || {})) };
+    if (p) {
+      const a = { ex: Object.assign({}, p.ex), exT: Object.assign({}, p.hedef, { ts: p.ts || 0 }),
+        exLock: {}, exMeal: JSON.parse(JSON.stringify(p.meal || {})) };
+      if (p.pay && typeof p.pay === 'object') a.exPay = Object.assign({}, p.pay);
+      return a;
+    }
     return { ex: {}, exT: null, exLock: {}, exMeal: {} };
   }
   function alan() {
@@ -326,9 +330,25 @@
   }
 
   /* ---- öğünlere dağıtım ----
-     Varsayılan enerji payları; grup toplamları birebir korunur. */
-  const MEALS = [['kahvalti', 'Kahvaltı', 25], ['ara1', 'Ara öğün', 10], ['ogle', 'Öğle', 30], ['ara2', 'Ara öğün', 10], ['aksam', 'Akşam', 25]];
+     Varsayılan enerji payları; grup toplamları birebir korunur.
+     Altı öğün, menü planlayıcıyla aynı adlarla. Eskiden beş öğün vardı ve iki
+     ara öğünün ikisi de "Ara öğün" yazıyordu; gece öğünü hiç yoktu, oysa
+     listelerde gece süt, kefir ya da yoğurt yazılıyor. Gecenin varsayılan payı
+     0: eski planlar ve hesaplar olduğu gibi kalır, isteyen payını açar.
+     Anahtarlar (ara1, ara2) eski kayıtlar bozulmasın diye değişmedi. */
+  const MEALS = [['kahvalti', 'Kahvaltı', 25], ['ara1', 'Kuşluk', 10], ['ogle', 'Öğle', 30], ['ara2', 'İkindi', 10],
+    ['aksam', 'Akşam', 25], ['gece', 'Gece', 0]];
   const meals = () => alan().exMeal;
+  /* Öğün payları (%). Kullanıcı değiştirmediyse alanda tutulmaz: kayıtlı
+     planla karşılaştırmada varsayılanı "değişiklik" saymasın. */
+  const VARSAYILAN_PAY = {};
+  MEALS.forEach((m) => { VARSAYILAN_PAY[m[0]] = m[2]; });
+  function paylar() {
+    const p = alan().exPay, o = {};
+    MEALS.forEach((m) => { const x = p && isFinite(+p[m[0]]) ? +p[m[0]] : m[2]; o[m[0]] = Math.max(0, x); });
+    return o;
+  }
+  const payToplam = (P) => MEALS.reduce((t, m) => t + P[m[0]], 0);
 
   /* Grupların öğünlere uygunluğu — Türk mutfağı alışkanlığı:
      kahvaltıda peynir/yumurta (et grubu), süt, zeytin (yağ), ekmek;
@@ -339,12 +359,15 @@
      "ekmek + yağ + sebze" düşüyor, meyve ve süt ana öğünlerde kalıyordu. */
   /* Kuru baklagil yemek olarak öğle ve akşama gider; ara öğüne hiç girmez
      (ara öğün ana öğün gibi olmamalı). */
+  /* Gece: süt, kefir ya da yoğurt; istenirse yanında meyve, galeta ya da
+     kuruyemiş. Peynir (et grubu), sebze ve eklenen yağ gece yazılmaz. */
   const UYGUN = {
     kahvalti: { sut: 2, sutyy: 2, et: 2, baklagil: 0.3, eyg: 2, sebze: 1, meyve: 0.3, yag: 2, tohum: 1 },
     ara: { sut: 2, sutyy: 2, et: 0.3, baklagil: 0, eyg: 1, sebze: 0.3, meyve: 2, yag: 0, tohum: 2 },
-    ana: { sut: 1, sutyy: 1, et: 2, baklagil: 2, eyg: 2, sebze: 2, meyve: 1, yag: 2, tohum: 0.3 }
+    ana: { sut: 1, sutyy: 1, et: 2, baklagil: 2, eyg: 2, sebze: 2, meyve: 1, yag: 2, tohum: 0.3 },
+    gece: { sut: 2, sutyy: 2, et: 0, baklagil: 0, eyg: 0.3, sebze: 0, meyve: 1, yag: 0, tohum: 0.3 }
   };
-  const ogunTipi = (mk) => (mk === 'kahvalti' ? 'kahvalti' : mk.indexOf('ara') === 0 ? 'ara' : 'ana');
+  const ogunTipi = (mk) => (mk === 'kahvalti' ? 'kahvalti' : mk === 'gece' ? 'gece' : mk.indexOf('ara') === 0 ? 'ara' : 'ana');
   /* Esnekliği en az olan grup önce yerleşir (meyve ara öğüne, et ana öğünlere
      ve kahvaltıya); ekmek en son gelir ve kalan enerji boşluklarını kapatır.
      Et sütten önce: yoksa süt kahvaltıyı doldurup peynir/yumurtaya yer bırakmıyordu. */
@@ -353,7 +376,10 @@
   function autoMeals() {
     const tot = totals(counts()).kcal || 1;
     const out = {}, acik = {}, pay = {};
-    MEALS.forEach((m) => { out[m[0]] = {}; pay[m[0]] = tot * m[2] / 100; acik[m[0]] = pay[m[0]]; });
+    /* Paylar toplamı 100 değilse oranlanır: 30/10/30/10/30 girilen planda
+       öğünler %27/9/27/9/27 alır, enerji kaybolmaz ya da fazlalaşmaz. */
+    const P = paylar(), top = payToplam(P) || 100;
+    MEALS.forEach((m) => { out[m[0]] = {}; pay[m[0]] = tot * P[m[0]] / top; acik[m[0]] = pay[m[0]]; });
 
     /* Yarım değişim kendi başına bir birimdir; eskiden Math.round ile
        yuvarlanıyordu: planda 1,5 süt varken öğünlere 2 süt dağıtılıyor ve
@@ -376,11 +402,14 @@
       let best = null, bs = -Infinity;
       MEALS.forEach((m) => {
         const w = UYGUN[ogunTipi(m[0])][u.g.k];
-        if (!w) return;
+        if (!w || !(pay[m[0]] > 0)) return;   /* payı 0 olan öğüne hiçbir şey gitmez */
         const r = (acik[m[0]] - kcalOf(u.g) * u.n / 2) / pay[m[0]];
         const s = dengeleyici ? w + 4 * r : w + 1.6 * r - (out[m[0]][u.g.k] || 0) * 0.35;
         if (s > bs) { bs = s; best = m[0]; }
       });
+      /* Hiçbir öğün uygun değilse (ör. yalnız gece açık, plan et dolu) birim
+         en büyük paylı öğüne gider: dağıtılmadan kaybolmasın. */
+      if (!best) best = MEALS.reduce((a, m) => (pay[m[0]] > pay[a] ? m[0] : a), MEALS[0][0]);
       out[best][u.g.k] = (out[best][u.g.k] || 0) + u.n;
       acik[best] -= kcalOf(u.g) * u.n;
     });
@@ -400,7 +429,8 @@
       const d = cnt(g.k) - assigned(g.k);
       return Math.abs(d) > 0.01 ? esc(g.l) + ': ' + (d > 0 ? numText(d) + ' dağıtılmadı' : numText(-d) + ' fazla') : '';
     }).filter(Boolean);
-    return '<div class="list">' + MEALS.map((m) => {
+    const P = paylar();
+    return '<div class="list">' + MEALS.filter((m) => P[m[0]] > 0 || mealTot(m[0]).n > 0).map((m) => {
       const t = mealTot(m[0]), v = meals()[m[0]] || {};
       const det = GROUPS.filter((g) => v[g.k]).map((g) => esc(KISA[g.k]) + ' ' + numText(v[g.k])).join(' · ');
       return '<button class="li" data-act="exMealEdit" data-m="' + m[0] + '">' +
@@ -408,6 +438,29 @@
         '<span class="end">' + fmt(t.kcal, 0) + ' kcal<br><span class="tiny">%' + fmt(t.kcal / (totals(counts()).kcal || 1) * 100, 0) + '</span></span></button>';
     }).join('') + '</div>' +
     (eksik.length ? '<div class="note warn"><b>Öğün toplamları planla uyuşmuyor:</b><br>' + eksik.join('<br>') + '</div>' : '');
+  }
+
+  /* ---- öğün payları ---- */
+  const dagitEtiket = () => {
+    const P = paylar();
+    return 'Öğünlere dağıt (' + MEALS.filter((m) => P[m[0]] > 0).map((m) => '%' + numText(P[m[0]])).join(' · ') + ')';
+  };
+  function payOzet(P) {
+    const t = payToplam(P);
+    return Math.abs(t - 100) < 0.01 ? 'Toplam %100'
+      : '<span class="uyari-metin">Toplam %' + esc(numText(t)) + ' — dağıtımda %100’e oranlanır</span>';
+  }
+  /* Paylar açılır bölümde: çoğu planda varsayılan yeter, ekranı kalabalıklaştırmasın. */
+  function payHtml() {
+    const P = paylar(), degisik = !!alan().exPay;
+    return '<details class="acc" id="exPayAc"' + (degisik ? ' open' : '') + '><summary>Öğün payları' +
+      (degisik ? ' <span class="muted tiny">değiştirildi</span>' : '') + '</summary><div class="body">' +
+      '<div class="grid3">' + MEALS.map((m) => '<label class="fld"><span>' + esc(m[1]) + ' (%)</span>' +
+        '<input type="text" inputmode="decimal" name="' + m[0] + '" value="' + esc(numText(P[m[0]])) + '" data-live="exPay"></label>').join('') +
+      '</div><p class="small" id="exPaySum" aria-live="polite">' + payOzet(P) + '</p>' +
+      (degisik ? '<button class="btn ghost sm block" data-act="exPayVarsayilan">Varsayılan paylara dön</button>' : '') +
+      '<p class="muted tiny" style="margin-bottom:0">Payı 0 olan öğüne değişim dağıtılmaz. Gece öğünü varsayılan olarak kapalıdır.</p>' +
+      '</div></details>';
   }
 
   /* ---- parçalar ---- */
@@ -511,7 +564,7 @@
     const a = alan(), p = cl.plan, T = target();
     if (!p) return totals(a.ex).n > 0;
     const h = p.hedef || {};
-    return temiz(a.ex) !== temiz(p.ex) || temiz(a.exMeal) !== temiz(p.meal) ||
+    return temiz(a.ex) !== temiz(p.ex) || temiz(a.exMeal) !== temiz(p.meal) || temiz(a.exPay) !== temiz(p.pay) ||
       !ayniHedef(T, h) || (T.birim || 'yuzde') !== (h.birim || 'yuzde');
   }
   function danisanHtml(cl) {
@@ -583,7 +636,8 @@
       barLine('Yağ', t.f, Math.max(0, M.g.f), 'g') +
       '</div>' +
       breakdown(v, t) +
-      '<button class="btn sec block" data-act="exShare">' + icon('share') + ' Planı paylaş / kopyala</button>' +
+      '<button class="btn block" data-act="exListe">' + icon('note') + ' Diyet listesi yaz</button>' +
+      '<button class="btn sec block mt-s" data-act="exShare">' + icon('share') + ' Planı paylaş / kopyala</button>' +
       '<div class="grid2 mt-s"><button class="btn ghost block" data-act="exMenu">' + icon('menu') + ' Menü iskeleti</button>' +
       '<a class="btn ghost block" href="#/yazdir/degisim' + (S().exClient ? '/' + S().exClient : '') + '">' + icon('note') + ' Yazdır</a></div>';
   }
@@ -618,7 +672,8 @@
           '<div id="exOut">' + outHtml() + '</div>' +
           '<div id="exTuber">' + tuberHtml() + '</div>' +
           '<div class="sect">Öğünler</div>' +
-          '<button class="btn sec block mb" data-act="exMealAuto">' + icon('menu') + ' Öğünlere dağıt (%25 · %10 · %30 · %10 · %25)</button>' +
+          '<button class="btn sec block mb" data-act="exMealAuto" id="exMealBtn">' + icon('menu') + ' ' + esc(dagitEtiket()) + '</button>' +
+          payHtml() +
           '<div id="exMeals">' + mealsHtml() + '</div>' +
           portions() + yemeklerHtml() +
           '<div class="note">Değerler derste kullanılan değişim listesine göredir ve diyabet değişim listesiyle aynıdır. Vitamin ve mineral içermez.</div>'
@@ -713,6 +768,19 @@
     DA.toast('Dağıtıldı: ' + Math.round(r.kcal) + ' kcal' +
       (r.uyari.length ? ' · ' + r.uyari.length + ' uyarı' : ' (hedefe ' + Math.round(r.kcalErr) + ' kcal)'));
   };
+
+  /* Pay girilirken alanın kendisi yeniden çizilmez (odak kaybolurdu);
+     yalnız toplam ve düğme etiketi güncellenir. */
+  DA.live.exPay = (el) => {
+    const a = alan(), n = num(el.value);
+    if (!a.exPay) a.exPay = Object.assign({}, paylar());
+    a.exPay[el.name] = isFinite(n) ? Math.max(0, n) : 0;
+    DA.save();
+    const t = DA.$('#exPaySum'); if (t) t.innerHTML = payOzet(paylar());
+    const b = DA.$('#exMealBtn'); if (b) b.innerHTML = icon('menu') + ' ' + esc(dagitEtiket());
+    ustBilgi();
+  };
+  DA.actions.exPayVarsayilan = () => { delete alan().exPay; DA.save(); DA.render(true); };
 
   DA.actions.exMealAuto = () => {
     if (!totals(counts()).n) return DA.toast('Önce değişim planı oluştur');
@@ -821,6 +889,7 @@
     const T = target();
     c.plan = { d: DA.today(), ts: Date.now(), hedef: kayitHedefi(T), ex: Object.assign({}, counts()),
       meal: JSON.parse(JSON.stringify(meals())),
+      pay: alan().exPay ? Object.assign({}, alan().exPay) : undefined,
       top: { kcal: Math.round(t.kcal), c: Math.round(t.c), p: Math.round(t.p), f: Math.round(t.f) } };
     DA.save();
     ustBilgi();
@@ -848,6 +917,18 @@
       '<div class="sat"><b>Toplam enerji:</b> ' + fmt(top.kcal, 0) + ' kcal</div>' +
       (ogun ? '<div class="mt-s">' + ogun + '</div>' : '') + '</div>';
   };
+  /* Diyet listesi: planın ve öğün dağılımının kopyasıyla açılır. Öğünlere
+     dağıtılmamışsa önce dağıtılır — liste öğün hedefleri olmadan "kalan"
+     gösteremez. Danışan bağlamındaysa liste o danışanın dosyasına bağlanır. */
+  DA.actions.exListe = () => {
+    if (!totals(counts()).n) return DA.toast('Önce değişim planı oluştur');
+    if (!DA.liste) return DA.toast('Liste yazıcı bulunamadı');
+    const dagitildi = MEALS.some((m) => mealTot(m[0]).n > 0);
+    if (!dagitildi) autoMeals();
+    const l = DA.liste.olustur({ ex: counts(), meal: meals(), hedef: { kcal: Math.round(totals(counts()).kcal) }, c: baglam() });
+    DA.go('liste/' + l.id);
+    if (!dagitildi) DA.toast('Plan öğünlere dağıtıldı ve liste açıldı');
+  };
   DA.actions.exMenu = () => {
     if (DA.menuFromExchange) DA.menuFromExchange(counts(), GROUPS, totals(counts()));
     else DA.toast('Menü planlayıcı bulunamadı');
@@ -863,5 +944,6 @@
     const h = totals((plan && plan.ex) || {});
     return { kcal: Math.round(h.kcal), c: Math.round(h.c), p: Math.round(h.p), f: Math.round(h.f) };
   }
-  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals, planToplam: planToplam, yemek: YEMEK };
+  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals, planToplam: planToplam, yemek: YEMEK,
+    ogunler: MEALS, kisa: KISA };
 })();

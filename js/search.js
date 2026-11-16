@@ -42,6 +42,10 @@
     (S.clients || []).forEach((c) => out.push({
       g: 'Danışan', ico: 'users', t: c.name, s: (c.meas || []).length + ' ölçüm', h: '#/danisan/' + c.id, k: c.name
     }));
+    (S.listeler || []).forEach((l) => out.push({
+      g: 'Diyet listesi', ico: 'note', t: l.ad || 'Beslenme listesi', s: DA.fdate(l.d),
+      h: '#/liste/' + l.id, k: (l.ad || '') + ' ' + (((S.clients || []).find((c) => c.id === l.c) || {}).name || '')
+    }));
     (S.menus || []).forEach((m) => out.push({
       g: 'Menü', ico: 'menu', t: m.title, s: DA.fdate(m.date) + (m.client ? ' · ' + m.client : ''), h: '#/menu/' + m.id, k: m.title + ' ' + (m.client || '')
     }));

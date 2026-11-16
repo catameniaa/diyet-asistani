@@ -190,7 +190,8 @@
     if (favs().length) cats.splice(1, 0, 'Favoriler');   /* Tümü'nün hemen yanında */
     return {
       title: 'Besinler', tab: 'besin',
-      html: '<a class="btn block mb" href="#/menu">' + DA.icon('menu') + ' Menü planlayıcı</a>' +
+      html: '<div class="grid2 mb"><a class="btn block" href="#/menu">' + DA.icon('menu') + ' Menü planlayıcı</a>' +
+        '<a class="btn sec block" href="#/liste">' + DA.icon('note') + ' Diyet listeleri</a></div>' +
         '<input type="search" placeholder="Besin ara…" value="' + esc(query) + '" data-live="foodSearch" aria-label="Besin ara">' +
         '<div class="chips mt-s">' + cats.map((c) => '<button class="chip' + (c === cat ? ' on' : '') + '" data-act="foodCat" data-c="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' +
         '<div id="foodList">' + foodListHtml() + '</div>' +
@@ -206,8 +207,36 @@
     };
   };
 
+  /* Seçenek değeri gramdır; ölçünün adı data-ad'da taşınır ki menüye "1 dilim"
+     olarak yazılabilsin. Eskiden yalnız gram saklanıyordu: diyetisyen "2 dilim
+     ekmek" seçse de çıktıya "50 g" basılıyordu, danışan gram okumaz. */
   function unitOptions(f) {
-    return '<option value="1">gram</option>' + f.u.map((u) => '<option value="' + u[1] + '">' + esc(u[0]) + ' (' + fmt(u[1], 1) + ' g)</option>').join('');
+    return '<option value="1">gram</option>' + f.u.map((u) => '<option value="' + u[1] + '" data-ad="' + esc(u[0]) + '">' + esc(u[0]) + ' (' + fmt(u[1], 1) + ' g)</option>').join('');
+  }
+  /* Ev ölçüsü sayısı: 0,5 → ½, 1,5 → 1½; kesir değilse ondalık */
+  const KESIR = { 25: '¼', 50: '½', 75: '¾' };
+  function miktarYazi(n) {
+    if (!(n > 0)) return '0';
+    const w = Math.floor(n + 1e-9), r = Math.round((n - w) * 100);
+    if (KESIR[r]) return (w ? String(w) : '') + KESIR[r];
+    return fmt(n, 2);
+  }
+  /* "1 dilim" ölçüsünden 3 adet → "3 dilim". TÜBER etiketi kâğıtta gereksiz. */
+  function olcuYazi(it) {
+    if (!it || !it.o || !(it.a > 0)) return '';
+    const birim = String(it.o).replace(/^1\s+/, '').replace(/\s*\(TÜBER\)\s*$/, '');
+    return miktarYazi(it.a) + ' ' + birim;
+  }
+  const miktarHucre = (it) => { const o = olcuYazi(it); return o ? o + ' (' + fmt(it.g, 0) + ' g)' : fmt(it.g, 0) + ' g'; };
+  DA.foods.miktarYazi = miktarYazi;
+  /* Miktar formundan menü öğesi: gram her zaman, ölçü seçildiyse adı ve adedi de */
+  function formdanOge(form) {
+    const g = parseFloat(form.dataset.g), amt = num(form.amt.value);
+    const sec = form.unit.selectedOptions && form.unit.selectedOptions[0];
+    const f = getFood(form.dataset.id);
+    const it = { id: form.dataset.id, n: f ? f.n : '', g: Math.round(g * 10) / 10 };
+    if (sec && sec.dataset.ad && isFinite(amt) && amt > 0) { it.o = sec.dataset.ad; it.a = Math.round(amt * 100) / 100; }
+    return it;
   }
   function nutTable(n) {
     return '<div class="macros mt"><div><b>' + fmt(n.kcal, 0) + '<i class="vu">kcal</i></b><small>enerji</small></div><div><b>' + fmt(n.p, 1) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(n.c, 1) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(n.f, 1) + DA.birim('g') + '</b><small>yağ</small></div></div>' +
@@ -245,7 +274,7 @@
     if (!(g > 0)) return DA.toast('Miktarı gir');
     const S = DA.state(); let m = S.menus.find((x) => x.id === form.menu.value);
     if (!m) { m = newMenu(); S.menus.unshift(m); }
-    m.meals[form.meal.value].push({ id: form.dataset.id, n: getFood(form.dataset.id).n, g: Math.round(g * 10) / 10 });
+    m.meals[form.meal.value].push(formdanOge(form));
     DA.save(); DA.closeSheet(); DA.toast('“' + m.title + '” menüsüne eklendi');
   };
   DA.actions.foodDelete = (el) => {
@@ -315,7 +344,8 @@
         return '<div class="card"><div class="row between"><h2>' + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
           list.map((it, i) => {
             const f = getFood(it.id), n = itemNut(it);
-            return '<div class="res"><span class="l" style="color:var(--ink)">' + esc(f ? f.n : it.n) + '<span class="sub">' + fmt(it.g, 0) + ' g' + (f ? '' : ' · besin veritabanında yok') + '</span></span><span class="v" style="font-size:15px">' + fmt(n.kcal, 0) + ' kcal <button class="iconbtn" style="width:36px;height:36px" data-act="menuDelItem" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="Sil">' + DA.icon('trash') + '</button></span></div>';
+            const olcu = olcuYazi(it);
+            return '<div class="res"><button class="l duzen" data-act="menuItemEdit" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="' + esc((f ? f.n : it.n) + ' — miktarı düzenle') + '">' + esc(f ? f.n : it.n) + '<span class="sub">' + (olcu ? esc(olcu) + ' · ' : '') + fmt(it.g, 0) + ' g' + (f ? '' : ' · besin veritabanında yok') + '</span></button><span class="v" style="font-size:15px">' + fmt(n.kcal, 0) + ' kcal <button class="iconbtn" style="width:36px;height:36px" data-act="menuDelItem" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="Sil">' + DA.icon('trash') + '</button></span></div>';
           }).join('') +
           '<button class="btn sec sm block mt-s" data-act="menuAdd" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('plus') + ' Besin ekle</button></div>';
       }).join('') +
@@ -421,7 +451,48 @@
     const form = DA.$('#amtForm'), g = parseFloat(form.dataset.g);
     if (!(g > 0)) return DA.toast('Miktarı gir');
     const m = DA.state().menus.find((x) => x.id === form.dataset.m);
-    m.meals[form.dataset.k].push({ id: form.dataset.id, n: getFood(form.dataset.id).n, g: Math.round(g * 10) / 10 });
+    m.meals[form.dataset.k].push(formdanOge(form));
+    DA.save(); DA.closeSheet(); DA.render(true);
+  };
+
+  /* Menüdeki besini düzenle: miktar, ölçü ve sıra. Eskiden yalnız silme
+     vardı; miktarı değiştirmek için besini silip yeniden aramak gerekiyordu. */
+  const ogeBul = (d) => {
+    const m = DA.state().menus.find((x) => x.id === d.m), l = m && m.meals[d.k];
+    const i = parseInt(d.i, 10);
+    return l && l[i] ? { m, l, i, it: l[i] } : null;
+  };
+  DA.actions.menuItemEdit = (el) => {
+    const o = ogeBul(el.dataset); if (!o) return;
+    const f = getFood(o.it.id);
+    if (!f) return DA.toast('Bu besin veritabanında yok; silip yeniden ekleyebilirsin');
+    const veri = 'data-m="' + esc(o.m.id) + '" data-k="' + esc(el.dataset.k) + '" data-i="' + o.i + '"';
+    DA.sheet(f.n, '<form id="amtForm" data-id="' + esc(f.id) + '" ' + veri + ' onsubmit="return false"><div class="grid2">' +
+      '<label class="fld"><span>Miktar</span><input type="text" inputmode="decimal" name="amt" value="' + esc(fmt(o.it.o ? o.it.a : o.it.g, 2)) + '" data-live="amt"></label>' +
+      '<label class="fld"><span>Birim</span><select name="unit" data-live="amt">' + unitOptions(f) + '</select></label></div><div id="amtPrev"></div>' +
+      '<button class="btn block mt" data-act="menuItemSave" ' + veri + '>Kaydet</button>' +
+      '<div class="grid2 mt-s"><button class="btn ghost block" data-act="menuItemMove" data-yon="-1" ' + veri + (o.i === 0 ? ' disabled' : '') + '>Yukarı taşı</button>' +
+      '<button class="btn ghost block" data-act="menuItemMove" data-yon="1" ' + veri + (o.i === o.l.length - 1 ? ' disabled' : '') + '>Aşağı taşı</button></div></form>',
+      () => {
+        const form = DA.$('#amtForm');
+        const sec = o.it.o ? Array.from(form.unit.options).find((x) => x.dataset.ad === o.it.o) : null;
+        if (sec) sec.selected = true; else form.unit.value = '1';
+        updatePreview();
+      });
+  };
+  DA.actions.menuItemSave = (el) => {
+    const o = ogeBul(el.dataset), form = DA.$('#amtForm');
+    if (!o || !form) return;
+    if (!(parseFloat(form.dataset.g) > 0)) return DA.toast('Miktarı gir');
+    const yeni = formdanOge(form);
+    o.l[o.i] = yeni;
+    DA.save(); DA.closeSheet(); DA.render(true);
+  };
+  DA.actions.menuItemMove = (el) => {
+    const o = ogeBul(el.dataset); if (!o) return;
+    const j = o.i + parseInt(el.dataset.yon, 10);
+    if (j < 0 || j >= o.l.length) return;
+    const t = o.l[j]; o.l[j] = o.l[o.i]; o.l[o.i] = t;
     DA.save(); DA.closeSheet(); DA.render(true);
   };
 
@@ -431,7 +502,7 @@
     MEALS.forEach((k) => {
       const l = m.meals[k] || []; if (!l.length) return;
       s += '\n' + k + ' (' + fmt(mealTotals(l).kcal, 0) + ' kcal)\n';
-      l.forEach((it) => { const f = getFood(it.id); s += '• ' + (f ? f.n : it.n) + ' — ' + fmt(it.g, 0) + ' g\n'; });
+      l.forEach((it) => { const f = getFood(it.id); s += '• ' + (f ? f.n : it.n) + ' — ' + miktarHucre(it) + '\n'; });
     });
     s += '\nGünlük toplam: ' + fmt(t.kcal, 0) + ' kcal · P ' + fmt(t.p, 0) + ' g · K ' + fmt(t.c, 0) + ' g · Y ' + fmt(t.f, 0) + ' g';
     if (m.note) s += '\n\nNot: ' + m.note;
@@ -464,7 +535,7 @@
       MEALS.forEach((k) => {
         const l = m.meals[k] || []; if (!l.length) return;
         rows += '<tr class="mh"><td colspan="2">' + k + '</td><td class="n">' + fmt(mealTotals(l).kcal, 0) + ' kcal</td></tr>';
-        l.forEach((it) => { const f = getFood(it.id); rows += '<tr><td>' + esc(f ? f.n : it.n) + '</td><td class="n">' + fmt(it.g, 0) + ' g</td><td class="n">' + fmt(itemNut(it).kcal, 0) + '</td></tr>'; });
+        l.forEach((it) => { const f = getFood(it.id); rows += '<tr><td>' + esc(f ? f.n : it.n) + '</td><td class="n">' + esc(miktarHucre(it)) + '</td><td class="n">' + fmt(itemNut(it).kcal, 0) + '</td></tr>'; });
       });
       return {
         title: 'PDF / Paylaş', tab: 'besin', back: 'menu/' + m.id,
@@ -481,6 +552,7 @@
     if (parts[0] === 'staj') return DA.views._printJournal(parts.slice(1));
     if (parts[0] === 'danisan') return DA.views._printClient(parts.slice(1));
     if (parts[0] === 'degisim' && DA.views._printExchange) return DA.views._printExchange(parts.slice(1));
+    if (parts[0] === 'liste' && DA.views._printListe) return DA.views._printListe(parts.slice(1));
     if (parts[0] === 'ornekmenu' && DA.views._printOrnek) return DA.views._printOrnek(parts.slice(1));
     return { title: 'Yazdır', html: '<div class="card">Bulunamadı.</div>' };
   };
