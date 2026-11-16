@@ -58,7 +58,7 @@
   const nut = (f, g) => ({ kcal: f.kcal * g / 100, p: f.p * g / 100, c: f.c * g / 100, f: f.f * g / 100, fib: (f.fib || 0) * g / 100 });
   const add = (a, b) => ({ kcal: a.kcal + b.kcal, p: a.p + b.p, c: a.c + b.c, f: a.f + b.f, fib: a.fib + b.fib });
   const zero = () => ({ kcal: 0, p: 0, c: 0, f: 0, fib: 0 });
-  DA.foods = { all: allFoods, get: getFood, nut };
+  DA.foods = { all: allFoods, get: getFood, nut, ogunler: MEALS };
 
   function itemNut(it) {
     const f = getFood(it.id);
@@ -308,6 +308,7 @@
       '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small></div><div><b>' + fmt(t.fib, 0) + DA.birim('g') + '</b><small>lif</small></div></div>' +
       (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
       exchangeCard(t) +
+      (DA.menuKural ? DA.menuKural.kartHtml(m) : '') +
       mikroKartHtml(m) +
       MEALS.map((k) => {
         const list = m.meals[k] || [], mt = mealTotals(list);
@@ -436,6 +437,15 @@
     if (m.note) s += '\n\nNot: ' + m.note;
     return s;
   }
+  /* Çıktı ekrandaki menünün aynısıdır; yazım kuralına uymayan yer varsa
+     kâğıda basılmadan önce (basılmayan) bir notla söylenir. Çıktıda sessizce
+     yeniden sıralamak ekran ile kâğıdı ayırırdı. */
+  function kuralUyarisi(m) {
+    if (!DA.menuKural) return '';
+    const n = DA.menuKural.denetle(m).length;
+    return n ? '<div class="note warn noprint">Bu menüde ' + n + ' yazım kuralı notu var. ' +
+      '<a href="#/menu/' + esc(m.id) + '">Menüye dön</a> ve “Menü yazım kuralları” kartına bak.</div>' : '';
+  }
   /* Yazdırma rotaları hesaplayıcı yönlendiricisinden geçmediği için
      ihtiyaç duydukları veriyi kendileri yükler. */
   const YAZ_VERI = { degisim: ['tuber', 'hedef'], ornekmenu: ['ornekMenu'], menu: ['porsiyonBesin', 'hedef'] };
@@ -460,6 +470,7 @@
         title: 'PDF / Paylaş', tab: 'besin', back: 'menu/' + m.id,
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
+          kuralUyarisi(m) +
           '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div class="alt">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
           '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +

@@ -8,17 +8,23 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   sıvı, enteral, GIR, gebelik/laktasyon, stres faktörü, çocuk enerji-protein, glisemik indeks ve yük
 - Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
 - Değişim listesi: sayaçlı giriş; makro hedefi yüzde ya da gram olarak (yağ kalan, canlı gösterilir);
-  klasik basamaklı otomatik dağıtım (süt, sebze, meyve, yağlı tohum
+  klasik basamaklı otomatik dağıtım (süt, sebze, meyve, kuruyemiş
   TÜBER Ek 3.1.1 örüntüsünden; ekmek KH'den, et proteinden, yağ yağ hedefinden) ve hesap adımlarının
   gösterimi; grup kilitleme, yarım yağlı süt varsayılanı, ulaşılamayan hedefte açık uyarı;
-  öğünlere gruba uygun bölme (ara öğüne meyve/süt/yağlı tohum, ana öğünlere et/sebze/yağ);
-  her danışanın kendi planı; porsiyon örnekleri, menü hedefi ile karşılaştırma
+  kuru baklagil ayrı değişim (15 g KH + 5 g protein; girildiği gibi kalır, ekmek ve et hesabından düşülür);
+  öğünlere gruba uygun bölme (ara öğüne meyve/süt/kuruyemiş, ana öğünlere et/baklagil/sebze/yağ);
+  her danışanın kendi planı; porsiyon örnekleri, yemeklerin değişim karşılığı (çorba = 1 ekmek + 1 yağ,
+  zeytinyağlı sebze yemeği = 1 sebze + 1 yağ, pilav yalnız ekmek…) ekranda ve çıktıda,
+  menü hedefi ile karşılaştırma
 - Karbonhidrat sayımı: İ:KH oranı (500 kuralı), düzeltme faktörü (1800 kuralı), öğün ve düzeltme bolusu
 - Genel arama: besin, hesaplayıcı, referans, danışan ve menülerde tek kutudan
 - Favoriler, son açılanlar ve açık/koyu/otomatik tema
 - Yedek hatırlatması (son yedekten 14 gün geçince uyarır) ve yeni sürüm bildirimi
 - 74 çalışma kartı (aralıklı tekrar): TEMD, TÜBER, değişim listesi, WHO persentil eşikleri
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş
+- Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
+  eşleme, gece peynir/peynir-ekmek yok, bulgur pilavının yanına ekmek yok, meyve ara öğünde;
+  çorba ve sıvılar başa, ekmek sona — tek dokunuşla yazım sırasına dizme (geri alınabilir)
 - Danışan takibi (ölçümler, grafik, notlar), hedef kilo ve grafikte hedef çizgisi,
   takip aralığı dolan danışanların ana sayfada hatırlatılması,
   0–19 yaş için otomatik WHO büyüme persentili izlemi,
@@ -71,12 +77,13 @@ node tools/test/run.js
 ```
 
 Hesaplayıcılarda bilinen girdi-çıktı doğrulaması, TÜBER tablolarında satır-sütun
-ve çapraz tutarlılık kontrolü, tarama araçlarında puan-band testi ve 51 rotanın
+ve çapraz tutarlılık kontrolü, tarama araçlarında puan-band testi ve 57 rotanın
 iki temada taranması. Ayrıntı: `tools/test/README.md`.
 Besin değerleri yaklaşık ortalamalardır; klinik çalışmada TürKomp ile doğrulayın.
 
 Çocuk persentilleri WHO LMS katsayıları ile hesaplanır: 0–60 ay WHO Child Growth Standards (2006),
 61–228 ay WHO Growth Reference (2007). Ağırlık/yaş 0–120 ay, boy/yaş ve BKİ/yaş 0–228 aydır.
 Değişim listesi değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır;
-vitamin ve mineral içermez. İnsülin hesapları yalnızca eğitim amaçlıdır: İ:KH oranı ve düzeltme
+kuru baklagil (15 g KH + 5 g protein) ve kuruyemiş (2 g protein + 5 g yağ) ayrı değişimdir.
+Vitamin ve mineral içermez. İnsülin hesapları yalnızca eğitim amaçlıdır: İ:KH oranı ve düzeltme
 faktörü hastaya özeldir ve hekim tarafından belirlenir.

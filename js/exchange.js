@@ -4,16 +4,49 @@
   const { esc, fmt, num, icon } = DA;
 
   /* Bir değişim başına: c = karbonhidrat (g), p = protein (g), f = yağ (g), ex = porsiyon örnekleri.
-     Grup değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır. */
+     Grup değerleri derste kullanılan listeye göredir ve diyabet değişim listesiyle aynıdır.
+
+     Kuru baklagil ayrı bir değişimdir (15 g KH + 5 g protein). Eskiden listede
+     yoktu: nohut ya da kuru fasulye yazılan bir planda ya ekmek ya et diye
+     sayılıyor, ikisi de yanlış makro veriyordu (ekmek proteini 2 g, et KH'si 0).
+     elle = otomatik dağıtım bu gruba dokunmaz; girilen sayı olduğu gibi kalır
+     ve KH ile proteini ekmek/et hesabından önce düşülür. Kaynakta (TÜBER Ek
+     3.1.1) baklagil porsiyonu ¾ kupadır, değişim birimi (4 yemek kaşığı) ile
+     karşılığı verilmediği için örüntüden sayı türetilmez.
+
+     Yağlı tohumlar yağ değil "kuruyemiş değişimi" olarak sayılır (2 g protein
+     + 5 g yağ); anahtar eski kayıtlar bozulmasın diye 'tohum' kaldı.
+
+     Porsiyon örnekleri Dyt. Can Bayramoğlu'nun liste yazım kurallarına göre
+     güncellendi (Kasım 2026): sebze yemeği "4 yemek kaşığı" değil 1 kase
+     (5–6 yemek kaşığı) ve zeytinyağlıysa ayrıca 1 yağ; salata yağsız mı
+     zeytinyağlı mı yazılır; hastanedeki tam buğday/çavdar roll ekmek 2 değişim. */
   const GROUPS = [
     { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
     { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
     { k: 'et', l: 'Et', c: 0, p: 6, f: 5, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
-    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates' },
-    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, ex: '4 yemek kaşığı pişmiş sebze yemeği; 1 kase çiğ salata' },
+    { k: 'baklagil', l: 'Kuru baklagil', c: 15, p: 5, f: 0, elle: true, ex: '4 yemek kaşığı pişmiş nohut, kuru fasulye, mercimek vb.' },
+    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates. Hastanedeki 1 adet tam buğday ya da çavdar roll ekmek = 2 değişim' },
+    { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, ex: '1 kase yağsız salata; 1 kase (5–6 yemek kaşığı) sebze yemeği — zeytinyağlıysa ayrıca 1 yağ sayılır' },
     { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, ex: '1 küçük boy elma; 1 küçük boy muz; 1 orta boy portakal; 12–15 adet üzüm' },
     { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, ex: '1 tatlı kaşığı zeytinyağı; 5 adet zeytin' },
-    { k: 'tohum', l: 'Yağlı tohum', c: 0, p: 2, f: 5, ex: '2 tam ceviz; 5–6 adet badem' }
+    { k: 'tohum', l: 'Kuruyemiş (yağlı tohum)', c: 0, p: 2, f: 5, ex: '2 tam ceviz; 5–6 adet badem' }
+  ];
+
+  /* Yemeklerin değişim karşılığı. Listeye yemek yazıldığında hangi gruptan
+     kaç değişim düşüleceği tek yerde dursun: aynı yemek bir planda "1 sebze",
+     ötekinde "1 sebze + 1 yağ" sayılmasın. Yalnız Dyt. Can Bayramoğlu'nun
+     açıkça belirttiği karşılıklar var; emin olunmayan yemek eklenmez.
+     Pilavın pişirme yağı ayrıca sayılmaz, çorbanınki sayılır. */
+  const YEMEK = [
+    { ad: 'Çorba', miktar: '1 kase', d: { eyg: 1, yag: 1 } },
+    { ad: 'Zeytinyağlı sebze yemeği', miktar: '1 kase (5–6 yemek kaşığı)', d: { sebze: 1, yag: 1 } },
+    { ad: 'Salata, yağsız', miktar: '1 kase', d: { sebze: 1 } },
+    { ad: 'Salata, zeytinyağlı', miktar: '1 kase', d: { sebze: 1, yag: 1 } },
+    { ad: 'Pilav (pirinç, bulgur)', miktar: '3 yemek kaşığı', d: { eyg: 1 }, not: 'yağ ayrıca sayılmaz' },
+    { ad: 'Ekmek', miktar: '1 ince dilim (25 g)', d: { eyg: 1 } },
+    { ad: 'Tam buğday ya da çavdar roll ekmek (hastane)', miktar: '1 adet', d: { eyg: 2 } },
+    { ad: 'Nohut, kuru fasulye vb.', miktar: '4 yemek kaşığı', d: { baklagil: 1 } }
   ];
   const kcalOf = (g) => g.c * 4 + g.p * 4 + g.f * 9;
   const byKey = (k) => GROUPS.find((g) => g.k === k);
@@ -139,8 +172,8 @@
      2800 kkal ve üstünde hiç çözüm bulamıyordu (erişilebilen en yüksek enerji
      ~2670 kkal), sonuçlar aralık sınırlarına yapışıyordu (et 8, yağ 2, süt 1)
      ve neden o sayıların seçildiği görülemiyordu. */
-  const KISA = { sut: 'Süt (tam yağlı)', sutyy: 'Süt (yarım yağlı)', et: 'Et', eyg: 'Ekmek',
-    sebze: 'Sebze', meyve: 'Meyve', yag: 'Yağ', tohum: 'Yağlı tohum' };
+  const KISA = { sut: 'Süt (tam yağlı)', sutyy: 'Süt (yarım yağlı)', et: 'Et', baklagil: 'Kuru baklagil', eyg: 'Ekmek',
+    sebze: 'Sebze', meyve: 'Meyve', yag: 'Yağ', tohum: 'Kuruyemiş' };
 
   /* Süt türü. Varsayılan yarım yağlı: TÜBER örüntüleri yarım yağlı sütle
      hesaplanmıştır; tam yağlı süt ise %20 protein hedefinde et yağıyla birlikte
@@ -164,8 +197,10 @@
     const v = {}, adim = [], uyari = [];
     const topla = (m) => GROUPS.reduce((t, g) => t + (v[g.k] || 0) * g[m], 0);
 
-    /* Kilitli değer olduğu gibi korunur (yarım değişim dahil). */
-    GROUPS.forEach((g) => { if (L[g.k]) v[g.k] = cnt(g.k); });
+    /* Kilitli değer olduğu gibi korunur (yarım değişim dahil). Elle girilen
+       gruplar (kuru baklagil) kilitsiz de korunur: formülü yok, sıfırlansaydı
+       diyetisyenin yazdığı nohut her "Otomatik dağıt"ta kaybolurdu. */
+    GROUPS.forEach((g) => { if (L[g.k] || g.elle) v[g.k] = cnt(g.k); });
 
     /* 1) sabit gruplar */
     const tur = sutTuru(L);
@@ -175,7 +210,12 @@
     ['sebze', 'meyve', 'tohum'].forEach((k) => { if (!L[k]) { v[k] = Math.round(A[k]); sabit.push(k); } });
     adim.push({ tur: 'sabit', kcal: T.kcal,
       gruplar: sabit.map((k) => [KISA[k], v[k]]),
-      kilitli: GROUPS.filter((g) => L[g.k]).map((g) => [KISA[g.k], v[g.k]]) });
+      kilitli: GROUPS.filter((g) => L[g.k] && !g.elle).map((g) => [KISA[g.k], v[g.k]]) });
+    /* Elle girilen grup sıfırdan büyükse ayrı adım: ekmek ve et formülündeki
+       "o ana kadar gelen" sayısının nereden büyüdüğü görünsün. */
+    GROUPS.filter((g) => g.elle && v[g.k] > 0).forEach((g) => {
+      adim.push({ tur: 'elle', ad: KISA[g.k], n: v[g.k], c: v[g.k] * g.c, p: v[g.k] * g.p });
+    });
 
     /* 2–4) ekmek, et, yağ */
     const hesapla = (k, m, bol, birim) => {
@@ -268,6 +308,10 @@
           (s.kilitli.length ? '<div class="muted small">Kilitli: ' + s.kilitli.map((x) => esc(x[0]) + ' ' + numText(x[1])).join(' · ') + '</div>' : '') + '</li>';
       }
       if (s.tur === 'kilit') return '<li><b>' + esc(s.ad) + '</b> kilitli: ' + numText(s.n) + '</li>';
+      if (s.tur === 'elle') {
+        return '<li><b>' + esc(s.ad) + '</b> girildiği gibi: ' + numText(s.n) +
+          ' <span class="muted small">(' + n0(s.c) + ' g KH + ' + n0(s.p) + ' g protein ekmek ve et hesabından düşülür)</span></li>';
+      }
       if (s.tur === 'enerji') {
         return '<li><b>Enerji düzeltmesi</b> — yuvarlamadan ' + n0(Math.abs(s.fark)) + ' kcal ' + (s.fark > 0 ? 'eksik' : 'fazla') +
           ' kaldı: ekmek ' + (s.d > 0 ? '+' : '−') + Math.abs(s.d) + '</li>';
@@ -293,16 +337,18 @@
      2 = tercih, 1 = olur, 0,3 = istisna, 0 = hiç.
      Eskiden gruplar yalnız öğünün enerji açığına göre yerleşiyordu: ara öğüne
      "ekmek + yağ + sebze" düşüyor, meyve ve süt ana öğünlerde kalıyordu. */
+  /* Kuru baklagil yemek olarak öğle ve akşama gider; ara öğüne hiç girmez
+     (ara öğün ana öğün gibi olmamalı). */
   const UYGUN = {
-    kahvalti: { sut: 2, sutyy: 2, et: 2, eyg: 2, sebze: 1, meyve: 0.3, yag: 2, tohum: 1 },
-    ara: { sut: 2, sutyy: 2, et: 0.3, eyg: 1, sebze: 0.3, meyve: 2, yag: 0, tohum: 2 },
-    ana: { sut: 1, sutyy: 1, et: 2, eyg: 2, sebze: 2, meyve: 1, yag: 2, tohum: 0.3 }
+    kahvalti: { sut: 2, sutyy: 2, et: 2, baklagil: 0.3, eyg: 2, sebze: 1, meyve: 0.3, yag: 2, tohum: 1 },
+    ara: { sut: 2, sutyy: 2, et: 0.3, baklagil: 0, eyg: 1, sebze: 0.3, meyve: 2, yag: 0, tohum: 2 },
+    ana: { sut: 1, sutyy: 1, et: 2, baklagil: 2, eyg: 2, sebze: 2, meyve: 1, yag: 2, tohum: 0.3 }
   };
   const ogunTipi = (mk) => (mk === 'kahvalti' ? 'kahvalti' : mk.indexOf('ara') === 0 ? 'ara' : 'ana');
   /* Esnekliği en az olan grup önce yerleşir (meyve ara öğüne, et ana öğünlere
      ve kahvaltıya); ekmek en son gelir ve kalan enerji boşluklarını kapatır.
      Et sütten önce: yoksa süt kahvaltıyı doldurup peynir/yumurtaya yer bırakmıyordu. */
-  const YERLESME = ['meyve', 'et', 'sut', 'sutyy', 'tohum', 'sebze', 'yag', 'eyg'];
+  const YERLESME = ['meyve', 'et', 'baklagil', 'sut', 'sutyy', 'tohum', 'sebze', 'yag', 'eyg'];
 
   function autoMeals() {
     const tot = totals(counts()).kcal || 1;
@@ -370,8 +416,13 @@
     return GROUPS.map((g) => {
       const n = cnt(g.k), on = n > 0;
       const macro = [g.c ? g.c + ' KH' : '', g.p ? g.p + ' P' : '', g.f ? g.f + ' Y' : ''].filter(Boolean).join(' · ');
-      return '<div class="xrow' + (on ? ' on' : '') + '">' +
-        '<button class="lock' + (L[g.k] ? ' on' : '') + '" data-act="exLock" data-k="' + g.k + '" aria-pressed="' + (L[g.k] ? 'true' : 'false') + '" title="Otomatik dağıtımda sabit tut">' + icon('lock') + '</button>' +
+      /* Elle girilen grubun kilidi yok: otomatik dağıtım ona zaten dokunmuyor;
+         basılabilen ama hiçbir şey değiştirmeyen bir kilit yanıltırdı. Yer
+         tutucu aynı genişlikte kalır ki sayaçlar alt alta hizalı dursun. */
+      const kilit = g.elle
+        ? '<span class="lock" title="Otomatik dağıtım bu gruba dokunmaz; girdiğin sayı kalır" aria-hidden="true"></span>'
+        : '<button class="lock' + (L[g.k] ? ' on' : '') + '" data-act="exLock" data-k="' + g.k + '" aria-pressed="' + (L[g.k] ? 'true' : 'false') + '" title="Otomatik dağıtımda sabit tut">' + icon('lock') + '</button>';
+      return '<div class="xrow' + (on ? ' on' : '') + '">' + kilit +
         '<span class="grow"><div class="t">' + esc(g.l) + '</div><div class="s">' + macro + ' · ' + kcalOf(g) + ' kcal</div></span>' +
         '<span class="stepper">' +
           '<button data-act="exDec" data-k="' + g.k + '" aria-label="' + esc(g.l) + ' azalt"' + (n <= 0 ? ' disabled' : '') + '>−</button>' +
@@ -407,6 +458,24 @@
         '<tr><td style="width:38%"><b>' + esc(g.l) + '</b></td><td>' + esc(g.ex) + '</td></tr>').join('') +
       '</tbody></table><p class="muted tiny">Porsiyonlar yaklaşıktır; besinin cinsine ve pişirme yöntemine göre değişir.</p>' +
       '<a class="btn ghost block" href="#/hesapla/porsiyon?t=olcu">' + icon('table') + ' TÜBER standart porsiyon ölçüleri</a></div></details>';
+  }
+
+  /* Bir yemeğin karşılığı okunur biçimde: "1 ekmek + 1 yağ". Sayı ile grup
+     adı bölünmez boşlukla bağlı: dar ekranda "1" bir satırda, "yağ" ötekinde
+     kalıyordu. */
+  const yemekKarsilik = (d) => GROUPS.filter((g) => d[g.k]).map((g) => numText(d[g.k]) + '\u00a0' + DA.trLower(KISA[g.k])).join(' + ');
+  const yemekTop = (d) => totals(d);
+  function yemeklerHtml() {
+    return '<details class="acc" id="exYemek"><summary>Yemeklerin değişim karşılığı</summary><div class="body">' +
+      '<div class="scrollx"><table class="t"><thead><tr><th>Yemek</th><th>Karşılığı</th><th class="n">kcal</th></tr></thead><tbody>' +
+      YEMEK.map((y) => {
+        const t = yemekTop(y.d);
+        return '<tr data-yemek="' + esc(y.ad) + '"><td><b>' + esc(y.ad) + '</b><br><span class="muted tiny">' + esc(y.miktar) + '</span></td>' +
+          '<td>' + esc(yemekKarsilik(y.d)) + (y.not ? '<br><span class="muted tiny">' + esc(y.not) + '</span>' : '') + '</td>' +
+          '<td class="n">' + fmt(t.kcal, 0) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p class="muted tiny" style="margin-bottom:0">Salatanın yağsız mı zeytinyağlı mı olduğu listede yazılır. ' +
+      'Burada olmayan yemeklerde içindeki besinleri gruplarına göre ayrı ayrı say.</p></div></details>';
   }
 
   function planText() {
@@ -537,8 +606,8 @@
           '<div id="exHedefOneri">' + hedefOneriHtml() + '</div>' +
           hedefHtml(T) +
           '<button class="btn block" data-act="exAuto">' + icon('calc') + ' Otomatik dağıt</button>' +
-          '<p class="muted tiny" style="margin-bottom:0">Süt, sebze, meyve ve yağlı tohum TÜBER örüntüsünden; ekmek KH’den, et proteinden, ' +
-          'yağ yağ hedefinden hesaplanır. Kilitli gruplar sabit kalır. Süt yarım yağlı hesaplanır; tam yağlı için satırını kilitle.</p></div>' +
+          '<p class="muted tiny" style="margin-bottom:0">Süt, sebze, meyve ve kuruyemiş TÜBER örüntüsünden; ekmek KH’den, et proteinden, ' +
+          'yağ yağ hedefinden hesaplanır. Kuru baklagil girdiğin gibi kalır. Kilitli gruplar sabit kalır. Süt yarım yağlı hesaplanır; tam yağlı için satırını kilitle.</p></div>' +
           '<div id="exAdim">' + adimlarHtml() + '</div>' +
 
           '<div class="sect">Gruplar</div>' +
@@ -551,7 +620,7 @@
           '<div class="sect">Öğünler</div>' +
           '<button class="btn sec block mb" data-act="exMealAuto">' + icon('menu') + ' Öğünlere dağıt (%25 · %10 · %30 · %10 · %25)</button>' +
           '<div id="exMeals">' + mealsHtml() + '</div>' +
-          portions() +
+          portions() + yemeklerHtml() +
           '<div class="note">Değerler derste kullanılan değişim listesine göredir ve diyabet değişim listesiyle aynıdır. Vitamin ve mineral içermez.</div>'
       };
     }
@@ -709,6 +778,13 @@
         'Çıktı ekrandaki hâlidir; dosyadaki plan farklı.</div>' : '';
     const orn = GROUPS.filter((g) => plan.ex[g.k]).map((g) =>
       '<tr><td>' + esc(g.l) + '</td><td class="n">' + fmt(plan.ex[g.k], 1) + '</td><td>' + esc(g.ex) + '</td></tr>').join('');
+    /* Danışan "1 kase çorba"yı listede nereden düşeceğini kâğıtta görsün.
+       Yalnız planda bulunan gruplarla yazılabilen yemekler basılır: yağı
+       olmayan bir planda "zeytinyağlı salata = 1 sebze + 1 yağ" yer kaplar
+       ve kafa karıştırır. */
+    const yemekSatir = YEMEK.filter((y) => Object.keys(y.d).every((k) => plan.ex[k] > 0)).map((y) =>
+      '<tr><td>' + esc(y.ad) + ', ' + esc(y.miktar) + '</td><td>' + esc(yemekKarsilik(y.d)) +
+      (y.not ? ' (' + esc(y.not) + ')' : '') + '</td></tr>').join('');
     return {
       title: 'Değişim planı', tab: 'hesapla', back: cl ? 'danisan/' + cl.id : 'hesapla/degisim', noRecent: true,
       html: uyari + '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
@@ -719,6 +795,8 @@
         (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan) : '') +
         '<div class="blok"><h3>1 değişim ne kadar?</h3>' +
         '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' +
+        (yemekSatir ? '<div class="blok yemekler"><h3>Yemekler kaç değişim?</h3>' +
+          '<table><thead><tr><th>Yemek</th><th>Listeden düşülen</th></tr></thead><tbody>' + yemekSatir + '</tbody></table></div>' : '') +
         (cl && cl.avoid ? '<div class="sat"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
         DA.dipnot('bu plan bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
@@ -785,5 +863,5 @@
     const h = totals((plan && plan.ex) || {});
     return { kcal: Math.round(h.kcal), c: Math.round(h.c), p: Math.round(h.p), f: Math.round(h.f) };
   }
-  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals, planToplam: planToplam };
+  DA.exchange = { groups: GROUPS, kcalOf: kcalOf, totals: totals, planToplam: planToplam, yemek: YEMEK };
 })();

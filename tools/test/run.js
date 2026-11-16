@@ -431,7 +431,10 @@ function ornekDurum(tema) {
   /* ---- Takip paketi ---- */
   await sayfa.goto(B, { waitUntil: 'networkidle' });
   const bugun = await sayfa.evaluate(() => {
-    const g = (n) => { const d = new Date(Date.now() - n * 86400000); return d.toISOString().slice(0, 10); };
+    /* Tarih yerel saatle yazılır: toISOString UTC'ye çevirir ve İstanbul'da
+       (UTC+3) gece 00:00–03:00 arasında bir önceki günü verir. */
+    const g = (n) => { const d = new Date(Date.now() - n * 86400000);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const S = DA.state();
     S.clients = [
       /* 30 gün önce ölçülmüş, 21 günlük takip → gecikmiş 9 gün */
@@ -682,8 +685,12 @@ function ornekDurum(tema) {
   /* ---- ana sayfa hero'su: envanter değil, bugünün işi ---- */
   const kahraman = await sayfa.evaluate(() => {
     const S = DA.state(), b = DA.today();
+    /* Yerel gece yarısı toISOString ile UTC'ye çevrilince doğu saat
+       dilimlerinde bir gün geri kayıyordu: İstanbul'da (UTC+3) "6 gün önce"
+       7 gün önce yazılıyor, sınır ölçümü haftadan düşüyor ve test uygulama
+       doğruyken kırılıyordu. Tarih yerel bileşenlerden yazılır. */
     const g = (n) => { const d = new Date(b + 'T00:00'); d.setDate(d.getDate() - n);
-      return d.toISOString().slice(0, 10); };
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     S.clients = [
       /* gecikmiş: 40 gün önce ölçüm, 21 günlük takip */
       { id: 'a', name: 'A', sex: 'K', h: 165, aralik: 21, meas: [{ id: 'm', d: g(40), w: 70 }] },
@@ -1131,6 +1138,195 @@ function ornekDurum(tema) {
   uiEkle('Öğünler: yalnız etli planda bile ara öğüne et gitmiyor', 0, kl.zorEt);
   uiEkle('Öğünler: yalnız yağlı planda bile ara öğüne yağ gitmiyor', 0, kl.zorYag);
   uiEkle('Öğünler: yalnız meyveli planda iki ara öğünde meyve', true, kl.zorMeyve);
+
+  /* ---- değişim listesi: kuru baklagil ve yemeklerin karşılığı ----
+     Değişim değerleri Dyt. Can Bayramoğlu'nun listesinden: kuru baklagil
+     15 g KH + 5 g protein → 60 + 20 = 80 kcal.
+     Elle (1800 kcal · KH 50 · P 20, kuru baklagil 2 elle girilmiş, kilitsiz):
+       sabitler süt yy 4 · sebze 4 · meyve 3 · kuruyemiş 2 (klasik testle aynı)
+       baklagil 2 × 15 = 30 g KH, 2 × 5 = 10 g P
+       KH 225 − (36 + 24 + 45 + 30) = 90 ÷ 15 = 6 ekmek
+       P 90 − (24 + 8 + 4 + 10 + 12) = 32 ÷ 6 = 5,3 → 5 et
+       Y 60 − (12 + 10 + 25) = 13 ÷ 5 = 2,6 → 3 yağ
+       Enerji 348 + 128 + 180 + 106 + 160 + 408 + 345 + 135 = 1810 kcal
+     Yemekler (ekmek 68, sebze 32, yağ 45, baklagil 80 kcal):
+       çorba 1 ekmek + 1 yağ = 113 · zeytinyağlı sebze yemeği 1 sebze + 1 yağ = 77
+       yağsız salata 32 · zeytinyağlı salata 77 · pilav yalnız 1 ekmek = 68
+       roll ekmek 2 ekmek = 136 · nohut 80 */
+  const bk = await sayfa.evaluate(() => {
+    const ui = DA.state().ui, o = {};
+    const eski = DA.toast; DA.toast = () => {};
+    ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+    const G = ui.exAlan[''];
+    const g = DA.exchange.groups.find((x) => x.k === 'baklagil') || {};
+    o.deger = [g.c, g.p, g.f].join('/');
+    o.kcal = g.k ? DA.exchange.kcalOf(g) : null;
+    G.ex = { baklagil: 2 }; G.exLock = {}; G.exMeal = {}; G.exT = { kcal: 1800, birim: 'yuzde', c: 50, p: 20, ts: 1 };
+    DA.actions.exAuto();
+    o.plan = [G.ex.baklagil, G.ex.sutyy, G.ex.sebze, G.ex.meyve, G.ex.tohum, G.ex.eyg, G.ex.et, G.ex.yag].join(',');
+    o.kcalTop = Math.round(DA.exchange.totals(G.ex).kcal);
+    const li = Array.from(document.querySelectorAll('#exAdim li')).map((x) => x.textContent);
+    o.adimSayisi = li.length;
+    o.adimBaklagil = li.some((x) => /Kuru baklagil girildiği gibi: 2/.test(x) && /30 g KH \+ 10 g protein/.test(x));
+    o.adimEkmek = li.some((x) => /Ekmek = \(225 g KH hedefi − 135\) ÷ 15/.test(x));
+    o.adimEt = li.some((x) => /Et = \(90 g protein hedefi − 58\) ÷ 6/.test(x));
+    /* Dağıtım tekrarlanınca baklagil yerinde kalır (kilitsiz) */
+    DA.actions.exAuto();
+    o.ikinciKez = G.ex.baklagil;
+    o.kilitYok = !document.querySelector('button[data-act=exLock][data-k=baklagil]');
+    o.sayacVar = !!document.querySelector('button[data-act=exInc][data-k=baklagil]');
+    /* Zorlayıcı plan: yalnız baklagil varken enerji açığı ara öğünü çeker;
+       uygunluk kuralı ancak burada görünür. */
+    G.ex = { baklagil: 6 }; DA.actions.exMealAuto();
+    o.araBaklagil = (G.exMeal.ara1.baklagil || 0) + (G.exMeal.ara2.baklagil || 0);
+    o.ogunToplam = Object.keys(G.exMeal).reduce((t, m) => t + (G.exMeal[m].baklagil || 0), 0);
+    /* Yemek tablosu: karşılık ve enerji DOM'dan okunur */
+    DA.render(false);
+    const satir = (ad) => { const r = document.querySelector('#exYemek tr[data-yemek="' + ad + '"]');
+      return r ? Array.from(r.cells).map((c) => c.textContent.replace(/\s+/g, ' ').trim()) : ['', '', '']; };
+    o.corba = satir('Çorba').slice(1).join(' | ');
+    o.zySebze = satir('Zeytinyağlı sebze yemeği').slice(1).join(' | ');
+    o.salataYagsiz = satir('Salata, yağsız').slice(1).join(' | ');
+    o.salataZy = satir('Salata, zeytinyağlı').slice(1).join(' | ');
+    o.pilavKcal = satir('Pilav (pirinç, bulgur)')[2];
+    o.rollKcal = satir('Tam buğday ya da çavdar roll ekmek (hastane)')[2];
+    o.nohutKcal = satir('Nohut, kuru fasulye vb.')[2];
+    /* Çıktı yalnız plandaki gruplarla yazılabilen yemekleri basar */
+    const cikti = () => { location.hash = 'yazdir/degisim'; DA.render(false);
+      const b = document.querySelector('.printdoc .yemekler'); return b ? b.textContent : ''; };
+    G.ex = { eyg: 6, sebze: 3 };
+    const yagsiz = cikti();
+    o.yagsizPlan = [/Salata, yağsız/.test(yagsiz), /Pilav/.test(yagsiz), /Çorba/.test(yagsiz), /zeytinyağlı/i.test(yagsiz), /Nohut/.test(yagsiz)].join(',');
+    G.ex = { eyg: 6, sebze: 3, yag: 2 };
+    o.yagliPlan = /Çorba, 1 kase1\sekmek \+ 1\syağ/.test(cikti());
+    G.ex = {};
+    DA.toast = eski;
+    return o;
+  });
+  uiEkle('Kuru baklagil değişimi (KH/P/Y)', '15/5/0', bk.deger);
+  uiEkle('Kuru baklagil değişimi enerjisi', 80, bk.kcal);
+  uiEkle('Baklagilli plan (bak,yy,sebze,meyve,kuruyemiş,ekmek,et,yağ)', '2,4,4,3,2,6,5,3', bk.plan);
+  uiEkle('Baklagilli plan enerjisi', 1810, bk.kcalTop);
+  uiEkle('Baklagil adımı ekleniyor (beş basamak)', 5, bk.adimSayisi);
+  uiEkle('Adım: baklagilin KH ve proteini yazıyor', true, bk.adimBaklagil);
+  uiEkle('Adım: ekmek formülü baklagil KH’sini düşüyor', true, bk.adimEkmek);
+  uiEkle('Adım: et formülü baklagil proteinini düşüyor', true, bk.adimEt);
+  uiEkle('Yeniden dağıtımda baklagil korunuyor', 2, bk.ikinciKez);
+  uiEkle('Baklagilin kilidi yok, sayacı var', 'true/true', bk.kilitYok + '/' + bk.sayacVar);
+  uiEkle('Öğünler: yalnız baklagilli planda bile ara öğüne baklagil gitmiyor', 0, bk.araBaklagil);
+  uiEkle('Öğünler: baklagil toplamı korunuyor', 6, bk.ogunToplam);
+  uiEkle('Yemek: 1 kase çorba', '1 ekmek + 1 yağ | 113', bk.corba);
+  uiEkle('Yemek: zeytinyağlı sebze yemeği', '1 sebze + 1 yağ | 77', bk.zySebze);
+  uiEkle('Yemek: yağsız salata', '1 sebze | 32', bk.salataYagsiz);
+  uiEkle('Yemek: zeytinyağlı salata', '1 sebze + 1 yağ | 77', bk.salataZy);
+  uiEkle('Yemek: pilava yağ eklenmiyor', '68', bk.pilavKcal);
+  uiEkle('Yemek: hastane roll ekmeği 2 değişim', '136', bk.rollKcal);
+  uiEkle('Yemek: 4 yk nohut 1 baklagil', '80', bk.nohutKcal);
+  uiEkle('Çıktı: yağsız planda yalnız yazılabilen yemekler (salata, pilav, çorba, zy, nohut)', 'true,true,false,false,false', bk.yagsizPlan);
+  uiEkle('Çıktı: yağlı planda çorba karşılığı basılıyor', true, bk.yagliPlan);
+
+  /* ---- menü yazım kuralları ----
+     Kurallar Dyt. Can Bayramoğlu'nun liste yazım kurallarıdır; beklenen
+     sonuçlar kural metninden elle yazıldı. Uygun menü hiçbir not vermemeli,
+     hatalı menü her kuralı tam bir kez tetiklemeli. */
+  const mk = await sayfa.evaluate(async () => {
+    /* TÜBER besinleri (kefir, galeta) birleşik listeye girsin */
+    await DA.need(['porsiyonBesin', 'hedef']); DA.foodsInvalidate();
+    const o = {}, K = DA.menuKural, S = DA.state();
+    const besin = (ad) => DA.foods.all().find((x) => x.n === ad);
+    const it = (ad) => { const f = besin(ad); return { id: f ? f.id : 'yok', n: ad, g: 100 }; };
+    const menu = (id, ogun) => { const m = { id, title: 'Kural ' + id, date: DA.today(), client: '', note: '', meals: {} };
+      DA.foods.ogunler.forEach((k) => { m.meals[k] = (ogun[k] || []).map(it); }); return m; };
+    const kural = (m) => K.denetle(m).map((x) => x.k + '@' + [].concat(x.ogun).join('+')).sort().join(' · ');
+    o.eksikBesin = ['Çay (şekersiz)', 'Beyaz peynir (tam yağlı)', 'Domates', 'Beyaz ekmek', 'Elma', 'Badem', 'Mercimek çorbası',
+      'Bulgur (haşlanmış)', 'Cacık', 'Kefir, tam yağlı', 'Galeta ekmeği / grissini.', 'Tavuk göğsü (pişmiş, derisiz)',
+      'Çoban salatası (zeytinyağlı)', 'Tam buğday ekmeği', 'Süt (yarım yağlı)', 'Muz', 'Simit', 'Ayran', 'Sütlaç',
+      'İnek sütü, tam yağlı', 'Peynirli börek'].filter((a) => !besin(a)).join(', ');
+
+    /* Tür tanıma: Türkçe harf sınırları */
+    const tur = (ad) => K.tur(besin(ad) || { n: ad });
+    o.sutlacSivi = tur('Sütlaç').sivi;
+    o.inekSutuSivi = tur('İnek sütü, tam yağlı').sivi;
+    o.ayranSivi = tur('Ayran').sivi;
+    o.peynirliBorek = tur('Peynirli börek').peynir;
+    o.kasar = K.tur({ n: 'Kaşar peyniri' }).peynir;
+    o.galeta = [tur('Galeta ekmeği / grissini.').ekmek, tur('Galeta ekmeği / grissini.').galeta].join('/');
+
+    const uygun = menu('mkU', {
+      /* kahvaltıda meyve var ama ara öğünlerde de var: "meyve yalnız ana
+         öğünde" notu çıkmamalı (ara öğün koşulu ancak böyle sınanır) */
+      'Kahvaltı': ['Çay (şekersiz)', 'Beyaz peynir (tam yağlı)', 'Domates', 'Elma', 'Beyaz ekmek'],
+      'Kuşluk': ['Elma', 'Badem'],
+      'Öğle': ['Mercimek çorbası', 'Bulgur (haşlanmış)', 'Cacık'],
+      'İkindi': ['Kefir, tam yağlı', 'Galeta ekmeği / grissini.'],
+      'Akşam': ['Mercimek çorbası', 'Tavuk göğsü (pişmiş, derisiz)', 'Çoban salatası (zeytinyağlı)', 'Tam buğday ekmeği'],
+      'Gece ara öğünü': ['Süt (yarım yağlı)', 'Muz']
+    });
+    o.uygun = kural(uygun);
+    const hatali = menu('mkH', {
+      'Kahvaltı': ['Beyaz ekmek', 'Çay (şekersiz)', 'Beyaz peynir (tam yağlı)'],
+      'Kuşluk': ['Simit'],
+      'Öğle': ['Bulgur (haşlanmış)', 'Beyaz ekmek', 'Elma'],
+      'İkindi': ['Galeta ekmeği / grissini.'],
+      'Akşam': ['Mercimek çorbası'],
+      'Gece ara öğünü': ['Beyaz peynir (tam yağlı)', 'Beyaz ekmek']
+    });
+    o.hatali = kural(hatali);
+
+    /* Ekranda: kart, not sayısı ve "Yazım sırasına diz" */
+    S.menus.unshift(uygun, hatali); DA.save();
+    location.hash = 'menu/mkU'; DA.render(false);
+    const kart = document.querySelector('#menuKural');
+    o.uygunKart = !!kart && kart.classList.contains('ok');
+    location.hash = 'menu/mkH'; DA.render(false);
+    o.hataliNot = document.querySelectorAll('#menuKural li[data-kural]').length;
+    o.uyariKutusu = document.querySelectorAll('#menuKural .note.warn li').length;
+    const dugme = document.querySelector('#menuKural button[data-act=menuDiz]');
+    o.dizDugmesi = !!dugme;
+    if (dugme) dugme.click();
+    const ad = (k) => (hatali.meals[k] || []).map((x) => x.n).join(' > ');
+    o.dizKahvalti = ad('Kahvaltı');
+    o.dizOgle = ad('Öğle');
+    o.dizSonraSira = !document.querySelector('#menuKural li[data-kural=sira]');
+    o.dizSonraDugme = !document.querySelector('#menuKural button[data-act=menuDiz]');
+    DA.actions.geriAl();
+    const m2 = DA.state().menus.find((x) => x.id === 'mkH');
+    o.geriAlindi = m2.meals['Kahvaltı'].map((x) => x.n).join(' > ');
+    /* Kararlı sıralama: iki sıvı girildikleri sırada kalır */
+    const kararli = menu('mkK', { 'Akşam': ['Beyaz ekmek', 'Tavuk göğsü (pişmiş, derisiz)', 'Ayran', 'Mercimek çorbası'] });
+    K.diz(kararli);
+    o.kararli = kararli.meals['Akşam'].map((x) => x.n).join(' > ');
+    /* Çıktıda kâğıda basılmayan not */
+    location.hash = 'yazdir/menu/mkH'; DA.render(false);
+    const not = document.querySelector('.note.warn.noprint');
+    o.ciktiNot = not ? /8 yazım kuralı notu/.test(not.textContent) : false;
+    location.hash = 'yazdir/menu/mkU'; DA.render(false);
+    o.ciktiNotYok = !/yazım kuralı notu/.test(document.body.textContent);
+    S.menus = S.menus.filter((m) => m.id.indexOf('mk') !== 0); DA.save();
+    return o;
+  });
+  uiEkle('Kural testindeki besinler veritabanında', '', mk.eksikBesin);
+  uiEkle('Tür: sütlaç sıvı değil', false, mk.sutlacSivi);
+  uiEkle('Tür: "İnek sütü, tam yağlı" sıvı', true, mk.inekSutuSivi);
+  uiEkle('Tür: ayran sıvı', true, mk.ayranSivi);
+  uiEkle('Tür: peynirli börek peynir sayılmıyor', false, mk.peynirliBorek);
+  uiEkle('Tür: kaşar peyniri peynir', true, mk.kasar);
+  uiEkle('Tür: galeta ekmek ve galeta', 'true/true', mk.galeta);
+  uiEkle('Kural: uygun menüde not yok', '', mk.uygun);
+  uiEkle('Kural: hatalı menüde her kural bir kez',
+    ['araEkmek@Kuşluk', 'araEs@Kuşluk', 'araEs@İkindi', 'bulgurEkmek@Öğle', 'gecePeynir@Gece ara öğünü',
+      'araEkmek@Gece ara öğünü', 'meyveAna@Öğle', 'sira@Kahvaltı+Öğle'].sort().join(' · '), mk.hatali);
+  uiEkle('Kural kartı: uygun menüde onay notu', true, mk.uygunKart);
+  uiEkle('Kural kartı: hatalı menüde 8 not', 8, mk.hataliNot);
+  uiEkle('Kural kartı: 6 uyarı, 2 bilgi', 6, mk.uyariKutusu);
+  uiEkle('Kural kartı: sıraya diz düğmesi', true, mk.dizDugmesi);
+  uiEkle('Sıraya diz: kahvaltı (sıvı başa, ekmek sona)', 'Çay (şekersiz) > Beyaz peynir (tam yağlı) > Beyaz ekmek', mk.dizKahvalti);
+  uiEkle('Sıraya diz: öğle', 'Bulgur (haşlanmış) > Elma > Beyaz ekmek', mk.dizOgle);
+  uiEkle('Sıraya diz sonrası sıra notu ve düğme kalkıyor', 'true/true', mk.dizSonraSira + '/' + mk.dizSonraDugme);
+  uiEkle('Sıraya diz geri alınabiliyor', 'Beyaz ekmek > Çay (şekersiz) > Beyaz peynir (tam yağlı)', mk.geriAlindi);
+  uiEkle('Sıraya diz kararlı (ayran çorbadan önce kalır)', 'Ayran > Mercimek çorbası > Tavuk göğsü (pişmiş, derisiz) > Beyaz ekmek', mk.kararli);
+  uiEkle('Menü çıktısı: basılmayan kural notu', true, mk.ciktiNot);
+  uiEkle('Menü çıktısı: uygun menüde not yok', true, mk.ciktiNotYok);
 
   /* ---- değişim listesi: hedef yüzde ya da gram ----
      Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,

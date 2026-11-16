@@ -433,6 +433,10 @@ table.t tr.on>td{background:var(--pri-soft);color:var(--ink);font-weight:650}
   font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
 .printdoc tfoot th{border-top:1.4px solid #333;border-bottom:0;font-weight:700}
 .printdoc tbody tr:nth-child(even) td{background:#f6f6f6}   /* zebra: gri tonluda da okunur */
+/* Tablo hücresinde "anywhere" sütunun en küçük genişliğini tek harfe
+   indiriyordu: dar ekranda "Kuru baklag|il" diye kelime ortasından
+   bölünüyordu. break-word en küçük genişliği en uzun kelimeye bırakır. */
+.printdoc th,.printdoc td{overflow-wrap:break-word}
 .printdoc th.n,.printdoc td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* Öğün ayırıcı satır: eskiden yalnız açık yeşil zemindi, gri tonlu yazıcıda
    kaybolurdu. Artık koyu zemin çizgisi ve üst kenarla ayrılıyor. */
