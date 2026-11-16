@@ -48,11 +48,20 @@
     c.id = kimlik(c.id);
     c.name = metin(c.name);
     c.tags = Array.isArray(c.tags) ? c.tags.map(metin) : [];
-    ['meas', 'calcs'].forEach((k) => {
+    ['meas', 'calcs', 'lab', 'pes', 'gorusme'].forEach((k) => {
       c[k] = nesneDizisi(c[k]);
       c[k].forEach((x) => { x.id = kimlik(x.id); });
     });
     c.meas.forEach((m) => { m.d = metin(m.d); });
+    /* Danışan dosyası (js/dosya.js): ekrana basılan metin alanları */
+    c.lab.forEach((x) => { x.d = metin(x.d); x.ad = metin(x.ad); x.birim = metin(x.birim);
+      if (!(typeof x.deger === 'number' && isFinite(x.deger))) x.deger = typeof x.deger === 'string' ? x.deger : ''; });
+    c.pes.forEach((x) => { x.d = metin(x.d); x.p = metin(x.p); x.e = metin(x.e); x.s = metin(x.s); x.cozuldu = x.cozuldu === true; });
+    c.gorusme.forEach((x) => { x.d = metin(x.d); x.t = metin(x.t); });
+    if (c.dosya != null) {
+      if (!nesneMi(c.dosya)) c.dosya = {};
+      Object.keys(c.dosya).forEach((k) => { c.dosya[k] = metin(c.dosya[k]); });
+    }
     if (c.plan != null) {
       if (!nesneMi(c.plan)) delete c.plan;
       else ['hedef', 'ex', 'meal', 'top'].forEach((k) => { if (!nesneMi(c.plan[k])) c.plan[k] = {}; });
@@ -61,6 +70,8 @@
   function menuDenetle(m) {
     m.id = kimlik(m.id);
     m.title = metin(m.title);
+    m.c = m.c ? kimlik(m.c) : '';
+    m.tur = m.tur === 'geri' ? 'geri' : '';
     if (!nesneMi(m.meals)) m.meals = {};
     Object.keys(m.meals).forEach((k) => {
       m.meals[k] = nesneDizisi(m.meals[k]);

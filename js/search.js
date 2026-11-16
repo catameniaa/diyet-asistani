@@ -46,8 +46,10 @@
       g: 'Diyet listesi', ico: 'note', t: l.ad || 'Beslenme listesi', s: DA.fdate(l.d),
       h: '#/liste/' + l.id, k: (l.ad || '') + ' ' + (((S.clients || []).find((c) => c.id === l.c) || {}).name || '')
     }));
+    /* Bağlı menüde danışanın güncel adı aranır (js/foods.js) */
+    const ad = (m) => (DA.foods && DA.foods.danisanAdi ? DA.foods.danisanAdi(m) : (m.client || ''));
     (S.menus || []).forEach((m) => out.push({
-      g: 'Menü', ico: 'menu', t: m.title, s: DA.fdate(m.date) + (m.client ? ' · ' + m.client : ''), h: '#/menu/' + m.id, k: m.title + ' ' + (m.client || '')
+      g: 'Menü', ico: 'menu', t: m.title, s: DA.fdate(m.date) + (ad(m) ? ' · ' + ad(m) : ''), h: '#/menu/' + m.id, k: m.title + ' ' + ad(m)
     }));
     return out;
   }

@@ -229,6 +229,8 @@
   }
   const miktarHucre = (it) => { const o = olcuYazi(it); return o ? o + ' (' + fmt(it.g, 0) + ' g)' : fmt(it.g, 0) + ' g'; };
   DA.foods.miktarYazi = miktarYazi;
+  DA.foods.toplam = (m) => menuTotals(m);
+  DA.foods.danisanAdi = danisanAdi;
   /* Miktar formundan menü öğesi: gram her zaman, ölçü seçildiyse adı ve adedi de */
   function formdanOge(form) {
     const g = parseFloat(form.dataset.g), amt = num(form.amt.value);
@@ -317,7 +319,7 @@
         title: 'Menüler', tab: 'besin', back: 'besin',
         html: (list.length ? '<div class="list">' + list.map((m) => {
           const t = menuTotals(m);
-          return '<a class="li chev" href="#/menu/' + m.id + '"><span class="ic">' + DA.icon('menu') + '</span><span class="grow"><div class="t">' + esc(m.title) + '</div><div class="s">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div></span><span class="end">' + fmt(t.kcal, 0) + ' kcal</span></a>';
+          return '<a class="li chev" href="#/menu/' + m.id + '"><span class="ic">' + DA.icon('menu') + '</span><span class="grow"><div class="t">' + esc(m.title) + '</div><div class="s">' + esc(DA.fdate(m.date)) + (danisanAdi(m) ? ' · ' + esc(danisanAdi(m)) : '') + '</div></span><span class="end">' + fmt(t.kcal, 0) + ' kcal</span></a>';
         }).join('') + '</div>' : DA.emptyState('menu', { baslik: 'Henüz menü yok',
             aciklama: 'Öğün öğün besin ekle; enerji, makro ve mikro besin toplamları hedefinle karşılaştırılsın.',
             eylem: { act: 'menuNew', etiket: 'İlk menüyü oluştur', ico: 'plus' } })) +
@@ -336,8 +338,10 @@
       '<div class="sticky-tot">' + bar('Enerji', t.kcal, tg.kcal, 'kcal') +
       '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small></div><div><b>' + fmt(t.fib, 0) + DA.birim('g') + '</b><small>lif</small></div></div>' +
       (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
+      (m.tur === 'geri' ? '<div class="note">24 saatlik geriçağırma: danışanın bir gününde yediklerini besin besin gir. ' +
+        'Toplamlar hedefle karşılaştırılır; menü yazım kuralları burada uygulanmaz.</div>' : '') +
       exchangeCard(t) +
-      (DA.menuKural ? DA.menuKural.kartHtml(m) : '') +
+      (DA.menuKural && m.tur !== 'geri' ? DA.menuKural.kartHtml(m) : '') +
       mikroKartHtml(m) +
       MEALS.map((k) => {
         const list = m.meals[k] || [], mt = mealTotals(list);
@@ -351,12 +355,33 @@
       }).join('') +
       '<div class="card"><label class="fld"><span>Menü başlığı</span><input type="text" value="' + esc(m.title) + '" data-live="menuMeta" data-f="title" data-m="' + m.id + '"></label>' +
       '<div class="grid2"><label class="fld"><span>Tarih</span><input type="date" value="' + esc(m.date) + '" data-live="menuMeta" data-f="date" data-m="' + m.id + '"></label>' +
-      '<label class="fld"><span>Danışan (isteğe bağlı)</span><input type="text" value="' + esc(m.client) + '" data-live="menuMeta" data-f="client" data-m="' + m.id + '" placeholder="Ad/kod"></label></div>' +
+      danisanSecimi(m) + '</div>' +
       '<label class="fld"><span>Notlar / öneriler</span><textarea data-live="menuMeta" data-f="note" data-m="' + m.id + '" placeholder="Su tüketimi, pişirme yöntemi, öneriler…">' + esc(m.note) + '</textarea></label>' +
       '<button class="btn sec block" data-act="menuTarget" data-m="' + m.id + '">Günlük hedefi düzenle (' + fmt(tg.kcal, 0) + ' kcal)</button></div>' +
       '<div class="grid2"><a class="btn block" href="#/yazdir/menu/' + m.id + '">' + DA.icon('share') + ' PDF / Paylaş</a><button class="btn ghost block" data-act="menuCopy" data-m="' + m.id + '">Kopyala</button></div>' +
       '<button class="btn danger block mt" data-act="menuDelete" data-m="' + m.id + '">Menüyü sil</button>';
     return { title: m.title, tab: 'besin', back: 'menu', html };
+  };
+  /* Bağlı menüde danışanın GÜNCEL adı; ad sonradan değişirse menüde eskisi kalmasın */
+  function danisanAdi(m) {
+    const c = m.c && (DA.state().clients || []).find((x) => x.id === m.c);
+    return c ? c.name : (m.client || '');
+  }
+  /* Menü danışana kimliğiyle bağlanır. Eskiden serbest metindi ("Ad/kod"):
+     danışan dosyasında görünmüyor, ad değişince kopuyordu. Eski metin
+     kaybolmasın diye bağlanmamış menüde altında gösterilir. */
+  function danisanSecimi(m) {
+    const cl = (DA.state().clients || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr'));
+    return '<label class="fld"><span>Danışan</span><select data-change="menuDanisan" data-m="' + esc(m.id) + '">' +
+      '<option value="">Bağlı değil</option>' + cl.map((c) => '<option value="' + esc(c.id) + '"' + (m.c === c.id ? ' selected' : '') + '>' +
+        esc(c.name) + '</option>').join('') + '</select>' +
+      (!m.c && m.client ? '<span class="muted tiny" style="display:block;margin-top:4px">Eski kayıttaki ad: ' + esc(m.client) + '</span>' : '') + '</label>';
+  }
+  DA.live.menuDanisan = (el) => {
+    const m = DA.state().menus.find((x) => x.id === el.dataset.m); if (!m) return;
+    const c = (DA.state().clients || []).find((x) => x.id === el.value);
+    m.c = c ? c.id : ''; if (c) m.client = c.name;
+    DA.save(); DA.render(true);
   };
   /* Menünün makrolarının yaklaşık değişim karşılığı */
   function exchangeCard(t) {
@@ -498,7 +523,7 @@
 
   /* ---------- Yazdır / paylaş ---------- */
   function menuText(m) {
-    const t = menuTotals(m); let s = m.title + '\n' + DA.fdate(m.date) + (m.client ? ' — ' + m.client : '') + '\n' + DA.dyt() + '\n';
+    const t = menuTotals(m); let s = m.title + '\n' + DA.fdate(m.date) + (danisanAdi(m) ? ' — ' + danisanAdi(m) : '') + '\n' + DA.dyt() + '\n';
     MEALS.forEach((k) => {
       const l = m.meals[k] || []; if (!l.length) return;
       s += '\n' + k + ' (' + fmt(mealTotals(l).kcal, 0) + ' kcal)\n';
@@ -542,7 +567,7 @@
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
           kuralUyarisi(m) +
-          '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div class="alt">' + esc(DA.fdate(m.date)) + (m.client ? ' · ' + esc(m.client) : '') + '</div>' +
+          '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div class="alt">' + esc(DA.fdate(m.date)) + (danisanAdi(m) ? ' · ' + esc(danisanAdi(m)) : '') + '</div>' +
           '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +
           (m.note ? '<div class="blok"><h3>Notlar</h3>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +

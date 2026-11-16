@@ -37,6 +37,13 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   takip aralığı dolan danışanların ana sayfada hatırlatılması,
   0–19 yaş için otomatik WHO büyüme persentili izlemi,
   hesapları dosyaya işleme ve tek sayfalık danışan raporu (PDF / paylaş)
+- Danışan dosyası Beslenme Bakım Süreci (ADIME) düzeninde: tarihli biyokimya (test başına son değer,
+  önceki değer ve değişim yönü; referans aralığı bilerek yok — laboratuvara göre değişir), tıbbi
+  tanılar, ilaç/takviye ve beslenme öyküsü, 24 saatlik geriçağırma (menü olarak girilir, toplamı
+  hesaplanır), PES biçiminde beslenme tanısı (aktif/çözüldü), hedef ve öneriler, tarihli görüşme
+  notları, izlenecek göstergeler; rapor bunları da basar
+- Menüler danışana kimliğiyle bağlanır (eskiden serbest metin): danışan dosyasında listelenir,
+  danışanın adı değişince menüde ve aramada güncel ad görünür
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre makro aralıkları, protein (g/kg ve g/gün),
   posa, su, vitamin-mineral önerisi (PRI/AI), ortalama gereksinim (EAR) ve üst sınır (UL)

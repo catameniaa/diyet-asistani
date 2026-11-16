@@ -258,10 +258,15 @@
         (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : DA.emptyState('scale', { baslik: 'Henüz ölçüm yok',
           aciklama: 'İlk ölçümü girdikten sonra kilo grafiği, değişim ve hedefe kalan otomatik çıkar.',
           eylem: { act: 'measNew', veri: 'data-id="' + c.id + '"', etiket: 'Ölçüm ekle', ico: 'plus' } })) +
+        /* ADIME düzeni (js/dosya.js): değerlendirme → tanı → müdahale → izlem.
+           Eskiden ölçümlerden sonra tek bir "Notlar" kutusu vardı. */
+        (DA.dosya ? DA.dosya.degerlendirme(c) + DA.dosya.tani(c) + '<div class="sect">Müdahale</div>' : '') +
         planHtml(c) +
         (DA.liste ? DA.liste.danisanKarti(c) : '') +
+        (DA.dosya ? DA.dosya.mudahale(c) : '') +
         savedCalcs(c) +
-        '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>' +
+        (DA.dosya ? DA.dosya.izlem(c)
+          : '<div class="card"><h2>Notlar</h2><textarea data-live="clientNote" data-id="' + c.id + '" placeholder="Anamnez, hedefler, alerjiler, planlanan kontroller…">' + esc(c.note || '') + '</textarea></div>') +
         '<a class="btn block" href="#/yazdir/danisan/' + c.id + '">' + DA.icon('share') + ' Danışan raporu (PDF / Paylaş)</a>'
     };
   };
@@ -450,6 +455,7 @@
         (DA.exchangePlanHtml ? DA.exchangePlanHtml(c.plan) : '') +
         ((c.calcs || []).length ? '<div class="blok"><h3>Kayıtlı hesaplar</h3>' +
           (c.calcs || []).slice().reverse().map((x) => '<div class="sat">' + esc(DA.fdate(x.d)) + ' — ' + esc(x.t) + ': ' + esc(x.s) + '</div>').join('') + '</div>' : '') +
+        (DA.dosya ? DA.dosya.rapor(c) : '') +
         (c.note ? '<div class="blok"><h3>Notlar</h3>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
         DA.dipnot('bu rapor bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };

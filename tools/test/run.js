@@ -1748,6 +1748,134 @@ function ornekDurum(tema) {
   uiEkle('Liste: hedefsiz listede durum etiketi yok', 0, ls.hedefsizCip);
   uiEkle('Liste: silinince geri alınabiliyor', 'true/true', ls.silindi + '/' + ls.geriGeldi);
 
+  /* ---- danışan dosyası (ADIME) ----
+     Biyokimya elle: HbA1c 10 Oca 7,2 · 1 Şub 7,0 (küçük harfle "hba1c" yazıldı,
+     aynı test sayılmalı) · 10 Mar 6,8 → son 6,8, önceki 7, yön ↓. "İdrarda
+     keton: negatif" sayısal değil, yön yok. Aynı tarihte iki test: ada göre. */
+  const ds = await sayfa.evaluate(() => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    let mm = null;
+    /* Mutasyonda bir adım patlarsa koşu çökmesin; hata değer olarak kaydedilir */
+    try {
+    S.clients = (S.clients || []).filter((c) => c.id !== 'dd');
+    S.clients.push({ id: 'dd', name: 'Dosya Danışan', sex: 'K', h: 162, meas: [] });
+    S.menus = (S.menus || []).filter((m) => m.c !== 'dd');
+    DA.save(); location.hash = 'danisan/dd'; DA.render(false);
+    o.bolumler = Array.from(document.querySelectorAll('#app .sect')).map((x) => x.textContent.trim())
+      .filter((t) => ['Değerlendirme', 'Tanı', 'Müdahale', 'İzlem'].indexOf(t) >= 0).join(',');
+    const c = S.clients.find((x) => x.id === 'dd');
+    const lab = (d, ad, deger, birim) => { DA.actions.labYeni({ dataset: { id: 'dd' } });
+      const f = document.querySelector('form[data-form=lab]'); f.d.value = d; f.ad.value = ad; f.deger.value = deger; f.birim.value = birim; DA.forms.lab(f); };
+    lab('2026-01-10', 'HbA1c', '7,2', '%'); lab('2026-03-10', 'HbA1c', '6,8', '%');
+    lab('2026-03-10', 'İdrarda keton', 'negatif', ''); lab('2026-02-01', 'hba1c', '7,0', '%');
+    o.sayisal = c.lab.map((x) => typeof x.deger + ':' + x.deger).join(',');
+    const satir = Array.from(document.querySelectorAll('#dosyaLab .li')).map((x) => x.textContent.replace(/\s+/g, ' ').trim());
+    o.labSatir = satir.length + '|' + /^HbA1c\s?6,8 % · 10 Mar 2026 · önceki 7 %\s?↓$/.test(satir[0] || '') + '|' + /^İdrarda keton\s?negatif · 10 Mar 2026$/.test(satir[1] || '');
+    DA.actions.labTest({ dataset: { id: 'dd', ad: 'HbA1c' } });
+    o.testGecmisi = Array.from(document.querySelectorAll('#sheet .li .t')).map((x) => x.textContent).join(' / ');
+    DA.closeSheet();
+    /* düzenleme formu sayıyı Türkçe ondalıkla gösterir */
+    DA.actions.labDuzen({ dataset: { id: 'dd', lid: c.lab[0].id } });
+    o.duzenDeger = document.querySelector('form[data-form=lab]').deger.value;
+    DA.actions.labSil({ dataset: { id: 'dd', lid: c.lab[0].id } });
+    o.silindi = c.lab.length;
+    DA.actions.geriAl();
+    o.geriGeldi = S.clients.find((x) => x.id === 'dd').lab.length;
+
+    /* klinik metin anında kaydedilir */
+    location.hash = 'danisan/dd'; DA.render(false);
+    const ta = document.querySelector('textarea[data-live=dosyaMetin][data-f=ilac]');
+    if (ta) { ta.value = 'Metformin 2×1000 mg'; ta.dispatchEvent(new Event('input', { bubbles: true })); }
+    o.ilac = (c.dosya || {}).ilac + '|' + ((localStorage.getItem(DA.depoAnahtari) || '').indexOf('Metformin 2×1000 mg') >= 0);
+
+    /* PES */
+    DA.actions.pesYeni({ dataset: { id: 'dd' } });
+    let f = document.querySelector('form[data-form=pes]');
+    f.p.value = 'Yetersiz enerji alımı'; f.e.value = 'iştahsızlık'; f.s.value = 'son bir ayda %6 ağırlık kaybı'; DA.forms.pes(f);
+    o.pes = ((document.querySelector('#dosyaPes .pes') || {}).textContent || '');
+    DA.actions.pesDurum({ dataset: { id: 'dd', pid: c.pes[0].id } });
+    o.cozuldu = document.querySelectorAll('#dosyaPes > .list .li').length + '/' + /Çözülen tanılar\s*1/.test((document.querySelector('#dosyaPes details') || {}).textContent || '');
+    DA.actions.pesDurum({ dataset: { id: 'dd', pid: c.pes[0].id } });
+
+    /* görüşme notları en yeni önce */
+    const gor = (d, t) => { DA.actions.gorusmeYeni({ dataset: { id: 'dd' } });
+      const g = document.querySelector('form[data-form=gorusme]'); g.d.value = d; g.t.value = t; DA.forms.gorusme(g); };
+    gor('2026-03-01', 'İlk görüşme\nikinci satır'); gor('2026-04-01', 'Kontrol');
+    o.gorusme = Array.from(document.querySelectorAll('#dosyaGorusme .li .s')).map((x) => x.textContent).join(' / ');
+
+    /* geriçağırma menüsü: dünün tarihi, danışana bağlı, kural kartı yok */
+    DA.actions.dosyaMenu({ dataset: { id: 'dd', tur: 'geri' } });
+    const g = S.menus[0], dun = new Date(); dun.setDate(dun.getDate() - 1);
+    const dunY = dun.getFullYear() + '-' + String(dun.getMonth() + 1).padStart(2, '0') + '-' + String(dun.getDate()).padStart(2, '0');
+    o.geri = [g.tur, g.c, g.date === dunY].join(',');
+    /* Kural kartı boş menüde zaten çizilmez; besin eklenmeli. Aynı menü tür
+       boşaltılınca kartı göstermeli — yoksa kartın yokluğu bir şey ölçmez. */
+    g.meals[Object.keys(g.meals)[0]].push({ id: 'yumurta-haslanmis', g: 50 });
+    location.hash = 'menu/' + g.id; DA.render(false);
+    o.geriEkran = /24 saatlik geriçağırma/.test(document.querySelector('#app').textContent) + '/' + !document.querySelector('#menuKural');
+    g.tur = ''; DA.render(false);
+    o.geriEkran += '/' + !!document.querySelector('#menuKural');
+    g.tur = 'geri';
+    /* plan menüsü ve var olan menüyü seçimle bağlama */
+    DA.actions.dosyaMenu({ dataset: { id: 'dd' } });
+    mm = S.menus.find((m) => m.id === 'mm') || S.menus.find((m) => m.c !== 'dd');
+    if (mm) DA.live.menuDanisan({ value: 'dd', dataset: { m: mm.id } });
+    o.baglandi = mm ? mm.c + '/' + mm.client : 'menü yok';
+    /* Danışanın adı sonradan değişirse menü listesi ve aramada yeni ad */
+    c.name = 'Dosya Yenisi';
+    location.hash = 'menu'; DA.render(false);
+    const mli = mm && document.querySelector('#app a[href="#/menu/' + mm.id + '"]');
+    o.yeniAd = (mli ? /Dosya Yenisi/.test(mli.textContent) : 'satır yok') + '/';
+    location.hash = 'ara'; DA.render(false);
+    const ai = document.querySelector('input[data-live=gSearch]');
+    if (ai) { ai.value = 'Dosya Yenisi'; DA.live.gSearch(ai); }
+    o.yeniAd += !!(mm && document.querySelector('#gOut a[href="#/menu/' + mm.id + '"]'));
+    if (ai) { ai.value = ''; DA.live.gSearch(ai); }
+    c.name = 'Dosya Danışan';
+    location.hash = 'danisan/dd'; DA.render(false);
+    const kart = (b) => Array.from(document.querySelectorAll('#app .card')).find((x) => (x.querySelector('h2') || {}).textContent === b);
+    o.geriKart = kart('24 saatlik geriçağırma') ? kart('24 saatlik geriçağırma').querySelectorAll('.li').length : -1;
+    o.menuKart = kart('Menüler') ? kart('Menüler').querySelectorAll('.li').length : -1;
+
+    /* rapor */
+    location.hash = 'yazdir/danisan/dd'; DA.render(false);
+    const r = (document.querySelector('.printdoc') || {}).textContent || '';
+    o.rapor = ['Biyokimya (son değerler)', 'İlaçlar ve takviyeler', 'Metformin', 'Beslenme tanısı (aktif)', 'Yetersiz enerji alımı', 'Son görüşme notları']
+      .filter((x) => r.indexOf(x) < 0).join(', ');
+    } catch (e) { o.hata = String((e && e.message) || e); }
+    S.clients = S.clients.filter((x) => x.id !== 'dd'); S.menus = S.menus.filter((m) => m.c !== 'dd');
+    if (mm) { mm.c = ''; }
+    DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Dosya: ADIME bölümleri sırayla', 'Değerlendirme,Tanı,Müdahale,İzlem', ds.bolumler);
+  uiEkle('Dosya: sayısal değer sayı, metin değer metin', 'number:7.2,number:6.8,string:negatif,number:7', ds.sayisal);
+  uiEkle('Dosya: test başına son değer, önceki ve yön', '2|true|true', ds.labSatir);
+  uiEkle('Dosya: test geçmişi en yeni önce (büyük-küçük harf aynı test)', '6,8 % / 7 % / 7,2 %', ds.testGecmisi);
+  uiEkle('Dosya: düzenleme formunda Türkçe ondalık', '7,2', ds.duzenDeger);
+  uiEkle('Dosya: değer silinip geri alınıyor', '3/4', ds.silindi + '/' + ds.geriGeldi);
+  uiEkle('Dosya: akış hatasız', '', ds.hata || '');
+  uiEkle('Dosya: klinik metin anında kaydediliyor (diske de)', 'Metformin 2×1000 mg|true', ds.ilac);
+  uiEkle('Dosya: PES cümlesi', 'Yetersiz enerji alımı; iştahsızlık ile ilişkili, son bir ayda %6 ağırlık kaybı ile kanıtlanan.', ds.pes);
+  uiEkle('Dosya: çözülen tanı aktif listeden çıkıyor', '0/true', ds.cozuldu);
+  uiEkle('Dosya: görüşme notları en yeni önce, ilk satır', 'Kontrol / İlk görüşme', ds.gorusme);
+  uiEkle('Dosya: geriçağırma menüsü (tür, danışan, dünün tarihi)', 'geri,dd,true', ds.geri);
+  uiEkle('Dosya: geriçağırmada not var, kural kartı yok (plan menüsünde var)', 'true/true/true', ds.geriEkran);
+  uiEkle('Dosya: menü seçimle danışana bağlanıyor', 'dd/Dosya Danışan', ds.baglandi);
+  uiEkle('Dosya: ad değişince menü listesi ve arama güncel adı gösteriyor', 'true/true', ds.yeniAd);
+  uiEkle('Dosya: geriçağırma kartında 1 kayıt', 1, ds.geriKart);
+  uiEkle('Dosya: menüler kartında 2 menü (geriçağırma hariç)', 2, ds.menuKart);
+  uiEkle('Dosya: raporda değerlendirme, tanı ve izlem', '', ds.rapor);
+
+  /* sınır denetimi: dosya alanları ve menü bağı */
+  const dosyaSinir = await sayfa.evaluate(() => { try {
+    const o = DA.veriDenetle({ clients: [{ id: 'v', name: 'V', lab: [{ id: 'l"', deger: { x: 1 }, ad: 5, d: null }, 'çöp'], pes: 'x',
+      gorusme: [{ t: null }], dosya: 'x' }], menus: [{ id: 'm', c: 'a b', tur: 'x', meals: {} }] });
+    const c = o.clients[0], l = c.lab[0];
+    return [c.lab.length, l.id, JSON.stringify(l.deger), l.ad, l.d, JSON.stringify(c.pes), c.gorusme[0].t, JSON.stringify(c.dosya), o.menus[0].c, o.menus[0].tur].join(' | ');
+  } catch (e) { return 'hata: ' + e.message; } });
+  uiEkle('Sınır denetimi: dosya alanları ve menü bağı', '1 | l_ | "" | 5 |  | [] |  | {} | a_b | ', dosyaSinir);
+
   /* ---- değişim listesi: hedef yüzde ya da gram ----
      Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,
      plan girilen yüzdelere uymuyormuş gibi görünüyordu. Giriş gerçek "input"
@@ -1988,8 +2116,10 @@ function ornekDurum(tema) {
       clients: [{ id: 'c1', name: 'Ayşe', sex: 'K', h: 165, bdate: '2015-03-01', birth: 2015, hedef: 60, aralik: 21, pal: '1.4', tags: ['dm2'], avoid: 'x', note: 'n',
         meas: [{ id: 'm1', d: '2026-01-10', w: 30, h: 130, waist: 60, hip: 70, fat: 20, note: 'a' }, { id: 'm2', d: t, w: 32, h: 133 }],
         calcs: [{ id: 'k1', d: t, t: 'BKİ', s: 'BKİ: 18', ico: 'scale', k: 'BKİ', v: 18, u: 'kg/m²' }],
-        plan: { d: t, ts: 1, hedef: { kcal: 1800, birim: 'yuzde', c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 }, meal: { kahvalti: { sutyy: 1 } }, top: { kcal: 1800, c: 225, p: 90, f: 60 } } }],
-      menus: [{ id: 'mm', title: 'Menü', date: t, client: 'Ayşe', note: 'n', target: { kcal: 1800, p: 90, c: 225, f: 60 },
+        plan: { d: t, ts: 1, hedef: { kcal: 1800, birim: 'yuzde', c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 }, meal: { kahvalti: { sutyy: 1 } }, top: { kcal: 1800, c: 225, p: 90, f: 60 } },
+        lab: [{ id: 'l1', d: t, ad: 'HbA1c', deger: 6.8, birim: '%' }], pes: [{ id: 'p1', d: t, p: 'P', e: 'E', s: 'S', cozuldu: false }],
+        gorusme: [{ id: 'g1', d: t, t: 'not' }], dosya: { tani: 't', ilac: 'i', beslenme: 'b', oneri: 'o', gosterge: 'g' } }],
+      menus: [{ id: 'mm', title: 'Menü', date: t, client: 'Ayşe', c: 'c1', tur: 'geri', note: 'n', target: { kcal: 1800, p: 90, c: 225, f: 60 },
         meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50, o: '1 adet', a: 1 }], 'Öğle': [{ id: 'c_o', g: 100 }] } }],
       journal: [{ id: 'j1', d: t, type: 'Klinik', place: 'Hastane', hours: 2, title: 'Vaka', text: 'metin' }],
       customFoods: [{ id: 'c_o', n: 'Özel', cat: 'Eklediklerim', kcal: 100, p: 5, c: 10, f: 3, fib: 1, u: [['1 porsiyon', 50]] }],
@@ -2002,7 +2132,7 @@ function ornekDurum(tema) {
     });
     const EKRAN = {
       clients: ['ana', 'danisan', 'danisan/c1', 'yazdir/danisan/c1', 'yazdir/degisim/c1', 'hesapla/degisim?c=c1', 'hesapla/enerji?c=c1', 'ara'],
-      menus: ['ana', 'menu', 'menu/mm', 'yazdir/menu/mm', 'ara'],
+      menus: ['ana', 'menu', 'menu/mm', 'yazdir/menu/mm', 'ara', 'danisan/c1'],
       journal: ['ana', 'staj', 'yazdir/staj'],
       customFoods: ['besin', 'menu/mm', 'yazdir/menu/mm'],
       customCards: ['ana', 'kart'],
