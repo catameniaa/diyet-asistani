@@ -227,6 +227,7 @@
         '<a class="li chev" href="#/daha/sablon"><span class="ic">' + icon('table') + '</span><span class="grow"><div class="t">Numbers şablonları</div></span></a>' +
         '<a class="li chev" href="#/daha/kaynaknot"><span class="ic">' + icon('book') + '</span><span class="grow"><div class="t">Kaynak notları</div><div class="s">TÜBER 2022’de bulunan dizgi ve birim hataları</div></span></a></div>' +
 
+        '<div class="sect">Güvenlik</div>' + (DA.kasaKarti ? DA.kasaKarti() : '') +
         '<div class="sect">Yedek</div><div class="card"><p class="small muted" style="margin-top:0">Tüm verilerin (danışanlar, menüler, notlar, kartlar) yalnızca bu cihazda tutulur. Telefon değiştirirsen ya da tarayıcı verilerini temizlersen kaybolur — düzenli yedek al.</p>' +
         '<div class="res"><span class="l">Son yedek</span><span class="v" style="font-size:15px">' +
         (DA.state().ui.lastBackup ? esc(DA.fdate(DA.state().ui.lastBackup)) + '<span class="sub">' + DA.daysSinceBackup() + ' gün önce</span>' : 'Hiç alınmadı') + '</span></div>' +
@@ -318,8 +319,10 @@
     const k = liste.find((x) => x.ts === ts);
     if (!k) return DA.toast('Kopya bulunamadı');
     if (!confirm(saat(ts) + ' tarihli kopyaya dönülecek. Şu anki veri önce kopyaya alınır. Devam?')) return;
+    let metin;
+    try { metin = await DA.depoMetin(k); } catch (e) { return DA.toast(e.message && /kilid/.test(e.message) ? e.message : 'Kopya bu anahtarla çözülemedi'); }
     await DA.depoAnlik(true);
-    try { DA.replaceState(JSON.parse(k.json)); } catch (e) { return DA.toast('Kopya okunamadı'); }
+    try { DA.replaceState(JSON.parse(metin)); } catch (e) { return DA.toast('Kopya okunamadı'); }
     DA.closeSheet(); DA.render(); DA.toast('Geri yüklendi: ' + k.ozet.danisan + ' danışan');
   };
   DA.actions.depoTemizle = async () => {

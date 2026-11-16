@@ -2096,6 +2096,153 @@ function ornekDurum(tema) {
   kosulUi('Eski planda KH değişimlerden hesaplanıyor', /147\s*g/.test(eskiPlan.kart), eskiPlan.kart.slice(0, 120));
   kosulUi('Raporda "undefined" yok, toplam enerji basılıyor', !/undefined/.test(eskiPlan.rapor) && /Toplam enerji:\s*1150 kcal/.test(eskiPlan.rapor), eskiPlan.rapor.slice(0, 200));
 
+  /* ---- uygulama kilidi (kasa) ----
+     Gerçek sayfada uçtan uca: kur → diskte ve anlık kopyalarda düz metin
+     yok → yeniden yükle → kilit ekranı, bellek boş → kilitliyken kayıt diske
+     dokunmuyor → yanlış/doğru parola → kurtarma koduyla aç ve yeni parola →
+     eski parola artık geçmiyor → otomatik kilit süresi → kilidi kaldır. */
+  const ks = await tarayici.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  ks.on('dialog', (d) => d.accept());
+  await ks.goto(B + '#/ana', { waitUntil: 'domcontentloaded' });
+  await ks.waitForFunction(() => window.DA && DA.state && DA.kasa);
+  const GIZLI = 'Gizli Danışan Örnek';
+  const k1 = await ks.evaluate(async (ad) => {
+    DA.replaceState({ clients: [{ id: 'k1', name: ad, sex: 'K', h: 160, meas: [{ id: 'm', d: '2026-01-01', w: 60 }] }], ui: { theme: 'dark' } });
+    await DA.depoAnlik(true);                       /* kilitten önce düz metin kopya */
+    const once = (await DA.depoListe()).some((x) => String(x.json).indexOf(ad) >= 0);
+    const kod = await DA.kasa.kur('dogru-parola-1');
+    await DA.kasa.bekle();
+    const disk = localStorage.getItem(DA.depoAnahtari);
+    const kopyalar = await DA.depoListe();
+    return { once, kod, zarf: JSON.parse(disk).format, diskDuz: disk.indexOf(ad) >= 0 || disk.indexOf('Gizli') >= 0,
+      kopyaDuz: kopyalar.some((x) => String(x.json).indexOf('Gizli') >= 0), kopyaSayi: kopyalar.length,
+      hepsiSifreli: kopyalar.every((x) => x.sifreli) };
+  }, GIZLI);
+  uiEkle('Kilit: kurmadan önce düz metin kopya vardı (sınama koşulu)', true, k1.once);
+  uiEkle('Kilit: kurtarma kodu 6×4 Crockford', true, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){5}$/.test(k1.kod));
+  uiEkle('Kilit: disk kaydı şifreli zarf', 'diyet-asistani-kasa', k1.zarf);
+  uiEkle('Kilit: diskte düz metin yok', false, k1.diskDuz);
+  uiEkle('Kilit: anlık kopyalarda düz metin yok (eski kopyalar silindi)', false, k1.kopyaDuz);
+  uiEkle('Kilit: yeni anlık kopya şifreli', 'true/true', (k1.kopyaSayi >= 1) + '/' + k1.hepsiSifreli);
+
+  await ks.reload({ waitUntil: 'domcontentloaded' });
+  await ks.waitForFunction(() => window.DA && DA.state && DA.kasa);
+  await ks.waitForSelector('.kilit-ekran form[data-form=kasaAc]', { timeout: 10000 });
+  const k2 = await ks.evaluate(async (ad) => {
+    /* kilitliyken boş durumun anlık kopyası alınmaz (açılıştaki otomatik
+       kopya da dahil): alınsaydı "geri dön" listesinde boş bir kayıt dururdu */
+    const once = (await DA.depoListe()).length;
+    const alindi = await DA.depoAnlik(true);
+    const kopya = alindi + '/' + ((await DA.depoListe()).length === once);
+    const o = { kopya, ekran: document.body.classList.contains('kasa-kilitli'), bellek: DA.state().clients.length,
+      sizinti: document.body.innerText.indexOf(ad) >= 0, tema: document.documentElement.getAttribute('data-theme'),
+      sekmeGizli: getComputedStyle(document.querySelector('#tabs')).display === 'none' };
+    /* başka adrese gitmek kilidi aşmaz */
+    location.hash = 'danisan/k1'; DA.render(false);
+    o.adresKilitli = !!document.querySelector('.kilit-ekran') && document.body.innerText.indexOf(ad) < 0;
+    /* kilitliyken kayıt diske dokunmaz */
+    const disk = localStorage.getItem(DA.depoAnahtari);
+    DA.state().clients.push({ id: 'x', name: 'Boş', meas: [] });
+    o.kayit = DA.save() + '/' + (localStorage.getItem(DA.depoAnahtari) === disk);
+    DA.state().clients = [];
+    /* dokunma hedefleri */
+    o.kucuk = Array.from(document.querySelectorAll('.kilit-ekran button,.kilit-ekran input')).filter((e) => {
+      const r = e.getBoundingClientRect(); return r.height < 44; }).length;
+    return o;
+  }, GIZLI);
+  uiEkle('Kilit: yeniden yüklenince kilit ekranı', true, k2.ekran);
+  uiEkle('Kilit: kilitliyken bellek boş', 0, k2.bellek);
+  uiEkle('Kilit: kilitliyken ekranda danışan adı yok', false, k2.sizinti);
+  uiEkle('Kilit: kilit ekranı seçili temada', 'dark', k2.tema);
+  uiEkle('Kilit: sekme çubuğu gizli', true, k2.sekmeGizli);
+  uiEkle('Kilit: başka adres kilidi aşmıyor', true, k2.adresKilitli);
+  uiEkle('Kilit: kilitliyken kayıt diske yazılmıyor', 'false/true', k2.kayit);
+  uiEkle('Kilit: kilitliyken anlık kopya alınmıyor', 'false/true', k2.kopya);
+  uiEkle('Kilit ekranı dokunma hedefleri 44 px', 0, k2.kucuk);
+
+  /* yanlış ve doğru parola: gerçek form üzerinden. Önceki adım adresi
+     değiştirdi; kilit aşılmışsa form bulunamaz ve test çökmesin diye ana
+     sayfaya dönülür (aşılma yukarıdaki testte zaten kaydedildi). */
+  await ks.evaluate(() => { location.hash = 'ana'; DA.render(false); });
+  await ks.fill('.kilit-ekran input[name=p]', 'yanlis-parola');
+  await ks.click('.kilit-ekran button[type=submit]');
+  await ks.waitForFunction(() => /yanlış/i.test((document.querySelector('#kasaHata') || {}).textContent || ''), null, { timeout: 15000 });
+  const yanlisSonra = await ks.evaluate(() => DA.state().clients.length);
+  await ks.fill('.kilit-ekran input[name=p]', 'dogru-parola-1');
+  await ks.click('.kilit-ekran button[type=submit]');
+  await ks.waitForFunction(() => DA.kasa.acik(), null, { timeout: 15000 });
+  const k3 = await ks.evaluate(async (ad) => {
+    /* Her adım hatayı değer olarak döner: bozuk kodda bir adım patlarsa
+       sonraki ölçümler yine yapılır, koşu çökmez. */
+    const dene = async (f) => { try { return await f(); } catch (e) { return 'HATA ' + e.message; } };
+    const o = { ad: (DA.state().clients[0] || {}).name, sekme: getComputedStyle(document.querySelector('#tabs')).display !== 'none' };
+    /* açıkken değişiklik şifreli kalıcı */
+    DA.state().clients.push({ id: 'k2', name: 'İkinci', sex: 'E', h: 170, meas: [] }); DA.save(); await DA.kasa.bekle();
+    o.diskDuz = localStorage.getItem(DA.depoAnahtari).indexOf('İkinci') >= 0;
+    /* parola değiştir: yanlış eskiyle reddedilir */
+    try { await DA.kasa.parolaDegistir('yanlis', 'yeni-parola-22'); o.yanlisEski = 'kabul'; } catch (e) { o.yanlisEski = e.message; }
+    await dene(() => DA.kasa.parolaDegistir('dogru-parola-1', 'yeni-parola-22'));
+    await dene(() => DA.kasa.kilitle());
+    o.kilitlendi = DA.state().clients.length + '/' + !!document.querySelector('.kilit-ekran');
+    try { await DA.kasa.kilitAc('dogru-parola-1'); o.eskiParola = 'açtı'; } catch (e) { o.eskiParola = 'reddetti'; }
+    await dene(() => DA.kasa.kilitAc('yeni-parola-22'));
+    o.yeniParola = DA.state().clients.length;
+    await dene(() => DA.kasa.kilitle());
+    return o;
+  }, GIZLI);
+  uiEkle('Kilit: yanlış parolada veri açılmıyor', 0, yanlisSonra);
+  uiEkle('Kilit: doğru parolada veri geliyor', GIZLI, k3.ad);
+  uiEkle('Kilit: açılınca sekmeler görünüyor', true, k3.sekme);
+  uiEkle('Kilit: açıkken yapılan kayıt da şifreli', false, k3.diskDuz);
+  uiEkle('Kilit: yanlış eski parolayla değiştirilemiyor', 'yanlis', k3.yanlisEski);
+  uiEkle('Kilit: kilitle → bellek boş, kilit ekranı', '0/true', k3.kilitlendi);
+  uiEkle('Kilit: eski parola artık açmıyor', 'reddetti', k3.eskiParola);
+  uiEkle('Kilit: yeni parola açıyor', 2, k3.yeniParola);
+
+  /* kurtarma kodu: küçük harf ve boşlukla yazılmış da kabul */
+  const k4 = await ks.evaluate(async (kod) => {
+    const dene = async (f) => { try { return await f(); } catch (e) { return 'HATA ' + e.message; } };
+    const o = {};
+    try { await DA.kasa.kurtar('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF'); o.yanlisKod = 'kabul'; } catch (e) { o.yanlisKod = 'red'; }
+    o.kurtarHata = await dene(() => DA.kasa.kurtar(kod.toLowerCase().replace(/-/g, ' ')));
+    DA.render(false);
+    o.yeniForm = !!document.querySelector('.kilit-ekran form[data-form=kasaYeni]') && DA.state().clients.length === 0;
+    await dene(() => DA.kasa.yeniParolaKur('ucuncu-parola-3'));
+    o.acildi = DA.state().clients.length;
+    await dene(() => DA.kasa.kilitle());
+    try { await DA.kasa.kilitAc('yeni-parola-22'); o.oncekiParola = 'açtı'; } catch (e) { o.oncekiParola = 'reddetti'; }
+    await dene(() => DA.kasa.kilitAc('ucuncu-parola-3'));
+    o.ucuncu = DA.state().clients.length;
+    /* otomatik kilit: 1 dk seçili; 30 sn arka plan kilitlemez, 61 sn kilitler */
+    DA.state().ui.kilitSure = 1; DA.save();
+    o.otuz = DA.kasa.gorunur(30000);
+    o.altmisBir = DA.kasa.gorunur(61000);
+    await DA.kasa.bekle(); await new Promise((r) => setTimeout(r, 50));
+    o.otoKilit = !DA.kasa.acik() && DA.state().clients.length === 0;
+    /* kaldır: yanlış parolayla olmaz; doğruyla düz metne döner */
+    await dene(() => DA.kasa.kilitAc('ucuncu-parola-3'));
+    try { await DA.kasa.kaldir('yanlis'); o.yanlisKaldir = 'kaldırdı'; } catch (e) { o.yanlisKaldir = 'red'; }
+    await dene(() => DA.kasa.kaldir('ucuncu-parola-3'));
+    const disk = localStorage.getItem(DA.depoAnahtari) || '';
+    o.duzeDondu = disk.indexOf('Gizli Danışan Örnek') >= 0 && !DA.kasa.kurulu();
+    await new Promise((r) => setTimeout(r, 50));
+    const kop = await DA.depoListe();
+    o.kopyalarDuz = kop.length >= 1 && kop.every((x) => !x.sifreli);
+    return o;
+  }, k1.kod);
+  uiEkle('Kurtarma: yanlış kod reddediliyor', 'red', k4.yanlisKod);
+  uiEkle('Kurtarma: küçük harf ve boşlukla yazılan kod kabul', undefined, k4.kurtarHata);
+  uiEkle('Kurtarma: kod doğru → yeni parola istenir, veri henüz açılmaz', true, k4.yeniForm);
+  uiEkle('Kurtarma: yeni parolayla veri açılıyor', 2, k4.acildi);
+  uiEkle('Kurtarma: unutulan parola artık geçmiyor', 'reddetti', k4.oncekiParola);
+  uiEkle('Kurtarma: yeni parola sonraki açılışta geçiyor', 2, k4.ucuncu);
+  uiEkle('Otomatik kilit: süre dolmadan kilitlemiyor', false, k4.otuz);
+  uiEkle('Otomatik kilit: süre dolunca kilitliyor', true, k4.altmisBir && k4.otoKilit);
+  uiEkle('Kilit kaldırma: yanlış parolayla olmuyor', 'red', k4.yanlisKaldir);
+  uiEkle('Kilit kaldırma: kayıt düz metne dönüyor', true, k4.duzeDondu);
+  uiEkle('Kilit kaldırma: şifreli kopyalar yerine düz kopya', true, k4.kopyalarDuz);
+  await ks.close();
+
   /* ---- yedek tarihi ----
      Geri yükleme ekranı "Yedek tarihi"ni o.lastBackup'tan okuyordu; tarih
      durumda ui.lastBackup altında durduğu için satır hiç görünmüyordu. */

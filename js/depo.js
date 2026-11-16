@@ -50,14 +50,19 @@
 
   /* DA.save() her çağrıldığında tetiklenir; aralık dolmadıysa hiçbir şey yapmaz. */
   DA.depoAnlik = (zorla) => {
-    const simdi = Date.now();
+    const simdi = Date.now(), K = DA._kasa || {};
+    /* Kilitliyken bellekteki durum boştur: boş durumun kopyası alınmaz. */
+    if (K.zarf && !K.yazici) return Promise.resolve(false);
     if (!zorla && (yazilyor || simdi - sonKopya < ARALIK)) return Promise.resolve(false);
     yazilyor = true;
     const S = DA.state();
     let json;
     try { json = JSON.stringify(S); } catch (e) { yazilyor = false; return Promise.resolve(false); }
-    return islem('readwrite', (st) => {
-      st.put({ ts: simdi, json, ozet: ozet(S), boyut: json.length });
+    /* Kilit kuruluysa kopya da şifreli: IndexedDB'de düz metin kalsaydı
+       kilit yalnız ekranı korur, veriyi korumazdı. */
+    const sifreli = !!(K.zarf && K.sifrele);
+    return (sifreli ? K.sifrele(json) : Promise.resolve(json)).then((veri) => islem('readwrite', (st) => {
+      st.put({ ts: simdi, json: veri, sifreli, ozet: ozet(S), boyut: json.length });
       /* En eskileri at: anahtar zaman damgası olduğu için sıra doğal. */
       const cur = st.openCursor();
       const hepsi = [];
@@ -67,8 +72,16 @@
         hepsi.sort((a, b) => a - b);
         hepsi.slice(0, Math.max(0, hepsi.length - TUT)).forEach((k) => st.delete(k));
       };
-    }).then(() => { sonKopya = simdi; yazilyor = false; return true; })
+    })).then(() => { sonKopya = simdi; yazilyor = false; return true; })
       .catch(() => { yazilyor = false; return false; });
+  };
+
+  /* Kopyanın düz metni: şifreliyse kasa anahtarıyla çözülür (kilit açık olmalı). */
+  DA.depoMetin = async (k) => {
+    if (!k.sifreli) return k.json;
+    const K = DA._kasa || {};
+    if (!K.coz) throw new Error('Bu kopya şifreli; önce kilidi aç');
+    return K.coz(k.json);
   };
 
   DA.depoListe = () => islem('readonly', (st) => st.getAll())

@@ -120,9 +120,27 @@
     return o;
   };
 
+  /* ---- kasa (uygulama kilidi, js/kasa.js) ----
+     Kilit açıkken diskteki kayıt şifreli bir zarftır; açılışta çözülemez
+     (parola gerekir), bu yüzden durum boş başlar ve kilit ekranı çizilir.
+     zarf: diskteki şifreli kayıt (kilit kuruluysa dolu)
+     yazici: kilit açıldığında kasa.js'in verdiği şifreleyip yazan işlev;
+             null ise kasa KAPALI (kilitli) demektir ve diske yazılmaz. */
+  const KASA = 'diyet-asistani-kasa';
+  DA._kasa = { zarf: null, yazici: null, sifrele: null, coz: null };
+  DA.depoAnahtari = KEY;
   try {
     const raw = localStorage.getItem(KEY);
-    state = Object.assign(defaults(), raw ? DA.veriDenetle(JSON.parse(raw)) : {});
+    const ham = raw ? JSON.parse(raw) : null;
+    if (ham && ham.format === KASA && ham.data && ham.anahtar) {
+      DA._kasa.zarf = ham;
+      state = defaults();
+      /* Tema şifresiz taşınır: kilit ekranı kullanıcının seçtiği temada
+         açılsın. Başka hiçbir alan zarfın dışında değil. */
+      if (['auto', 'light', 'dark'].indexOf(ham.tema) >= 0) state.ui.theme = ham.tema;
+    } else {
+      state = Object.assign(defaults(), ham ? DA.veriDenetle(ham) : {});
+    }
   } catch (e) {
     state = defaults();
     try { _ham = localStorage.getItem(KEY) || ''; } catch (e2) { _ham = ''; }
@@ -139,6 +157,15 @@
   DA.depoKilitAc = () => { _kilit = ''; _ham = ''; DA.save(); };
   DA.save = () => {
     if (_kilit) return false;          /* bozuk kaydın üzerine yazma */
+    const K = DA._kasa;
+    if (K.zarf) {
+      /* Kilitliyken bellekteki durum boştur; diske yazılsaydı şifreli kayıt
+         boş bir kayıtla ezilir, bütün veri giderdi. */
+      if (!K.yazici) return false;
+      K.yazici(state);
+      if (DA.depoAnlik) DA.depoAnlik();
+      return true;
+    }
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
       if (DA.depoAnlik) DA.depoAnlik();   /* arka planda anlık kopya (js/depo.js) */
@@ -150,6 +177,9 @@
       return false;
     }
   };
+  /* Kilit açılınca çözülen kayıt belleğe alınır; kilitlenince bellek
+     boşaltılır. Diske yazmaz: yazma kasa.js'in işi. */
+  DA._durumAta = (o) => { state = Object.assign(defaults(), DA.veriDenetle(o)); DA.applyTheme(); };
   DA.replaceState = (o) => { state = Object.assign(defaults(), DA.veriDenetle(o)); DA.save(); DA.applyTheme(); };
 
   /* ---- marka ---- */
@@ -439,7 +469,10 @@
   DA.render = (keepScroll) => {
     const { parts, q } = parseHash();
     const root = parts[0] || 'ana';
-    const view = DA.views[root] || DA.views.ana;
+    /* Kasa kilitliyse hangi adres istenirse istensin yalnız kilit ekranı */
+    const kilitli = !!(DA._kasa.zarf && !DA._kasa.yazici);
+    document.body.classList.toggle('kasa-kilitli', kilitli);
+    const view = kilitli && DA.views._kilitEkrani ? DA.views._kilitEkrani : (DA.views[root] || DA.views.ana);
     let out;
     try { out = view(parts.slice(1), q); }
     catch (e) { console.error(e); out = { title: 'Hata', html: '<div class="card"><b>Bir şeyler ters gitti.</b><p class="muted small">' + DA.esc(e.message) + '</p><a class="btn" href="#/ana">Ana sayfa</a></div>' }; }

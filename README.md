@@ -58,6 +58,12 @@ metin indirilebilir kalır. Her kayıtta IndexedDB'de ayrı bir depoya anlık ko
 dönülebilir. Anlık kopyalar cihazda durur; cihaz kaybı ve site verilerini temizleme için
 dosya yedeği şarttır.
 
+Uygulama kilidi (Ayarlar → Güvenlik): kurulunca kayıt ve anlık kopyalar cihazda şifreli durur
+(AES-GCM 256). Rastgele veri anahtarı iki kez sarılır: paroladan ve bir kez gösterilen 24 karakterlik
+kurtarma kodundan türetilen anahtarlarla (PBKDF2-SHA256, 310 000 tur). Parola unutulursa kod açar ve
+yeni parola istenir; ikisi de kaybolursa veri açılamaz (sunucu yok). Uygulama arka planda seçilen
+süreden (hemen, 1, 5, 15 dk) uzun kalınca kilitlenir. Kilitliyken bellek boştur ve diske yazılmaz.
+
 Şifreli yedek: yedek dosyası parolayla şifrelenebilir (WebCrypto AES-GCM 256,
 PBKDF2-SHA256 310 000 tur, her dosyada yeni tuz ve IV). Dosya iCloud, Drive ya da
 e-postaya çıksa bile danışan bilgileri parola olmadan okunamaz. Parola kaybolursa

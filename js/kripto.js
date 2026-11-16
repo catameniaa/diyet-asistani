@@ -32,6 +32,9 @@
     return out;
   };
 
+  /* Uygulama kilidi (js/kasa.js) aynı kodlamayı kullanır */
+  DA._b64 = b64; DA._deB64 = deB64;
+
   async function anahtar(parola, tuz, tur) {
     const ham = await kripto().importKey('raw', new TextEncoder().encode(parola), 'PBKDF2', false, ['deriveKey']);
     return kripto().deriveKey(
