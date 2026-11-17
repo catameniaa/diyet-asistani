@@ -301,7 +301,7 @@
     ],
     referans: [
       ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu', 'enerjiref']],
-      ['Porsiyon ve besin değerleri', ['porsiyon', 'porsiyonbesin', 'istege']],
+      ['Porsiyon ve besin değerleri', ['degisimliste', 'porsiyon', 'porsiyonbesin', 'istege']],
       ['Yaşam dönemleri', ['bebek', 'gebe', 'pal', 'vejetaryen']],
       ['Örnek planlar', ['ornekmenu']],
       ['Yöntem', ['yontem']]

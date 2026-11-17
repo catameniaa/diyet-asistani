@@ -49,6 +49,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   notları, izlenecek göstergeler; rapor bunları da basar
 - Menüler danışana kimliğiyle bağlanır (eskiden serbest metin): danışan dosyasında listelenir,
   danışanın adı değişince menüde ve aramada güncel ad görünür
+- Besin değişim listesi (Referans): 10 grupta ~230 besinin 1 değişimlik ev ölçüsü ve brüt-net gramı,
+  sebzelerde çiğ ve pişmiş ölçü, yemek ve tatlıların değişim karşılığı ve kcal'i; grup süzgeci ve
+  arama. Diyet listesi yazıcının seçenekleri de buradan gelir
 - Öğün şablonları: menüde bir öğün "Standart kahvaltım" gibi adla kaydedilir, başka menülerin
   öğünlerine tek dokunuşla eklenir (kopya olarak; şablon ile menü birbirini bozmaz); yedekle taşınır
 - Çıktıda bölüm aç/kapa: danışan raporu (ölçüm, grafik, değişim planı, enerji ve makrolar, biyokimya,

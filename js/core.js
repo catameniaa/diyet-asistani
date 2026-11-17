@@ -552,6 +552,7 @@
     yontem: ['js/data-yontem.js'],
     sporcu: ['js/data-sporcu.js'],
     sporperf: ['js/data-sporperf.js'],
+    degisim: ['js/data-degisim.js'],
     vejetaryen: ['js/data-vejetaryen.js']
   };
   const _yuklu = {};

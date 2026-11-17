@@ -36,6 +36,7 @@ const ROTALAR = [
   '#/hesapla/cocukenerji', '#/hesapla/gy', '#/hesapla/nrs', '#/hesapla/must', '#/hesapla/mnasf',
   '#/hesapla/diyabetrisk', '#/hesapla/sporcu', '#/hesapla/terleme', '#/hesapla/sporke',
   '#/hesapla/sporkh', '#/hesapla/sporyaris', '#/hesapla/derikivrim', '#/hesapla/takviye',
+  '#/hesapla/degisimliste',
   '#/hesapla/tuber', '#/hesapla/oruntu', '#/hesapla/hedef', '#/hesapla/porsiyon',
   '#/hesapla/porsiyonbesin', '#/hesapla/istege', '#/hesapla/bebek', '#/hesapla/gebe',
   '#/hesapla/pal', '#/hesapla/ornekmenu', '#/hesapla/enerjiref', '#/hesapla/yontem', '#/hesapla/vejetaryen',
@@ -1272,15 +1273,18 @@ function ornekDurum(tema) {
     o.zySebze = satir('Zeytinyağlı sebze yemeği').slice(1).join(' | ');
     o.salataYagsiz = satir('Salata, yağsız').slice(1).join(' | ');
     o.salataZy = satir('Salata, zeytinyağlı').slice(1).join(' | ');
-    o.pilavKcal = satir('Pilav (pirinç, bulgur)')[2];
+    o.pilavKcal = satir('Pirinç pilavı')[2] + '/' + satir('Bulgur pilavı, makarna')[2];
     o.rollKcal = satir('Tam buğday ya da çavdar roll ekmek (hastane)')[2];
-    o.nohutKcal = satir('Nohut, kuru fasulye vb.')[2];
+    /* Kasım 2026: nohut 3 yk, mercimek 2 yk (kullanıcının onayladığı liste) */
+    const olcu = (ad) => { const r = document.querySelector('#exYemek tr[data-yemek="' + ad + '"] .muted'); return r ? r.textContent : ''; };
+    o.nohutKcal = [olcu('Nohut, kuru fasulye, barbunya')].concat(satir('Nohut, kuru fasulye, barbunya').slice(1)).join(' | ') + ' / ' +
+      [olcu('Mercimek')].concat(satir('Mercimek').slice(1)).join(' | ');
     /* Çıktı yalnız plandaki gruplarla yazılabilen yemekleri basar */
     const cikti = () => { location.hash = 'yazdir/degisim'; DA.render(false);
       const b = document.querySelector('.printdoc .yemekler'); return b ? b.textContent : ''; };
     G.ex = { eyg: 6, sebze: 3 };
     const yagsiz = cikti();
-    o.yagsizPlan = [/Salata, yağsız/.test(yagsiz), /Pilav/.test(yagsiz), /Çorba/.test(yagsiz), /zeytinyağlı/i.test(yagsiz), /Nohut/.test(yagsiz)].join(',');
+    o.yagsizPlan = [/Salata, yağsız/.test(yagsiz), /pilav/i.test(yagsiz), /Çorba/.test(yagsiz), /zeytinyağlı/i.test(yagsiz), /Nohut/.test(yagsiz)].join(',');
     G.ex = { eyg: 6, sebze: 3, yag: 2 };
     o.yagliPlan = /Çorba, 1 kase1\sekmek \+ 1\syağ/.test(cikti());
     G.ex = {};
@@ -1303,9 +1307,9 @@ function ornekDurum(tema) {
   uiEkle('Yemek: zeytinyağlı sebze yemeği', '1 sebze + 1 yağ | 77', bk.zySebze);
   uiEkle('Yemek: yağsız salata', '1 sebze | 32', bk.salataYagsiz);
   uiEkle('Yemek: zeytinyağlı salata', '1 sebze + 1 yağ | 77', bk.salataZy);
-  uiEkle('Yemek: pilava yağ eklenmiyor', '68', bk.pilavKcal);
+  uiEkle('Yemek: pilava yağ eklenmiyor (pirinç 2 yk, bulgur 3 yk)', '68/68', bk.pilavKcal);
   uiEkle('Yemek: hastane roll ekmeği 2 değişim', '136', bk.rollKcal);
-  uiEkle('Yemek: 4 yk nohut 1 baklagil', '80', bk.nohutKcal);
+  uiEkle('Yemek: 3 yk nohut ve 2 yk mercimek 1 baklagil', '3 tepeleme yemek kaşığı (pişmiş) | 1 kuru baklagil | 80 / 2 tepeleme yemek kaşığı (pişmiş) | 1 kuru baklagil | 80', bk.nohutKcal);
   uiEkle('Çıktı: yağsız planda yalnız yazılabilen yemekler (salata, pilav, çorba, zy, nohut)', 'true,true,false,false,false', bk.yagsizPlan);
   uiEkle('Çıktı: yağlı planda çorba karşılığı basılıyor', true, bk.yagliPlan);
 
@@ -1720,20 +1724,20 @@ function ornekDurum(tema) {
   uiEkle('Liste: dağıtılmamış plan önce öğünlere dağıtılıp kopyalanıyor', true, ls.ogunKopya);
   uiEkle('Liste: oluşturulunca listeye gidiliyor', true, ls.hash);
   uiEkle('Liste: plan sonradan değişse de liste kopyası değişmiyor', 3, ls.bagimsiz);
-  uiEkle('Liste: yeni satır yazım sırasındaki yerine giriyor', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 1 ince dilim ekmek', ls.sira);
+  uiEkle('Liste: yeni satır yazım sırasındaki yerine giriyor', '1 su bardağı yarım yağlı süt > 2 parmak boyutunda beyaz peynir > 1 ince dilim ekmek', ls.sira);
   uiEkle('Liste: çarpan kaydediliyor', 2, ls.carpan);
   uiEkle('Liste: öğün durumu (hedefe göre)', 'Süt (yarım yağlı) 1/1 ✓ | Et 1/1 ✓ | Ekmek 2/2 ✓ | Yağ 0/1 eksik', ls.cipKahvalti);
-  uiEkle('Liste: satır metni çarpanla', '1 su bardağı yarım yağlı süt / 1 dilim beyaz peynir / 2 ince dilim ekmek', ls.satirMetni);
+  uiEkle('Liste: satır metni çarpanla', '1 su bardağı yarım yağlı süt / 2 parmak boyutunda beyaz peynir / 2 ince dilim ekmek', ls.satirMetni);
   uiEkle('Liste: seçicide kalan değişim', 'Kalan: 1 meyve · 1 kuruyemiş', ls.kalan);
   uiEkle('Liste: seçicide eksik grup önde', '1 meyve', ls.ilkSecenek);
   uiEkle('Liste: seçimden sonra sayfa açık, kalan güncel', true, ls.sayfaAcik);
   uiEkle('Liste kuralları: elma tek, gece peynir, bulgur + ekmek', 'araEs,bulgurEkmek,gecePeynir', ls.kural1);
   uiEkle('Liste kuralları: bademle eşlenince not kalkıyor', 'bulgurEkmek,gecePeynir', ls.kural2);
-  uiEkle('Liste: zeytin peynirin ardına, ekmeğin önüne giriyor', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin > 1 ince dilim ekmek', ls.zeytinYeri);
-  uiEkle('Liste: elle bozulan sıra', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin', ls.bozuk);
+  uiEkle('Liste: zeytin peynirin ardına, ekmeğin önüne giriyor', '1 su bardağı yarım yağlı süt > 2 parmak boyutunda beyaz peynir > 10 orta boy zeytin > 1 ince dilim ekmek', ls.zeytinYeri);
+  uiEkle('Liste: elle bozulan sıra', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 2 parmak boyutunda beyaz peynir > 10 orta boy zeytin', ls.bozuk);
   uiEkle('Liste: sıra notunda diz düğmesi', true, ls.dizVar);
-  uiEkle('Liste: yazım sırasına diziliyor (aynı sıradakiler yer değiştirmiyor)', '1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin > 1 ince dilim ekmek', ls.dizildi);
-  uiEkle('Liste: dizme geri alınıyor', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 1 dilim beyaz peynir > 5 adet zeytin', ls.geriAlindi);
+  uiEkle('Liste: yazım sırasına diziliyor (aynı sıradakiler yer değiştirmiyor)', '1 su bardağı yarım yağlı süt > 2 parmak boyutunda beyaz peynir > 10 orta boy zeytin > 1 ince dilim ekmek', ls.dizildi);
+  uiEkle('Liste: dizme geri alınıyor', '1 ince dilim ekmek > 1 su bardağı yarım yağlı süt > 2 parmak boyutunda beyaz peynir > 10 orta boy zeytin', ls.geriAlindi);
   uiEkle('Liste: grupsuz kendi satırı reddediliyor', true, ls.grupsuzReddedildi);
   uiEkle('Liste: kendi satırı ekleniyor', '2 adet galeta:{"eyg":1}', ls.kendi);
   uiEkle('Liste: kendi satırı seçeneklere kaydediliyor', true, ls.kaydedildi);
@@ -2111,6 +2115,113 @@ function ornekDurum(tema) {
       }, 0));
     } catch (e) { o.hata = String((e && e.message) || e); ui.theme = eskiTema; DA.applyTheme(); return o; }
   });
+  /* ---- besin değişim listesi (js/data-degisim.js) ----
+     Beklenenler kullanıcının verdiği ana listeden elle okundu (ör. mercimek
+     "2 yemek kaşığı, pişmiş tepeleme, 25 g çiğ"; zeytin "10 orta boy,
+     40-35 g"; çilek "18 orta boy, 305-300 g") ve onun kararlarından
+     (çorba 1 ekmek + 1 yağ; light ürünler yarım yağlı süt). Menemen kcal'i
+     uygulamanın değişim değerleriyle: 3 et × 69 + 2 sebze × 32 + 2 yağ × 45
+     = 207 + 64 + 90 = 361. */
+  const dl = await sayfa.evaluate(async () => {
+    const o = {}, S = DA.state(), ui = S.ui, eskiT = DA.toast; DA.toast = () => {};
+    try {
+      await DA.need(['degisim']);
+      const D = DA.data.degisim, bul = (ad) => D.satirlar.find((r) => r.ad === ad) || {};
+      const yaz = (r) => [r.olcu, r.miktar, JSON.stringify(r.d)].join(' | ');
+      o.sayi = D.gruplar.map((g) => g[0] + ':' + D.satirlar.filter((r) => r.g === g[0]).length).join(',');
+      o.mercimek = yaz(bul('Mercimek (yeşil, kırmızı)'));
+      o.kusbasi = yaz(bul('Kuşbaşı et (yağsız)'));
+      o.zeytin = yaz(bul('Zeytin (siyah ya da yeşil)'));
+      o.cilek = yaz(bul('Çilek'));
+      o.ispanak = bul('Ispanak').olcu + ' | ' + bul('Ispanak').pisOlcu;
+      o.yogurt = bul('Yoğurt (light)').t + ' | ' + JSON.stringify(bul('Yoğurt (light)').d) + ' / ' + bul('Ev yoğurdu').t + ' | ' + JSON.stringify(bul('Ev yoğurdu').d);
+      o.karsilik = ['Mercimek çorbası', 'Menemen', 'Boza', 'Humus'].map((a) => JSON.stringify(bul(a).d)).join(' ');
+      o.atlanan = D.satirlar.filter((r) => /^(yaban mersini|kıyma|biftek|hindi füme|haşlanmış mısır)(\s*\(|$)/i.test(r.ad)).map((r) => r.ad).join(',');
+      /* bütünlük: ad ve ölçü dolu, kimlik tekil, karşılık yalnız değişim
+         gruplarında ve pozitif; serbest satırın karşılığı boş */
+      const gk = DA.exchange.groups.map((g) => g.k), idler = {};
+      o.butunluk = D.satirlar.filter((r) => {
+        const k = Object.keys(r.d), tekrar = idler[r.id]; idler[r.id] = 1;
+        return !r.ad || !r.olcu || tekrar || (r.serbest ? k.length !== 0 : !k.length || k.some((x) => gk.indexOf(x) < 0 || !(r.d[x] > 0)));
+      }).map((r) => r.ad).join(',');
+      const sec = (t) => D.secenekler.filter((e) => e.t === t);
+      o.secenek = [sec('5–6 yemek kaşığı ıspanak (pişmiş)').map((e) => JSON.stringify(e.d)).join(''),
+        sec('1 su bardağı süt').map((e) => JSON.stringify(e.d)).join(''),
+        sec('1 su bardağı yarım yağlı süt').map((e) => JSON.stringify(e.d)).join('')].join(' ');
+      /* Kaynakların adı hiçbir dosyada geçmez (sahiplerinin isteği). Aranan
+         adlar bu testte de açık yazılmasın diye base64 (latin-1) tutulur. */
+      const dosyalar = ['index.html'].concat(Array.from(document.querySelectorAll('script[src]')).map((x) => x.getAttribute('src')), ['js/data-degisim.js']);
+      const metinler = await Promise.all(dosyalar.map((f) => fetch(f).then((r) => r.text()).catch(() => '')));
+      o.adYok = dosyalar.filter((f, i) => new RegExp(atob('c21hcnRccypkaXlldHxlbWlyY2FufHR1ZmFufGVyZ2VuW2PnXQ=='), 'i').test(metinler[i])).join(',');
+
+      /* Referans ekranı */
+      ui.dlGrup = ''; ui.dlQ = '';
+      location.hash = 'hesapla/degisimliste'; DA.render(false);
+      o.cipler = document.querySelectorAll('#dlGruplar .chip').length;
+      DA.actions.dlGrup({ dataset: { g: 'baklagil' } });
+      const kartlar = document.querySelectorAll('.dl-grup');
+      const mer = document.querySelector('.dl-grup tr[data-id="' + bul('Mercimek (yeşil, kırmızı)').id + '"]');
+      o.grup = kartlar.length + '/' + (kartlar[0] || {}).dataset.g + '/' + document.querySelectorAll('.dl-grup tbody tr').length + '/' + (mer ? mer.cells[1].textContent : '');
+      DA.actions.dlGrup({ dataset: { g: 'sut' } });
+      const yo = document.querySelector('.dl-grup tr[data-id="' + bul('Yoğurt (light)').id + '"] .dl-kars');
+      o.sutKars = yo ? yo.textContent.replace(/\s+/g, ' ') : '';
+      DA.actions.dlGrup({ dataset: { g: 'yemek' } });
+      const me = document.querySelector('.dl-grup tr[data-id="' + bul('Menemen').id + '"]');
+      o.menemen = me ? (me.cells[2].textContent + ' | ' + me.cells[3].textContent).replace(/\s+/g, ' ') : '';
+      DA.actions.dlGrup({ dataset: { g: '' } });
+      DA.live.dlAra({ value: 'pilav' });
+      o.ara = Array.from(document.querySelectorAll('#dlList tbody tr b')).map((b) => b.textContent).join(',');
+      DA.live.dlAra({ value: 'zzzz' });
+      o.bos = !!document.querySelector('#dlList .empty');
+      ui.dlQ = ''; ui.dlGrup = '';
+
+      /* Diyet listesi seçicisi: değişim listesinin satırları gelir, aynı
+         metin bir kez görünür, seçilen satır karşılığıyla eklenir */
+      S.listeler = (S.listeler || []).filter((l) => l.id !== 'dlx');
+      S.listeler.push({ id: 'dlx', ad: 'Seçici', d: '2026-02-05', c: '', ex: { baklagil: 1 }, meal: { kahvalti: { baklagil: 1 } }, hedef: { kcal: 1500 },
+        ogun: {}, not: '', ayar: {} });
+      location.hash = 'liste/dlx'; DA.render(false);
+      DA.actions.listeEkle({ dataset: { l: 'dlx', o: 'kahvalti' } });
+      const secenekler = () => Array.from(document.querySelectorAll('#listeSecenek .li .t')).map((x) => x.textContent);
+      DA.live.listeAra({ value: 'ıspanak', dataset: { l: 'dlx', o: 'kahvalti' } });
+      o.ispSec = secenekler().join(' / ');
+      DA.live.listeAra({ value: 'su bardağı süt', dataset: { l: 'dlx', o: 'kahvalti' } });
+      o.tekil = secenekler().filter((t) => t === '1 su bardağı süt').length;
+      DA.live.listeAra({ value: 'mercimek (yeşil', dataset: { l: 'dlx', o: 'kahvalti' } });
+      const b = document.querySelector('#listeSecenek [data-e="' + bul('Mercimek (yeşil, kırmızı)').id + '"]');
+      if (b) DA.actions.listeSec(b);
+      const L = S.listeler.find((l) => l.id === 'dlx'), x = (L.ogun.kahvalti || [])[0] || {};
+      o.secildi = x.t + ' | ' + JSON.stringify(x.d);
+      DA.closeSheet();
+    } catch (e) { o.hata = String((e && e.message) || e); }
+    S.listeler = (S.listeler || []).filter((l) => l.id !== 'dlx'); DA.save(); DA.toast = eskiT;
+    return o;
+  });
+  uiEkle('Değişim listesi: akış hatasız', '', dl.hata || '');
+  uiEkle('Değişim listesi: grup başına satır', 'eyg:37,et:36,sut:9,meyve:37,sebze:41,yag:5,tohum:8,baklagil:10,tatli:16,yemek:30', dl.sayi);
+  uiEkle('Değişim listesi: mercimek 2 yk (ana liste)', '2 yemek kaşığı (pişmiş, tepeleme) | 25 g (çiğ) | {"baklagil":1}', dl.mercimek);
+  uiEkle('Değişim listesi: et 30 g çiğ / 20 g pişmiş', '3 orta boy | 30 g çiğ / 20 g pişmiş | {"et":1}', dl.kusbasi);
+  uiEkle('Değişim listesi: zeytin 10 orta boy', '10 orta boy | 40 g brüt / 35 g net | {"yag":1}', dl.zeytin);
+  uiEkle('Değişim listesi: çilek', '18 orta boy | 305 g brüt / 300 g net | {"meyve":1}', dl.cilek);
+  uiEkle('Değişim listesi: sebzede çiğ ve pişmiş ölçü', '1 orta bağ (çiğ) | 5–6 yemek kaşığı', dl.ispanak);
+  uiEkle('Değişim listesi: light yoğurt yarım yağlı, ev yoğurdu tam; gramaj metinde',
+    '3/4 su bardağı (4 tepeleme yemek kaşığı) yarım yağlı yoğurt (150 g) | {"sutyy":1} / 1 su bardağı ev yoğurdu (200 g) | {"sut":1}', dl.yogurt);
+  uiEkle('Değişim listesi: çorba ekmek + yağ, yemek ve içecek karşılıkları',
+    '{"eyg":1,"yag":1} {"et":3,"sebze":2,"yag":2} {"eyg":2.5} {"yag":1,"baklagil":0.5}', dl.karsilik);
+  uiEkle('Değişim listesi: atlanan satırlar yok', '', dl.atlanan);
+  uiEkle('Değişim listesi: bütünlük (ad, ölçü, tekil kimlik, geçerli karşılık)', '', dl.butunluk);
+  uiEkle('Değişim listesi: pişmiş sebze ve tam yağlı süt seçenekleri', '{"sebze":1} {"sut":1} {"sutyy":1}', dl.secenek);
+  uiEkle('Değişim listesi: kaynakların adı hiçbir dosyada yok', '', dl.adYok);
+  uiEkle('Değişim listesi ekranı: "Tümü" + 10 grup', 11, dl.cipler);
+  uiEkle('Değişim listesi ekranı: grup süzgeci', '1/baklagil/10/2 yemek kaşığı (pişmiş, tepeleme)', dl.grup);
+  uiEkle('Değişim listesi ekranı: light ürünün karşılığı yazılı', '= 1 süt (yarım yağlı)', dl.sutKars);
+  uiEkle('Değişim listesi ekranı: menemen karşılığı ve kcal (elle 361)', '3 et + 2 sebze + 2 yağ | 361', dl.menemen);
+  uiEkle('Değişim listesi ekranı: arama', 'Pirinç pilavı,Bulgur pilavı', dl.ara);
+  uiEkle('Değişim listesi ekranı: sonuçsuz aramada boş durum', true, dl.bos);
+  uiEkle('Liste seçicisi: ıspanak çiğ ve pişmiş', '1 orta bağ ıspanak (çiğ) / 5–6 yemek kaşığı ıspanak (pişmiş)', dl.ispSec);
+  uiEkle('Liste seçicisi: aynı metin bir kez', 1, dl.tekil);
+  uiEkle('Liste seçicisi: değişim listesinden satır ekleniyor', '2 yemek kaşığı mercimek (yeşil, kırmızı; pişmiş, tepeleme) | {"baklagil":1}', dl.secildi);
+
   /* ---- öğün şablonları ----
      Beyaz ekmek 100 g = 265 kcal (data-foods.js satırı): şablon satırında
      "Beyaz ekmek · 265 kcal". Şablon kopyadır: kaynak menüde gram değişince

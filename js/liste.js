@@ -10,16 +10,20 @@
    Liste planın o anki KOPYASINI tutar (ex, meal): plan sonradan değişirse
    yazılmış liste kendiliğinden bozulmaz; danışana verilmiş belge budur.
 
-   Hazır seçeneklerin kaynağı (HAZIR):
-     · Uygulamadaki değişim listesinin porsiyon örnekleri (js/exchange.js,
-       derste kullanılan liste)
-     · Dyt. Can Bayramoğlu'nun belirttiği karşılıklar: çorba 1 ekmek + 1 yağ,
-       zeytinyağlı sebze yemeği ve salata 1 sebze + 1 yağ, yağsız salata
-       1 sebze, pilav yalnız ekmek, hastane roll ekmek 2 ekmek, 4 yk kuru
-       baklagil 1 değişim.
-   Bunların dışında değer eklenmedi. Kaynak gelene kadar (ders listesi,
-   TürKomp, ölçü kataloğu) diyetisyen kendi satırını yazar ve isterse
-   "seçeneklerim"e kaydeder (S.esdegerler). */
+   Seçeneklerin kaynağı:
+     · Besin değişim listesi (js/data-degisim.js, ~240 satır; kullanıcının
+       izinli sağladığı listeler ve onun kararları). Liste ekranı açılınca
+       tembel yüklenir.
+     · HAZIR: Dyt. Can Bayramoğlu'nun belirttiği karşılıklar (çorba 1 ekmek
+       + 1 yağ, zeytinyağlı sebze yemeği ve salata 1 sebze + 1 yağ, yağsız
+       salata 1 sebze, pilav yalnız ekmek, hastane roll ekmek 2 ekmek) ve
+       sık kullanılan satırlar. Veri yüklenemezse de seçici boş kalmasın
+       diye burada. Ölçüleri değişim listesiyle aynı (Kasım 2026'da
+       güncellendi: nohut 3 yk, mercimek 2 yk, pirinç pilavı 2 yk, yoğurt
+       150 g, ayran 1,5 su bardağı, et 20 g pişmiş, zeytin 10, badem 10,
+       elma orta boy, üzüm 25 adet).
+   Diyetisyen ayrıca kendi satırını yazar ve isterse "seçeneklerim"e
+   kaydeder (S.esdegerler). */
 (function () {
   'use strict';
   const { esc, fmt, num, icon } = DA;
@@ -27,37 +31,39 @@
   /* id, satır (1 birim için), değişim karşılığı, seçicide görünen not */
   const HAZIR = [
     ['sut', '1 su bardağı süt', { sut: 1 }, '200 ml'],
-    ['yogurt', '200 g yoğurt', { sut: 1 }],
-    ['ayran', '2 su bardağı ayran', { sut: 1 }],
+    ['yogurt', '3/4 su bardağı (4 tepeleme yemek kaşığı) yoğurt (150 g)', { sut: 1 }],
+    ['ev-yogurdu', '1 su bardağı ev yoğurdu (200 g)', { sut: 1 }],
+    ['ayran', '1,5 su bardağı (1 büyük su bardağı) ayran', { sut: 1 }, '300 g'],
+    ['kefir', '1 su bardağı kefir', { sut: 1 }, '200 g'],
     ['sut-yy', '1 su bardağı yarım yağlı süt', { sutyy: 1 }, '200 ml'],
-    ['yogurt-yy', '200 g yarım yağlı yoğurt', { sutyy: 1 }],
-    ['et-kirmizi', '1 köfte kadar kırmızı et', { et: 1 }, '30 g'],
-    ['et-tavuk', '1 köfte kadar tavuk', { et: 1 }, '30 g'],
-    ['et-balik', '1 köfte kadar balık', { et: 1 }, '30 g'],
-    ['peynir', '1 dilim beyaz peynir', { et: 1 }, '30 g'],
-    ['yumurta', '1 adet yumurta', { et: 1 }],
-    ['nohut', '4 yemek kaşığı nohut', { baklagil: 1 }, 'pişmiş'],
-    ['kurufasulye', '4 yemek kaşığı kuru fasulye', { baklagil: 1 }, 'pişmiş'],
-    ['mercimek', '4 yemek kaşığı mercimek', { baklagil: 1 }, 'pişmiş'],
+    ['yogurt-yy', '3/4 su bardağı (4 tepeleme yemek kaşığı) yarım yağlı yoğurt (150 g)', { sutyy: 1 }],
+    ['et-kirmizi', '3 orta boy kuşbaşı et', { et: 1 }, '30 g çiğ / 20 g pişmiş'],
+    ['kofte', '1 küçük yumurta boyutunda köfte', { et: 1 }, '40 g çiğ / 30 g pişmiş'],
+    ['et-tavuk', '1/4 küçük boy tavuk göğsü', { et: 1 }, '30 g çiğ / 20 g pişmiş'],
+    ['peynir', '2 parmak boyutunda beyaz peynir', { et: 1 }, '40 g'],
+    ['yumurta', '1 küçük boy yumurta', { et: 1 }],
+    ['nohut', '3 yemek kaşığı nohut', { baklagil: 1 }, 'pişmiş, tepeleme'],
+    ['kurufasulye', '3 yemek kaşığı kuru fasulye', { baklagil: 1 }, 'pişmiş, tepeleme'],
+    ['mercimek', '2 yemek kaşığı mercimek', { baklagil: 1 }, 'pişmiş, tepeleme'],
     ['corba', '1 kase çorba', { eyg: 1, yag: 1 }],
     ['ekmek', '1 ince dilim ekmek', { eyg: 1 }, '25 g'],
     ['roll', '1 adet tam buğday roll ekmek', { eyg: 2 }, 'hastane'],
     ['roll-cavdar', '1 adet çavdar roll ekmek', { eyg: 2 }, 'hastane'],
-    ['pilav', '3 yemek kaşığı pilav', { eyg: 1 }, 'yağ ayrıca sayılmaz'],
-    ['bulgur', '3 yemek kaşığı bulgur pilavı', { eyg: 1 }, 'yağ ayrıca sayılmaz'],
-    ['makarna', '3 yemek kaşığı makarna', { eyg: 1 }],
+    ['pilav', '2 yemek kaşığı pirinç pilavı', { eyg: 1 }, 'tepeleme; yağ ayrıca sayılmaz'],
+    ['bulgur', '3 yemek kaşığı bulgur pilavı', { eyg: 1 }, 'tepeleme; yağ ayrıca sayılmaz'],
+    ['makarna', '3 yemek kaşığı makarna', { eyg: 1 }, 'tepeleme'],
     ['patates', '1 küçük boy haşlanmış patates', { eyg: 1 }],
     ['salata', '1 kase yağsız salata', { sebze: 1 }],
     ['salata-zy', '1 kase zeytinyağlı salata', { sebze: 1, yag: 1 }],
     ['sebze-zy', '1 kase zeytinyağlı sebze yemeği', { sebze: 1, yag: 1 }, '5–6 yemek kaşığı'],
-    ['elma', '1 küçük boy elma', { meyve: 1 }],
+    ['elma', '1 orta boy elma', { meyve: 1 }],
     ['muz', '1 küçük boy muz', { meyve: 1 }],
     ['portakal', '1 orta boy portakal', { meyve: 1 }],
-    ['uzum', '12–15 adet üzüm', { meyve: 1 }],
+    ['uzum', '25 adet üzüm', { meyve: 1 }],
     ['zeytinyagi', '1 tatlı kaşığı zeytinyağı', { yag: 1 }],
-    ['zeytin', '5 adet zeytin', { yag: 1 }],
-    ['ceviz', '2 tam ceviz', { tohum: 1 }],
-    ['badem', '5–6 adet badem', { tohum: 1 }]
+    ['zeytin', '10 orta boy zeytin', { yag: 1 }],
+    ['ceviz', '2 bütün ceviz', { tohum: 1 }],
+    ['badem', '10 orta boy badem', { tohum: 1 }]
   ].map((x) => ({ id: 'h-' + x[0], t: x[1], d: x[2], not: x[3] || '' }));
 
   /* Değişim listesindeki öğün anahtarları; kural denetimi menü planlayıcının
@@ -74,7 +80,13 @@
   const esdegerler = () => (S().esdegerler = S().esdegerler || []);
   const bul = (id) => listeler().find((l) => l.id === id) || null;
   const danisan = (id) => (id ? (S().clients || []).find((c) => c.id === id) : null) || null;
-  const secenekler = () => HAZIR.concat(esdegerler().map((e) => Object.assign({ kendi: true, not: '' }, e)));
+  /* HAZIR önce: kullanıcının kuralları ve sık satırlar başta dursun. Aynı
+     metinli satır bir kez görünür (ör. "1 ince dilim ekmek" iki kaynakta). */
+  const secenekler = () => {
+    const D = DA.data.degisim, gor = {};
+    return HAZIR.concat(D ? D.secenekler : [], esdegerler().map((e) => Object.assign({ kendi: true, not: '' }, e)))
+      .filter((e) => { const k = DA.trLower(e.t); if (gor[k]) return false; gor[k] = 1; return true; });
+  };
   const secenek = (id) => secenekler().find((e) => e.id === id) || null;
   const miktar = (n) => (DA.foods && DA.foods.miktarYazi ? DA.foods.miktarYazi(n) : fmt(n, 2));
 
@@ -259,6 +271,8 @@
     const l = bul(el.dataset.l); if (!l) return;
     araQ = '';
     DA.sheet(ogunAdi(el.dataset.o) + ' — satır ekle', '<div id="listeSec">' + secimHtml(l, el.dataset.o) + '</div>');
+    /* Değişim listesi henüz gelmediyse gelince seçici yenilenir */
+    if (!DA.hazir(['degisim'])) DA.need(['degisim']).then(() => { const b = DA.$('#listeSec'); if (b) b.innerHTML = secimHtml(l, el.dataset.o); }).catch(() => {});
   };
   function secimHtml(l, k) {
     const lid = esc(l.id), d = durum(l, k);

@@ -22,31 +22,36 @@
      (5–6 yemek kaşığı) ve zeytinyağlıysa ayrıca 1 yağ; salata yağsız mı
      zeytinyağlı mı yazılır; hastanedeki tam buğday/çavdar roll ekmek 2 değişim. */
   const GROUPS = [
-    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, ex: '1 su bardağı süt (200 ml) veya yoğurt (200 g); 2 su bardağı ayran' },
+    { k: 'sut', l: 'Süt (tam yağlı)', c: 9, p: 6, f: 6, ex: '1 su bardağı süt (200 ml); 3/4 su bardağı (4 tepeleme yemek kaşığı) yoğurt (150 g); 1 su bardağı ev yoğurdu (200 g); 1,5 su bardağı ayran (300 g); 1 su bardağı kefir' },
     { k: 'sutyy', l: 'Süt (yarım yağlı)', c: 9, p: 6, f: 3, ex: 'Aynı porsiyonların yarım yağlısı' },
-    { k: 'et', l: 'Et', c: 0, p: 6, f: 5, ex: '1 köfte kadar kırmızı et / tavuk / balık (30 g); 1 dilim beyaz peynir (30 g); 1 adet yumurta' },
-    { k: 'baklagil', l: 'Kuru baklagil', c: 15, p: 5, f: 0, elle: true, ex: '4 yemek kaşığı pişmiş nohut, kuru fasulye, mercimek vb.' },
-    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g); 3 yemek kaşığı pilav / makarna / bulgur; 1 küçük boy haşlanmış patates. Hastanedeki 1 adet tam buğday ya da çavdar roll ekmek = 2 değişim' },
+    { k: 'et', l: 'Et', c: 0, p: 6, f: 5, ex: '3 orta boy kuşbaşı et (30 g çiğ / 20 g pişmiş); 1 küçük yumurta boyutunda köfte; 1/4 küçük boy tavuk göğsü; 2 parmak boyutunda beyaz peynir (40 g); 1 küçük boy yumurta' },
+    { k: 'baklagil', l: 'Kuru baklagil', c: 15, p: 5, f: 0, elle: true, ex: '3 tepeleme yemek kaşığı pişmiş nohut, kuru fasulye ya da barbunya; 2 tepeleme yemek kaşığı pişmiş mercimek' },
+    { k: 'eyg', l: 'Ekmek ve yerine geçenler', c: 15, p: 2, f: 0, ex: '1 ince dilim ekmek (25 g; tam buğday ya da çavdar 30 g); 2 tepeleme yemek kaşığı pirinç pilavı; 3 tepeleme yemek kaşığı bulgur pilavı ya da makarna; 1 küçük boy patates. Hastanedeki 1 adet tam buğday ya da çavdar roll ekmek = 2 değişim' },
     { k: 'sebze', l: 'Sebze', c: 6, p: 2, f: 0, ex: '1 kase yağsız salata; 1 kase (5–6 yemek kaşığı) sebze yemeği — zeytinyağlıysa ayrıca 1 yağ sayılır' },
-    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, ex: '1 küçük boy elma; 1 küçük boy muz; 1 orta boy portakal; 12–15 adet üzüm' },
-    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, ex: '1 tatlı kaşığı zeytinyağı; 5 adet zeytin' },
-    { k: 'tohum', l: 'Kuruyemiş (yağlı tohum)', c: 0, p: 2, f: 5, ex: '2 tam ceviz; 5–6 adet badem' }
+    { k: 'meyve', l: 'Meyve', c: 15, p: 0, f: 0, ex: '1 orta boy elma; 1 küçük boy muz; 1 orta boy portakal; 25 adet üzüm' },
+    { k: 'yag', l: 'Yağ', c: 0, p: 0, f: 5, ex: '1 tatlı kaşığı zeytinyağı; 10 orta boy zeytin' },
+    { k: 'tohum', l: 'Kuruyemiş (yağlı tohum)', c: 0, p: 2, f: 5, ex: '2 bütün ceviz; 10 orta boy badem' }
   ];
 
   /* Yemeklerin değişim karşılığı. Listeye yemek yazıldığında hangi gruptan
      kaç değişim düşüleceği tek yerde dursun: aynı yemek bir planda "1 sebze",
      ötekinde "1 sebze + 1 yağ" sayılmasın. Yalnız Dyt. Can Bayramoğlu'nun
      açıkça belirttiği karşılıklar var; emin olunmayan yemek eklenmez.
-     Pilavın pişirme yağı ayrıca sayılmaz, çorbanınki sayılır. */
+     Pilavın pişirme yağı ayrıca sayılmaz, çorbanınki sayılır.
+     Pilav ve baklagil ölçüleri Kasım 2026'da kullanıcının onayladığı değişim
+     listesine göre güncellendi (önce: pilav 3 yk, kuru baklagil 4 yk); ayrıntı
+     js/data-degisim.js başında. */
   const YEMEK = [
     { ad: 'Çorba', miktar: '1 kase', d: { eyg: 1, yag: 1 } },
     { ad: 'Zeytinyağlı sebze yemeği', miktar: '1 kase (5–6 yemek kaşığı)', d: { sebze: 1, yag: 1 } },
     { ad: 'Salata, yağsız', miktar: '1 kase', d: { sebze: 1 } },
     { ad: 'Salata, zeytinyağlı', miktar: '1 kase', d: { sebze: 1, yag: 1 } },
-    { ad: 'Pilav (pirinç, bulgur)', miktar: '3 yemek kaşığı', d: { eyg: 1 }, not: 'yağ ayrıca sayılmaz' },
+    { ad: 'Pirinç pilavı', miktar: '2 tepeleme yemek kaşığı', d: { eyg: 1 }, not: 'yağ ayrıca sayılmaz' },
+    { ad: 'Bulgur pilavı, makarna', miktar: '3 tepeleme yemek kaşığı', d: { eyg: 1 }, not: 'yağ ayrıca sayılmaz' },
     { ad: 'Ekmek', miktar: '1 ince dilim (25 g)', d: { eyg: 1 } },
     { ad: 'Tam buğday ya da çavdar roll ekmek (hastane)', miktar: '1 adet', d: { eyg: 2 } },
-    { ad: 'Nohut, kuru fasulye vb.', miktar: '4 yemek kaşığı', d: { baklagil: 1 } }
+    { ad: 'Nohut, kuru fasulye, barbunya', miktar: '3 tepeleme yemek kaşığı (pişmiş)', d: { baklagil: 1 } },
+    { ad: 'Mercimek', miktar: '2 tepeleme yemek kaşığı (pişmiş)', d: { baklagil: 1 } }
   ];
   const kcalOf = (g) => g.c * 4 + g.p * 4 + g.f * 9;
   const byKey = (k) => GROUPS.find((g) => g.k === k);
