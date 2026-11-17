@@ -38,6 +38,10 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   takip aralığı dolan danışanların ana sayfada hatırlatılması,
   0–19 yaş için otomatik WHO büyüme persentili izlemi,
   hesapları dosyaya işleme ve tek sayfalık danışan raporu (PDF / paylaş)
+- Spor beslenmesi (TÜBER 8.2'ye ek): antrenman gününe göre haftalık karbonhidrat ve protein
+  (ACSM/AND/DC 2016 Tablo 1), müsabaka günü ve toparlanma — yükleme, öncesi, sırası, 8 saatten kısa
+  arada hızlı toparlanma (Tablo 2), deri kıvrımından vücut yağı (Durnin–Womersley 1974, Jackson–Pollock
+  3 ve 7 bölge, Siri), kanıtı yeterli takviyeler ve kiloya göre doz (IOC 2018 Tablo 3)
 - Danışan dosyası Beslenme Bakım Süreci (ADIME) düzeninde: tarihli biyokimya (test başına son değer,
   önceki değer ve değişim yönü; referans aralığı bilerek yok — laboratuvara göre değişir), tıbbi
   tanılar, ilaç/takviye ve beslenme öyküsü, 24 saatlik geriçağırma (menü olarak girilir, toplamı

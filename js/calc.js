@@ -291,12 +291,12 @@
      Hesapla sekmesinin sonundaki "Diğer" grubuna düşer. */
   DA.IA = {
     hesapla: [
-      ['Antropometri', ['bki', 'ideal', 'bel', 'kilokaybi']],
+      ['Antropometri', ['bki', 'ideal', 'bel', 'derikivrim', 'kilokaybi']],
       ['Enerji ve makrolar', ['enerji', 'sivi', 'stres']],
       ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'khdagilim', 'gy']],
       ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
       ['Tarama', ['nrs', 'must', 'mnasf', 'diyabetrisk']],
-      ['Spor beslenmesi', ['sporcu', 'terleme', 'sporke']],
+      ['Spor beslenmesi', ['sporcu', 'sporkh', 'sporyaris', 'terleme', 'sporke', 'takviye']],
       ['Klinik', ['enteral', 'gir']]
     ],
     referans: [

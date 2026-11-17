@@ -258,6 +258,92 @@
         deger(calistir('sporke', { alim: 3000, egzersiz: 1000, w: 60, yag: 16.67, h: NaN }), 'Değerlendirme'));
       ekle(G, 'KE 50 kcal/kg değerlendirmesi', 'Yeterli kullanılabilir enerji',
         deger(calistir('sporke', { alim: 3500, egzersiz: 1000, w: 60, yag: 16.67, h: NaN }), 'Değerlendirme'));
+    }
+
+    /* --- Spor: ACSM 2016, IOC 2018, deri kıvrımı (js/spor.js) --- */
+    if (DA.data.sporperf) {
+      const satir = (res, et) => { const x = (res.rows || []).find((y) => y.l === et); return x ? x.v + ' | ' + (x.s || '') : '(yok: ' + et + ')'; };
+      /* Antrenman gününe göre KH, 70 kg. Bantlar (ACSM Tablo 1): hafif 3–5,
+         orta 5–7, yüksek 6–10, çok yüksek 8–12 g/kg.
+         Pzt yüksek 420–700 · Sal orta 350–490 · Çar çok yüksek 560–840 ·
+         Per hafif 210–350 · Cum orta 350–490 · Cmt yüksek 420–700 · Paz hafif 210–350
+         Hafta: 420+350+560+210+350+420+210 = 2520; 700+490+840+350+490+700+350 = 3920
+         Ortalama: 2520/7 = 360, 3920/7 = 560. Protein 1,2–2,0 × 70 = 84–140; doz 0,3 × 70 = 21 */
+      r = calistir('sporkh', { w: 70, pzt: 'yuksek', sal: 'orta', car: 'cokyuksek', per: 'hafif', cum: 'orta', cmt: 'yuksek', paz: 'hafif' });
+      ekle(G, 'Antrenman günü KH: Pazartesi yüksek', '420–700 g', deger(r, 'Pazartesi · Yüksek'));
+      ekle(G, 'Antrenman günü KH: Çarşamba çok yüksek', '560–840 g', deger(r, 'Çarşamba · Çok yüksek'));
+      ekle(G, 'Antrenman günü KH: Pazar dinlenme', '210–350 g', deger(r, 'Pazar · Dinlenme / hafif'));
+      ekle(G, 'Antrenman günü KH: haftalık toplam ve ortalama', '2520–3920 g | Günlük ortalama 360–560 g', satir(r, 'Haftalık karbonhidrat'));
+      ekle(G, 'Antrenman günü: protein 1,2–2,0 g/kg', '84–140 g', deger(r, 'Protein (her gün)'));
+      ekle(G, 'Antrenman günü: protein dozu 0,3 g/kg', '21 g', deger(r, 'Protein dozu'));
+      /* Seçim yoksa varsayılan: yükü bilinmeyen gün "orta" (5–7) — 50 kg → 250–350 */
+      ekle(G, 'Antrenman günü: tanınmayan yük ortaya düşer', '250–350 g', deger(calistir('sporkh', { w: 50, pzt: 'x' }), 'Pazartesi · Orta'));
+
+      /* Müsabaka: 70 kg, 120 dk (>90 → yükleme 10–12 g/kg = 700–840),
+         öncesi 1–4 g/kg = 70–280, sırası 30–60 g/saat × 2 saat = 60–120,
+         6 saat sonra ikinci seans (<8) → 1,0–1,2 × 70 = 70–84 g/saat, 4 saatte 280–336 */
+      r = calistir('sporyaris', { w: 70, dk: 120, ara: 6 });
+      ekle(G, 'Müsabaka >90 dk: KH yüklemesi', '700–840 g/gün', deger(r, 'Karbonhidrat yüklemesi'));
+      ekle(G, 'Müsabaka öncesi 1–4 g/kg', '70–280 g', deger(r, 'Müsabakadan 1–4 saat önce'));
+      ekle(G, 'Müsabaka 120 dk sırasında', 'Saatte 30–60 g | 120 dakika için toplam 60–120 g', satir(r, 'Müsabaka sırasında'));
+      ekle(G, 'Hızlı toparlanma (<8 saat)', '70–84 g/saat', deger(r, 'Hızlı toparlanma'));
+      kosul(G, 'Hızlı toparlanma 4 saat toplamı 280–336 g', /toplam 280–336 g/.test(satir(r, 'Hızlı toparlanma')), satir(r, 'Hızlı toparlanma'));
+      ekle(G, 'Toparlanma proteini 0,3 g/kg', '21 g', deger(r, 'Toparlanma proteini'));
+      /* Sınırlar: tam 90 dk yükleme değil (">90"), tam 8 saat hızlı yükleme değil ("<8") */
+      r = calistir('sporyaris', { w: 70, dk: 90, ara: 8 });
+      ekle(G, 'Müsabaka tam 90 dk: yükleme yok, 7–12 g/kg', '490–840 g/gün', deger(r, 'Müsabaka öncesi gün'));
+      ekle(G, 'Seans arası tam 8 saat: günlük gereksinim', 'Günlük gereksinim', deger(r, 'Toparlanma'));
+      ekle(G, 'Müsabaka 91 dk: yükleme', '700–840 g/gün', deger(calistir('sporyaris', { w: 70, dk: 91, ara: NaN }), 'Karbonhidrat yüklemesi'));
+      ekle(G, 'Müsabaka 45 dk sırasında', 'Gerekmez', deger(calistir('sporyaris', { w: 70, dk: 45, ara: NaN }), 'Müsabaka sırasında'));
+      ekle(G, 'Müsabaka 46 dk sırasında', 'Az miktarda karbonhidrat ya da ağızda çalkalama', deger(calistir('sporyaris', { w: 70, dk: 46, ara: NaN }), 'Müsabaka sırasında'));
+      ekle(G, 'Müsabaka 180 dk sırasında', 'Saatte 90 g’a kadar | 180 dakika için toplam 270 g’a kadar', satir(calistir('sporyaris', { w: 70, dk: 180, ara: NaN }), 'Müsabaka sırasında'));
+      kosul(G, 'İkinci seans yoksa toparlanma satırı yok', satir(calistir('sporyaris', { w: 70, dk: 60, ara: NaN }), 'Toparlanma').indexOf('(yok') === 0);
+
+      /* Deri kıvrımı. Elle (kaynak formülleri, Siri 495/D − 450):
+         Erkek 25, JP3 göğüs 10 + abdominal 20 + uyluk 15 = 45:
+           D = 1,10938 − 0,0008267·45 + 0,0000016·2025 − 0,0002574·25 = 1,0689835 → %13,06
+         Erkek 25, DW biseps 4 + triseps 8 + subskapular 12 + suprailiak 14 = 38:
+           D = 1,1631 − 0,0632·log10(38) = 1,0632577 → %15,55
+         Erkek 25, JP7 (+ aksiller 8) = 87:
+           D = 1,112 − 0,00043499·87 + 0,00000055·7569 − 0,00028826·25 = 1,0711123 → %12,14
+         Kadın 30, JP3 triseps 18 + suprailiak 15 + uyluk 25 = 58:
+           D = 1,0994921 − 0,0009929·58 + 0,0000023·3364 − 0,0001392·30 = 1,0454651 → %23,47
+         Kadın 30, DW biseps 6 + triseps 18 + subskapular 14 + suprailiak 15 = 53:
+           D = 1,1423 − 0,0632·log10(53) = 1,0333258 → %29,04 */
+      r = calistir('derikivrim', { sex: 'E', age: 25, w: 80, gogus: 10, abdominal: 20, uyluk: 15 });
+      ekle(G, 'Deri kıvrımı JP3 erkek', '%13,1 | Toplam 45 mm · yoğunluk 1,069 g/mL', satir(r, 'Jackson–Pollock (3 bölge)'));
+      ekle(G, 'Deri kıvrımı yağ kütlesi 80 × %13,06', '10,4 kg', deger(r, 'Yağ kütlesi'));
+      ekle(G, 'Deri kıvrımı yağsız kütle', '69,6 kg', deger(r, 'Yağsız kütle'));
+      r = calistir('derikivrim', { sex: 'E', age: 25, w: NaN, gogus: 10, aksiller: 8, triseps: 8, biseps: 4, subskapular: 12, abdominal: 20, suprailiak: 14, uyluk: 15 });
+      ekle(G, 'Deri kıvrımı üç yöntem birlikte (sıra DW, JP3, JP7)', 'Durnin–Womersley (4 bölge)=%15,6 · Jackson–Pollock (3 bölge)=%13,1 · Jackson–Pollock (7 bölge)=%12,1',
+        (r.rows || []).map((x) => x.l + '=' + x.v).join(' · '));
+      ekle(G, 'Deri kıvrımı ilk yöntem vurgulu', 'true,false,false', (r.rows || []).map((x) => !!x.hl).join(','));
+      r = calistir('derikivrim', { sex: 'K', age: 30, triseps: 18, suprailiak: 15, uyluk: 25, biseps: 6, subskapular: 14 });
+      ekle(G, 'Deri kıvrımı DW kadın 30', '%29', deger(r, 'Durnin–Womersley (4 bölge)'));
+      ekle(G, 'Deri kıvrımı JP3 kadın 30', '%23,5', deger(r, 'Jackson–Pollock (3 bölge)'));
+      ekle(G, 'Deri kıvrımı kadın yaş aralığında uyarı yok', 'info', r.tone);
+      /* Kadın 60: JP3 18–55 yaş örneklemi → uyarı; DW 50–68 bandı */
+      r = calistir('derikivrim', { sex: 'K', age: 60, triseps: 18, suprailiak: 15, uyluk: 25 });
+      ekle(G, 'Deri kıvrımı JP3 kadın 60 (örneklem dışı)', '%25,4', deger(r, 'Jackson–Pollock (3 bölge)'));
+      ekle(G, 'Deri kıvrımı örneklem dışı yaşta uyarı', 'warn', r.tone);
+      /* Erkek 16: DW tablosu 17 yaşta başlar → hesaplanmaz; başka yöntem yoksa hata */
+      kosul(G, 'Deri kıvrımı DW erkek 16 yaş hesaplanmaz', !!calistir('derikivrim', { sex: 'E', age: 16, biseps: 4, triseps: 8, subskapular: 12, suprailiak: 14 }).err);
+      ekle(G, 'Deri kıvrımı DW kadın 16 yaş hesaplanır', true, !calistir('derikivrim', { sex: 'K', age: 16, biseps: 4, triseps: 8, subskapular: 12, suprailiak: 14 }).err);
+      kosul(G, 'Deri kıvrımı eksik bölgede hata', !!calistir('derikivrim', { sex: 'E', age: 30, gogus: 10, abdominal: 20 }).err);
+
+      /* Takviye (IOC 2018 Tablo 3), 70 kg: kafein 3–6 mg/kg = 210–420 mg;
+         bikarbonat 0,2–0,4 g/kg = 14–28 g; beta-alanin 65 mg/kg = 4550 mg = 4,55 g/gün */
+      r = calistir('takviye', { w: 70, tk: 'tumu' });
+      ekle(G, 'Takviye: hepsi listeleniyor', 'Kafein,Kreatin monohidrat,Nitrat,Sodyum bikarbonat,Beta-alanin', (r.rows || []).map((x) => x.l).join(','));
+      ekle(G, 'Takviye: kafein 70 kg', '210–420 mg | 3–6 mg/kg · İyi kanıt', satir(r, 'Kafein'));
+      ekle(G, 'Takviye: bikarbonat 70 kg', '14–28 g', deger(r, 'Sodyum bikarbonat'));
+      ekle(G, 'Takviye: beta-alanin 70 kg', '4,55 g/gün | 65 mg/kg · Olası yarar', satir(r, 'Beta-alanin'));
+      ekle(G, 'Takviye: kreatin kiloya bağlı değil', 'Sabit doz', deger(r, 'Kreatin monohidrat'));
+      /* 10 kg (üst sınır 1000 mg altında): 650 mg, grama çevrilmez */
+      ekle(G, 'Takviye: beta-alanin 1000 mg altında mg yazılır', '650 mg/gün', deger(calistir('takviye', { w: 10, tk: 'betaalanin' }), 'Beta-alanin'));
+      ekle(G, 'Takviye: tek seçim tek satır', 1, (calistir('takviye', { w: 70, tk: 'kafein' }).rows || []).length);
+    }
+    if (DA.data.sporcu) {
       ekle(G, 'BKİ 17,5 altında kesin DKE göstergesi', 'bad',
         calistir('sporke', { alim: 3500, egzersiz: 500, w: 45, yag: 12, h: 165 }).tone);
       kosul(G, 'Geçersiz yağ oranında hata verir', !!calistir('sporke', { alim: 2800, egzersiz: 1500, w: 60, yag: 0 }).err);
