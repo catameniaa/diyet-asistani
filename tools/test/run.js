@@ -2111,6 +2111,74 @@ function ornekDurum(tema) {
       }, 0));
     } catch (e) { o.hata = String((e && e.message) || e); ui.theme = eskiTema; DA.applyTheme(); return o; }
   });
+  /* ---- öğün şablonları ----
+     Beyaz ekmek 100 g = 265 kcal (data-foods.js satırı): şablon satırında
+     "Beyaz ekmek · 265 kcal". Şablon kopyadır: kaynak menüde gram değişince
+     şablon 100 g kalır; şablondan eklenen besinde değişiklik şablonu bozmaz. */
+  const sb = await sayfa.evaluate(() => {
+    const S = DA.state(), o = {}, eski = DA.toast; let son = ''; DA.toast = (t) => { son = t; };
+    try {
+      S.ogunSablon = [];
+      const bos = () => { const m = {}; DA.foods.ogunler.forEach((k) => { m[k] = []; }); return m; };
+      const K = DA.foods.ogunler[0];
+      const m1 = { id: 'sb1', title: 'Kaynak', date: '2026-02-05', client: '', note: '', meals: bos() };
+      m1.meals[K].push({ id: 'beyaz-ekmek', g: 100, o: '4 dilim', a: 4 });
+      const m2 = { id: 'sb2', title: 'Hedef', date: '2026-02-06', client: '', note: '', meals: bos() };
+      m2.meals[K].push({ id: 'beyaz-ekmek', g: 25 });
+      S.menus.unshift(m1, m2); DA.save();
+      location.hash = 'menu/sb1'; DA.render(false);
+      o.dugme = document.querySelectorAll('[data-act=menuSablon]').length + '/' + DA.foods.ogunler.length;
+      DA.actions.menuSablon({ dataset: { m: 'sb1', k: K } });
+      o.ilkAcilis = !document.querySelector('#sablonList') + '/' + !!document.querySelector('form[data-form=menuSablonKaydet]');
+      let f = document.querySelector('form[data-form=menuSablonKaydet]');
+      f.ad.value = '  '; DA.forms.menuSablonKaydet(f);
+      o.bosAd = S.ogunSablon.length + '/' + son;
+      f.ad.value = 'Standart kahvaltım'; DA.forms.menuSablonKaydet(f);
+      const s = S.ogunSablon[0];
+      o.kayit = S.ogunSablon.length + '/' + s.ad + '/' + JSON.stringify(s.items);
+      m1.meals[K][0].g = 999;
+      o.kopya = s.items[0].g;
+      /* boş öğünde form yok, şablon listesi var */
+      DA.actions.menuSablon({ dataset: { m: 'sb2', k: DA.foods.ogunler[2] } });
+      o.bosOgun = !document.querySelector('form[data-form=menuSablonKaydet]') + '/' +
+        ((document.querySelector('#sablonList .li .s') || {}).textContent || '');
+      DA.closeSheet();
+      /* var olan öğüne ekleme: sona eklenir */
+      DA.actions.menuSablonEkle({ dataset: { s: s.id, m: 'sb2', k: K } });
+      o.ekle = m2.meals[K].map((x) => x.id + ':' + x.g + (x.o ? ':' + x.o : '')).join(',');
+      m2.meals[K][1].g = 5;
+      o.ekleKopya = s.items[0].g;
+      /* tanımsız öğüne ekleme de çalışır */
+      delete m2.meals['Gece ara öğünü'];
+      DA.actions.menuSablonEkle({ dataset: { s: s.id, m: 'sb2', k: 'Gece ara öğünü' } });
+      o.yeniOgun = (m2.meals['Gece ara öğünü'] || []).length;
+      /* silme ve geri alma */
+      DA.actions.menuSablonSil({ dataset: { s: s.id } });
+      o.sil = S.ogunSablon.length;
+      DA.actions.geriAl();
+      o.geri = S.ogunSablon.length + '/' + (S.ogunSablon[0] || {}).ad;
+      o.disk = (localStorage.getItem(DA.depoAnahtari) || '').indexOf('Standart kahvaltım') >= 0;
+      /* yedekten birleştirme: aynı kimlik atlanır, yeni eklenir */
+      const den = DA.veriDenetle({ ogunSablon: [{ id: 'a b', ad: 5, items: 'x' }, 'çöp', { id: 'y', ad: 'Y', items: [{ id: 'q"', g: 10 }] }] });
+      o.denetim = JSON.stringify(den.ogunSablon);
+    } catch (e) { o.hata = String((e && e.message) || e); }
+    S.menus = S.menus.filter((m) => m.id !== 'sb1' && m.id !== 'sb2'); S.ogunSablon = []; DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Şablon: akış hatasız', '', sb.hata || '');
+  uiEkle('Şablon: her öğünde şablon düğmesi', '6/6', sb.dugme);
+  uiEkle('Şablon: ilk açılışta liste yok, kaydetme formu var', 'true/true', sb.ilkAcilis);
+  uiEkle('Şablon: adsız kaydedilmiyor', '0/Şablona bir ad ver', sb.bosAd);
+  uiEkle('Şablon: öğünün besinleri ölçüsüyle kaydediliyor', '1/Standart kahvaltım/[{"id":"beyaz-ekmek","g":100,"o":"4 dilim","a":4}]', sb.kayit);
+  uiEkle('Şablon: kaynak menüdeki değişiklik şablonu bozmuyor', 100, sb.kopya);
+  uiEkle('Şablon: boş öğünde form yok, satırda besin ve kcal', 'true/Beyaz ekmek · 265 kcal', sb.bosOgun);
+  uiEkle('Şablon: öğünün sonuna ekleniyor', 'beyaz-ekmek:25,beyaz-ekmek:100:4 dilim', sb.ekle);
+  uiEkle('Şablon: eklenen besindeki değişiklik şablonu bozmuyor', 100, sb.ekleKopya);
+  uiEkle('Şablon: tanımsız öğüne de ekleniyor', 1, sb.yeniOgun);
+  uiEkle('Şablon: silinip geri alınıyor', '0 → 1/Standart kahvaltım', sb.sil + ' → ' + sb.geri);
+  uiEkle('Şablon: diske yazılıyor', true, sb.disk);
+  uiEkle('Sınır denetimi: öğün şablonu', '[{"id":"a_b","ad":"5","items":[]},{"id":"y","ad":"Y","items":[{"id":"q_","g":10}]}]', sb.denetim);
+
   uiEkle('Görsel: akış hatasız', '', gy.hata || '');
   uiEkle('Görsel: seçim yoksa koyu tema, elle "Otomatik" korunuyor', 'dark/dark/auto/false', gy.tema);
   uiEkle('Görsel: yarım gösterge yayı ve uç noktası (elle)', 'true | 33.0 131.9 | 20.3,20.3 | true', gy.yarim);
@@ -2367,6 +2435,7 @@ function ornekDurum(tema) {
         plan: { d: t, ts: 1, hedef: { kcal: 1800, birim: 'yuzde', c: 50, p: 20 }, ex: { sutyy: 3, et: 5, eyg: 8 }, meal: { kahvalti: { sutyy: 1 } }, top: { kcal: 1800, c: 225, p: 90, f: 60 } },
         lab: [{ id: 'l1', d: t, ad: 'HbA1c', deger: 6.8, birim: '%' }], pes: [{ id: 'p1', d: t, p: 'P', e: 'E', s: 'S', cozuldu: false }],
         gorusme: [{ id: 'g1', d: t, t: 'not' }], dosya: { tani: 't', ilac: 'i', beslenme: 'b', oneri: 'o', gosterge: 'g' } }],
+      ogunSablon: [{ id: 'os', ad: 'Şablon', items: [{ id: 'beyaz-ekmek', g: 50, o: '2 dilim', a: 2 }] }],
       menus: [{ id: 'mm', title: 'Menü', date: t, client: 'Ayşe', c: 'c1', tur: 'geri', note: 'n', target: { kcal: 1800, p: 90, c: 225, f: 60 },
         meals: { 'Kahvaltı': [{ id: 'yumurta-haslanmis', g: 50, o: '1 adet', a: 1 }], 'Öğle': [{ id: 'c_o', g: 100 }] } }],
       journal: [{ id: 'j1', d: t, type: 'Klinik', place: 'Hastane', hours: 2, title: 'Vaka', text: 'metin' }],

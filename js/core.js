@@ -5,7 +5,7 @@
   const KEY = 'dyt.v1';
 
   const defaults = () => ({
-    v: 1, clients: [], menus: [], listeler: [], esdegerler: [], journal: [], customFoods: [], customCards: [],
+    v: 1, clients: [], menus: [], listeler: [], esdegerler: [], ogunSablon: [], journal: [], customFoods: [], customCards: [],
     cardProgress: {}, targets: { kcal: 2000, p: 100, c: 250, f: 67 }, profile: {}, ui: {}
   });
   let state;
@@ -104,12 +104,18 @@
       });
     });
   }
+  /* Öğün şablonu: ad ekrana basılır, besinler menü öğesiyle aynı biçimde */
+  function sablonDenetle(s) {
+    s.id = kimlik(s.id); s.ad = metin(s.ad);
+    s.items = nesneDizisi(s.items);
+    s.items.forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
+  }
   function esdegerDenetle(e) {
     e.id = kimlik(e.id); e.t = metin(e.t); e.d = degisimDenetle(e.d);
   }
   DA.veriDenetle = (o) => {
     if (!nesneMi(o)) return {};
-    ['clients', 'menus', 'listeler', 'esdegerler', 'journal', 'customFoods', 'customCards'].forEach((k) => {
+    ['clients', 'menus', 'listeler', 'esdegerler', 'ogunSablon', 'journal', 'customFoods', 'customCards'].forEach((k) => {
       /* dizi değilse (null dahil) silinir; varsayılan boş liste gelir */
       if (!Array.isArray(o[k])) { delete o[k]; return; }
       o[k] = nesneDizisi(o[k]);
@@ -118,6 +124,7 @@
     (o.menus || []).forEach(menuDenetle);
     (o.listeler || []).forEach(listeDenetle);
     (o.esdegerler || []).forEach(esdegerDenetle);
+    (o.ogunSablon || []).forEach(sablonDenetle);
     ['journal', 'customFoods', 'customCards'].forEach((k) => (o[k] || []).forEach((x) => { x.id = kimlik(x.id); }));
     ['cardProgress', 'targets', 'profile', 'ui'].forEach((k) => { if (o[k] != null && !nesneMi(o[k])) delete o[k]; });
     const ui = o.ui;

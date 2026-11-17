@@ -230,6 +230,53 @@
   const miktarHucre = (it) => { const o = olcuYazi(it); return o ? o + ' (' + fmt(it.g, 0) + ' g)' : fmt(it.g, 0) + ' g'; };
   DA.foods.miktarYazi = miktarYazi;
   DA.foods.toplam = (m) => menuTotals(m);
+
+  /* ---- Öğün şablonları ----
+     "Standart kahvaltım" gibi sık yazılan bir öğün bir kez kaydedilir, başka
+     menülere tek dokunuşla eklenir. Eskiden her menüde besinler tek tek
+     yeniden aranıyordu. Şablon öğünün o anki KOPYASIDIR: menüde sonradan
+     yapılan değişiklik şablonu, şablondaki değişiklik eski menüleri bozmaz.
+     Eklenen besinler öğündekilerin sonuna gelir, var olanın yerine geçmez. */
+  const sablonlar = () => (DA.state().ogunSablon = DA.state().ogunSablon || []);
+  const kopyaOge = (it) => JSON.parse(JSON.stringify(it));
+  const menuBul = (id) => DA.state().menus.find((x) => x.id === id);
+  DA.actions.menuSablon = (el) => {
+    const m = menuBul(el.dataset.m); if (!m) return;
+    const k = el.dataset.k, list = m.meals[k] || [], S_ = sablonlar();
+    DA.sheet(k + ' · şablonlar',
+      (S_.length ? '<div class="list" id="sablonList">' + S_.map((s) => '<div class="li"><button class="grow favli" data-act="menuSablonEkle" data-s="' + esc(s.id) +
+          '" data-m="' + esc(m.id) + '" data-k="' + esc(k) + '"><div class="t">' + esc(s.ad) + '</div><div class="s">' +
+          esc(s.items.map((it) => { const f = getFood(it.id); return f ? f.n : it.n; }).filter(Boolean).join(', ')) + ' · ' +
+          fmt(mealTotals(s.items).kcal, 0) + ' kcal</div></button><button class="favbtn" data-act="menuSablonSil" data-s="' + esc(s.id) +
+          '" aria-label="' + esc(s.ad) + ' şablonunu sil">' + DA.icon('trash') + '</button></div>').join('') + '</div>'
+        : '<p class="muted small">Henüz şablon yok. Sık yazdığın bir öğünü bir kez kaydet, sonraki menülere tek dokunuşla ekle.</p>') +
+      (list.length ? '<form data-form="menuSablonKaydet" data-m="' + esc(m.id) + '" data-k="' + esc(k) + '" class="mt">' +
+          '<label class="fld"><span>Bu öğünü şablon olarak kaydet (' + list.length + ' besin)</span><input type="text" name="ad" placeholder="ör. Standart kahvaltım" required></label>' +
+          '<button class="btn sec block" type="submit">' + DA.icon('save') + ' Şablonu kaydet</button></form>'
+        : '<p class="muted tiny mt">Öğüne besin ekledikten sonra onu da şablon olarak kaydedebilirsin.</p>'));
+  };
+  DA.forms.menuSablonKaydet = (f) => {
+    const m = menuBul(f.dataset.m); if (!m) return;
+    const ad = String(DA.formData(f).ad || '').trim(), list = m.meals[f.dataset.k] || [];
+    if (!ad) return DA.toast('Şablona bir ad ver');
+    if (!list.length) return DA.toast('Öğün boş');
+    sablonlar().push({ id: uid(), ad, items: list.map(kopyaOge) });
+    DA.save(); DA.closeSheet(); DA.toast('Şablon kaydedildi: ' + ad);
+  };
+  DA.actions.menuSablonEkle = (el) => {
+    const m = menuBul(el.dataset.m), s = sablonlar().find((x) => x.id === el.dataset.s);
+    if (!m || !s) return;
+    const k = el.dataset.k, hedef = m.meals[k] || (m.meals[k] = []);
+    s.items.forEach((it) => hedef.push(kopyaOge(it)));
+    DA.save(); DA.closeSheet(); DA.render(true); DA.toast(s.ad + ' eklendi');
+  };
+  DA.actions.menuSablonSil = (el) => {
+    const S_ = sablonlar(), i = S_.findIndex((x) => x.id === el.dataset.s);
+    if (i < 0) return;
+    const silinen = S_.splice(i, 1)[0];
+    DA.save(); DA.closeSheet();
+    DA.silGeriAl('Şablon silindi', () => { S_.splice(i, 0, silinen); });
+  };
   DA.foods.danisanAdi = danisanAdi;
   /* Miktar formundan menü öğesi: gram her zaman, ölçü seçildiyse adı ve adedi de */
   function formdanOge(form) {
@@ -364,7 +411,8 @@
             const olcu = olcuYazi(it);
             return '<div class="res"><button class="l duzen" data-act="menuItemEdit" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="' + esc((f ? f.n : it.n) + ' — miktarı düzenle') + '">' + esc(f ? f.n : it.n) + '<span class="sub">' + (olcu ? esc(olcu) + ' · ' : '') + fmt(it.g, 0) + ' g' + (f ? '' : ' · besin veritabanında yok') + '</span></button><span class="v" style="font-size:15px">' + fmt(n.kcal, 0) + ' kcal <button class="iconbtn" style="width:36px;height:36px" data-act="menuDelItem" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="Sil">' + DA.icon('trash') + '</button></span></div>';
           }).join('') +
-          '<button class="btn sec sm block mt-s" data-act="menuAdd" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('plus') + ' Besin ekle</button></div>';
+          '<div class="grid2 mt-s"><button class="btn sec sm block" data-act="menuAdd" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('plus') + ' Besin ekle</button>' +
+          '<button class="btn ghost sm block" data-act="menuSablon" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('cards') + ' Şablon</button></div></div>';
       }).join('') +
       '<div class="card"><label class="fld"><span>Menü başlığı</span><input type="text" value="' + esc(m.title) + '" data-live="menuMeta" data-f="title" data-m="' + m.id + '"></label>' +
       '<div class="grid2"><label class="fld"><span>Tarih</span><input type="date" value="' + esc(m.date) + '" data-live="menuMeta" data-f="date" data-m="' + m.id + '"></label>' +

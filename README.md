@@ -49,6 +49,8 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   notları, izlenecek göstergeler; rapor bunları da basar
 - Menüler danışana kimliğiyle bağlanır (eskiden serbest metin): danışan dosyasında listelenir,
   danışanın adı değişince menüde ve aramada güncel ad görünür
+- Öğün şablonları: menüde bir öğün "Standart kahvaltım" gibi adla kaydedilir, başka menülerin
+  öğünlerine tek dokunuşla eklenir (kopya olarak; şablon ile menü birbirini bozmaz); yedekle taşınır
 - Çıktıda bölüm aç/kapa: danışan raporu (ölçüm, grafik, değişim planı, enerji ve makrolar, biyokimya,
   ilaçlar, beslenme tanısı, görüşme notları…), menü çıktısı (kalori, makrolar, notlar) ve değişim
   planı çıktısı (enerji ve makrolar, öğün dağılımı, porsiyon örnekleri, yemeklerin karşılığı).
