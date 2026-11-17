@@ -267,11 +267,21 @@
       '<label class="fld" style="margin-bottom:0"><span>Genel not</span><textarea data-live="clientNote" data-id="' + esc(c.id) +
       '" placeholder="Başka bir yere sığmayan notlar…">' + esc(c.note || '') + '</textarea></label></div>',
 
-    /* Danışan raporu için bloklar */
-    rapor(c) {
-      const D = dosya(c), oz = labOzet(c), acik = yeniSira(dizi(c, 'pes')).filter((x) => !x.cozuldu);
-      const metin = (k) => (D[k] ? '<div class="blok"><h3>' + METIN[k][0] + '</h3>' + esc(D[k]).replace(/\n/g, '<br>') + '</div>' : '');
-      const gor = yeniSira(dizi(c, 'gorusme')).slice(0, 5);
+    /* Raporda içeriği olan dosya bölümleri, çıktı ayar kartı için.
+       Sıra rapordaki sırayla aynı. */
+    bolumler(c) {
+      const D = dosya(c), var_ = (k) => !!String(D[k] || '').trim();
+      return [['lab', 'Biyokimya', labOzet(c).length], ['tani', 'Tıbbi tanılar', var_('tani')], ['ilac', 'İlaçlar', var_('ilac')],
+        ['beslenme', 'Beslenme öyküsü', var_('beslenme')], ['pes', 'Beslenme tanısı', dizi(c, 'pes').some((x) => !x.cozuldu)],
+        ['oneri', 'Hedef ve öneriler', var_('oneri')], ['gosterge', 'Göstergeler', var_('gosterge')],
+        ['gorusme', 'Görüşme notları', dizi(c, 'gorusme').length]].filter((b) => b[2]).map((b) => [b[0], b[1]]);
+    },
+    /* Danışan raporu için bloklar; goster(k) false dönen bölüm basılmaz */
+    rapor(c, goster) {
+      const g = goster || (() => true);
+      const D = dosya(c), oz = g('lab') ? labOzet(c) : [], acik = g('pes') ? yeniSira(dizi(c, 'pes')).filter((x) => !x.cozuldu) : [];
+      const metin = (k) => (D[k] && g(k) ? '<div class="blok"><h3>' + METIN[k][0] + '</h3>' + esc(D[k]).replace(/\n/g, '<br>') + '</div>' : '');
+      const gor = g('gorusme') ? yeniSira(dizi(c, 'gorusme')).slice(0, 5) : [];
       return (oz.length ? '<div class="blok"><h3>Biyokimya (son değerler)</h3><table><thead><tr><th>Test</th><th class="n">Son</th><th>Tarih</th><th class="n">Önceki</th></tr></thead><tbody>' +
           oz.map((o) => '<tr><td>' + esc(o.ad) + '</td><td class="n">' + degerYazi(o.son) + '</td><td>' + esc(DA.fdate(o.son.d)) + '</td><td class="n">' +
             (o.once ? degerYazi(o.once) + (o.yon ? ' ' + o.yon : '') : '—') + '</td></tr>').join('') + '</tbody></table></div>' : '') +

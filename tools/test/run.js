@@ -1876,6 +1876,149 @@ function ornekDurum(tema) {
   } catch (e) { return 'hata: ' + e.message; } });
   uiEkle('Sınır denetimi: dosya alanları ve menü bağı', '1 | l_ | "" | 5 |  | [] |  | {} | a_b | ', dosyaSinir);
 
+  /* ---- çıktıda bölüm aç/kapa ----
+     Plan elle: yarım yağlı süt 2 (KH 9 · P 6 · Y 3) + et 4 (P 6 · Y 5)
+     → KH 18 · P 12 + 24 = 36 · Y 6 + 20 = 26
+     → 18×4 + 36×4 + 26×9 = 72 + 144 + 234 = 450 kcal */
+  const ck = await sayfa.evaluate(() => {
+    const S = DA.state(), ui = S.ui, o = {}, eskiPay = DA.shareText, eskiT = DA.toast;
+    let paylasilan = ''; DA.shareText = (b, t) => { paylasilan = t; }; DA.toast = () => {};
+    const doc = () => (document.querySelector('.printdoc') || {}).textContent || '';
+    const chipler = (tur) => Array.from(document.querySelectorAll('[data-act=ciktiBolum][data-tur=' + tur + ']'))
+      .map((x) => x.dataset.k + (x.getAttribute('aria-pressed') === 'true' ? '+' : '-')).join(',');
+    const bas = (tur, k) => DA.actions.ciktiBolum({ dataset: { tur, k } });
+    try {
+      delete ui.cikti;
+      /* danışan raporu */
+      S.clients = S.clients.filter((c) => c.id !== 'ck');
+      S.clients.push({ id: 'ck', name: 'Çıktı Danışan', sex: 'K', h: 160, note: 'genel not satırı',
+        meas: [{ id: 'm1', d: '2026-01-05', w: 60 }, { id: 'm2', d: '2026-02-05', w: 59 }],
+        plan: { d: '2026-02-05', hedef: { kcal: 1500 }, ex: { sutyy: 2, et: 4 }, meal: {} },
+        lab: [{ id: 'l1', d: '2026-02-01', ad: 'Ferritin', deger: 12, birim: 'ng/mL' }],
+        pes: [{ id: 'p1', d: '2026-02-05', p: 'Yetersiz demir alımı', e: '', s: '', cozuldu: false }],
+        gorusme: [], dosya: { ilac: 'Demir takviyesi' } });
+      DA.save();
+      const rapor = () => { location.hash = 'yazdir/danisan/ck'; DA.render(false); return doc(); };
+      const planTh = () => { const h = Array.from(document.querySelectorAll('.printdoc h3')).find((x) => /Değişim listesi planı/.test(x.textContent));
+        return h ? h.parentNode.querySelectorAll('thead th').length : 0; };
+      let r = rapor();
+      o.rChip = chipler('danisan');
+      /* "Tümünü göster" yalnız bir bölüm kapalıyken; düğme tekrar basılınca bölüm geri açılır */
+      const tumu = () => !!document.querySelector('[data-act=ciktiHepsi][data-tur=danisan]');
+      o.rTumu = String(tumu());
+      bas('danisan', 'not'); rapor(); o.rTumu += '/' + tumu();
+      bas('danisan', 'not'); r = rapor();
+      o.rTumu += '/' + /genel not satırı/.test(r) + '/' + ('not' in ((ui.cikti || {}).danisan || {})) + '/' + tumu();
+      o.rTam = [/Toplam enerji: 450 kcal/.test(r), planTh(), /Demir takviyesi/.test(r), /Yetersiz demir alımı/.test(r), /genel not satırı/.test(r), /Toplam değişim/.test(r)].join(',');
+      bas('danisan', 'ilac'); r = rapor();
+      o.rIlac = [/Demir takviyesi|İlaçlar ve takviyeler/.test(r), /Ferritin/.test(r), chipler('danisan').indexOf('ilac-') >= 0, ui.cikti.danisan.ilac,
+        (localStorage.getItem(DA.depoAnahtari) || '').indexOf('"cikti":{"danisan":{"ilac":false') >= 0].join(',');
+      bas('danisan', 'makro'); r = rapor();
+      o.rMakro = [/Değişim listesi planı/.test(r), /Toplam enerji/.test(r), /hedef 1500 kcal/.test(r), planTh()].join(',');
+      bas('danisan', 'plan'); r = rapor();
+      o.rPlan = /Değişim listesi planı/.test(r) + '/' + chipler('danisan').indexOf('makro') ;
+      bas('danisan', 'pes'); bas('danisan', 'olcum'); bas('danisan', 'not'); r = rapor();
+      o.rDiger = [/Yetersiz demir alımı/.test(r), /Toplam değişim|Kilo<\/th>/.test(r), /genel not satırı/.test(r), /Kilo seyri/.test(r)].join(',');
+      DA.actions.clientShare({ dataset: { id: 'ck' } });
+      o.rMetin = /59 kg/.test(paylasilan) + '/' + /genel not satırı/.test(paylasilan) + '/' + /Çıktı Danışan/.test(paylasilan);
+      DA.actions.ciktiHepsi({ dataset: { tur: 'danisan' } }); r = rapor();
+      o.rHepsi = [/Toplam enerji: 450 kcal/.test(r), /Demir takviyesi/.test(r), /Yetersiz demir alımı/.test(r), /genel not satırı/.test(r),
+        chipler('danisan').indexOf('-') < 0, !(ui.cikti || {}).danisan].join(',');
+
+      /* menü çıktısı */
+      const meals = {}; DA.foods.ogunler.forEach((k) => { meals[k] = []; });
+      meals[DA.foods.ogunler[0]].push({ id: 'yumurta-haslanmis', g: 50 });
+      S.menus.unshift({ id: 'mk', title: 'Çıktı menü', date: '2026-02-05', client: '', note: 'menü notu', meals });
+      const menu = () => { location.hash = 'yazdir/menu/mk'; DA.render(false); return doc(); };
+      const th = () => document.querySelectorAll('.printdoc thead th').length;
+      let mt = menu();
+      o.mChip = chipler('menu');
+      o.mTam = [th(), /kcal/.test(mt), /Protein/.test((document.querySelector('.gunluk-toplam') || {}).textContent || ''), /menü notu/.test(mt)].join(',');
+      bas('menu', 'enerji'); mt = menu();
+      const satir = document.querySelector('.printdoc tbody tr:not(.mh)');
+      o.mEnerji = [th(), /kcal/.test(mt), /Protein/.test(mt), satir ? satir.querySelectorAll('td').length : 0].join(',');
+      bas('menu', 'makro'); bas('menu', 'not'); mt = menu();
+      o.mHicbiri = [!!document.querySelector('.gunluk-toplam'), /Günlük toplam/.test(mt), /menü notu/.test(mt), /Yumurta/i.test(mt)].join(',');
+      DA.actions.menuShare({ dataset: { m: 'mk' } });
+      o.mMetin = [/kcal/.test(paylasilan), /Günlük toplam|Protein/.test(paylasilan), /menü notu/.test(paylasilan), /Yumurta/i.test(paylasilan)].join(',');
+      DA.actions.ciktiHepsi({ dataset: { tur: 'menu' } });
+      DA.actions.menuShare({ dataset: { m: 'mk' } });
+      o.mMetinTam = [/Günlük toplam: \d+ kcal · Protein/.test(paylasilan), /menü notu/.test(paylasilan)].join(',');
+      S.menus = S.menus.filter((m) => m.id !== 'mk');
+
+      /* değişim planı çıktısı */
+      ui.exClient = null; location.hash = 'hesapla/degisim'; DA.render(false);
+      const G = ui.exAlan[''], yedek = JSON.stringify(G);
+      G.ex = { sutyy: 2, et: 4 }; G.exLock = {}; G.exMeal = { kahvalti: { sutyy: 1, et: 2 } };
+      G.exT = { kcal: 1500, birim: 'yuzde', c: 50, p: 20, ts: 1 };
+      const dg = () => { location.hash = 'yazdir/degisim'; DA.render(false); return doc(); };
+      let d = dg();
+      o.dChip = chipler('degisim');
+      o.dTam = [/hedef 1500 kcal/.test(d), /Toplam enerji: 450 kcal/.test(d), /Kahvaltı:/.test(d), /1 değişim ne kadar\?/.test(d)].join(',');
+      bas('degisim', 'makro'); d = dg();
+      o.dMakro = [/kcal/.test(d), document.querySelector('.printdoc .blok thead').querySelectorAll('th').length, /Kahvaltı:/.test(d)].join(',');
+      /* öğünler açık, makro kapalı: mesajda öğün satırı var ama kcal yok */
+      DA.actions.exShare();
+      o.dMetinOgun = /ÖĞÜNLER\nKahvaltı: /.test(paylasilan) + '/' + /kcal/.test(paylasilan);
+      bas('degisim', 'ogun'); bas('degisim', 'ornek'); d = dg();
+      o.dDiger = [/Kahvaltı:/.test(d), /1 değişim ne kadar\?/.test(d), /Süt \(yarım yağlı\)/.test(d)].join(',');
+      DA.actions.exShare();
+      o.dMetin = [/kcal/.test(paylasilan), /ÖĞÜNLER/.test(paylasilan), /Süt \(yarım yağlı\): 2 değişim/.test(paylasilan)].join(',');
+      DA.actions.ciktiHepsi({ dataset: { tur: 'degisim' } });
+      DA.actions.exShare();
+      o.dMetinTam = /Toplam: 450 kcal · KH 18 g · Protein 36 g · Yağ 26 g/.test(paylasilan) + '/' + /ÖĞÜNLER/.test(paylasilan);
+      Object.assign(G, JSON.parse(yedek));
+
+      /* diyet listesi çıktısı: seçim listeye özel, çıktı ekranında da değişiyor */
+      S.listeler = (S.listeler || []).filter((l) => l.id !== 'lc');
+      S.listeler.push({ id: 'lc', ad: 'Çıktı liste', d: '2026-02-05', c: '', ex: { sutyy: 2 }, meal: {}, hedef: { kcal: 1500 },
+        ogun: { kahvalti: [{ id: 's1', t: '1 su bardağı yarım yağlı süt', n: 1, d: { sutyy: 1 } }] }, not: '', ayar: {} });
+      const ls = () => { location.hash = 'yazdir/liste/lc'; DA.render(false); };
+      ls();
+      const lchip = () => Array.from(document.querySelectorAll('.cikti-ayar [data-act=listeAyar]')).map((x) => x.dataset.k + (x.getAttribute('aria-pressed') === 'true' ? '+' : '-')).join(',');
+      o.lOnce = lchip() + '|' + !!document.querySelector('.printdoc .liste-enerji');
+      DA.actions.listeAyar({ dataset: { l: 'lc', k: 'enerji' } }); ls();
+      o.lSonra = lchip() + '|' + !!document.querySelector('.printdoc .liste-enerji');
+      S.listeler = S.listeler.filter((l) => l.id !== 'lc');
+    } catch (e) { o.hata = String((e && e.message) || e); }
+    S.clients = S.clients.filter((c) => c.id !== 'ck'); S.menus = S.menus.filter((m) => m.id !== 'mk');
+    S.listeler = (S.listeler || []).filter((l) => l.id !== 'lc');
+    delete ui.cikti; DA.save(); DA.shareText = eskiPay; DA.toast = eskiT;
+    return o;
+  });
+  uiEkle('Çıktı: akış hatasız', '', ck.hata || '');
+  uiEkle('Çıktı/rapor: yalnız içeriği olan bölümler, hepsi açık', 'olcum+,grafik+,plan+,makro+,lab+,ilac+,pes+,not+', ck.rChip);
+  uiEkle('Çıktı/rapor: varsayılan tam (450 kcal elle, 5 sütun)', 'true,5,true,true,true,true', ck.rTam);
+  uiEkle('Çıktı/rapor: kapatılan bölüm düğmeyle geri açılıyor; "Tümünü göster" yalnız kapalı varken', 'false/true/true/false/false', ck.rTumu);
+  uiEkle('Çıktı/rapor: ilaç kapanıyor, diğerleri kalıyor, seçim diske yazılıyor', 'false,true,true,false,true', ck.rIlac);
+  uiEkle('Çıktı/rapor: makro kapalıyken plan var, enerji ve KH/P/Y yok', 'true,false,false,2', ck.rMakro);
+  uiEkle('Çıktı/rapor: plan kapanınca makro düğmesi de kalkıyor', 'false/-1', ck.rPlan);
+  uiEkle('Çıktı/rapor: tanı, ölçüm, not kapanıyor; grafik kalıyor', 'false,false,false,true', ck.rDiger);
+  uiEkle('Çıktı/rapor: metin paylaşımı da seçime uyuyor', 'false/false/true', ck.rMetin);
+  uiEkle('Çıktı/rapor: tümünü göster', 'true,true,true,true,true,true', ck.rHepsi);
+  uiEkle('Çıktı/menü: bölümler', 'enerji+,makro+,not+', ck.mChip);
+  uiEkle('Çıktı/menü: varsayılan kcal sütunu ve makrolar', '3,true,true,true', ck.mTam);
+  uiEkle('Çıktı/menü: kalori kapalı → sütun ve kcal yok, makro var', '2,false,true,2', ck.mEnerji);
+  uiEkle('Çıktı/menü: hepsi kapalı → günlük toplam ve not yok, besin var', 'false,false,false,true', ck.mHicbiri);
+  uiEkle('Çıktı/menü: metin paylaşımı da seçime uyuyor', 'false,false,false,true', ck.mMetin);
+  uiEkle('Çıktı/menü: tümünü gösterince metin tam', 'true,true', ck.mMetinTam);
+  uiEkle('Çıktı/değişim: bölümler (yemek karşılığı yok, planda yağ/ekmek yok)', 'makro+,ogun+,ornek+', ck.dChip);
+  uiEkle('Çıktı/değişim: varsayılan tam (450 kcal elle)', 'true,true,true,true', ck.dTam);
+  uiEkle('Çıktı/değişim: makro kapalı → hiç kcal yok, 2 sütun, öğün var', 'false,2,true', ck.dMakro);
+  uiEkle('Çıktı/değişim: öğün ve porsiyon örneği kapanıyor, plan kalıyor', 'false,false,true', ck.dDiger);
+  uiEkle('Çıktı/değişim: metin paylaşımı da seçime uyuyor', 'false,false,true', ck.dMetin);
+  uiEkle('Çıktı/değişim: makro kapalı, öğün açık → öğün satırında kcal yok', 'true/false', ck.dMetinOgun);
+  uiEkle('Çıktı/değişim: tümünü gösterince metin tam (KH 18 · P 36 · Y 26 elle)', 'true/true', ck.dMetinTam);
+  uiEkle('Çıktı/liste: çıktı ekranında da enerji düğmesi (listeye özel, varsayılan kapalı)', 'enerji-,degisim-|false', ck.lOnce);
+  uiEkle('Çıktı/liste: düğmeyle enerji satırı basılıyor', 'enerji+,degisim-|true', ck.lSonra);
+
+  const ciktiSinir = await sayfa.evaluate(() => { try {
+    const a = DA.veriDenetle({ ui: { cikti: { danisan: 'x', menu: { enerji: 'hayır', makro: false }, liste: [1] } } });
+    const b = DA.veriDenetle({ ui: { cikti: 'x' } });
+    return JSON.stringify(a.ui.cikti) + ' | ' + ('cikti' in b.ui);
+  } catch (e) { return 'hata: ' + e.message; } });
+  uiEkle('Sınır denetimi: çıktı ayarı', '{"menu":{"makro":false}} | false', ciktiSinir);
+
   /* ---- değişim listesi: hedef yüzde ya da gram ----
      Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,
      plan girilen yüzdelere uymuyormuş gibi görünüyordu. Giriş gerçek "input"

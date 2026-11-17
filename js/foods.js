@@ -522,15 +522,25 @@
   };
 
   /* ---------- Yazdır / paylaş ---------- */
+  /* Çıktıda açılıp kapatılan bölümler (DA.cikti 'menu'). Kalori ve makro
+     bazı danışanlara verilmek istenmiyor; metin paylaşımı da aynı seçime uyar. */
+  const mg = (k) => DA.cikti.acik('menu', k);
+  function gunlukToplam(t, ayrac) {
+    const p = [];
+    if (mg('enerji')) p.push(fmt(t.kcal, 0) + ' kcal');
+    if (mg('makro')) p.push('Protein ' + fmt(t.p, 0) + ' g', 'Karbonhidrat ' + fmt(t.c, 0) + ' g', 'Yağ ' + fmt(t.f, 0) + ' g', 'Lif ' + fmt(t.fib, 0) + ' g');
+    return p.join(ayrac);
+  }
   function menuText(m) {
     const t = menuTotals(m); let s = m.title + '\n' + DA.fdate(m.date) + (danisanAdi(m) ? ' — ' + danisanAdi(m) : '') + '\n' + DA.dyt() + '\n';
     MEALS.forEach((k) => {
       const l = m.meals[k] || []; if (!l.length) return;
-      s += '\n' + k + ' (' + fmt(mealTotals(l).kcal, 0) + ' kcal)\n';
+      s += '\n' + k + (mg('enerji') ? ' (' + fmt(mealTotals(l).kcal, 0) + ' kcal)' : '') + '\n';
       l.forEach((it) => { const f = getFood(it.id); s += '• ' + (f ? f.n : it.n) + ' — ' + miktarHucre(it) + '\n'; });
     });
-    s += '\nGünlük toplam: ' + fmt(t.kcal, 0) + ' kcal · P ' + fmt(t.p, 0) + ' g · K ' + fmt(t.c, 0) + ' g · Y ' + fmt(t.f, 0) + ' g';
-    if (m.note) s += '\n\nNot: ' + m.note;
+    const gt = gunlukToplam(t, ' · ');
+    if (gt) s += '\nGünlük toplam: ' + gt;
+    if (m.note && mg('not')) s += '\n\nNot: ' + m.note;
     return s;
   }
   /* Çıktı ekrandaki menünün aynısıdır; yazım kuralına uymayan yer varsa
@@ -559,18 +569,20 @@
       let rows = '';
       MEALS.forEach((k) => {
         const l = m.meals[k] || []; if (!l.length) return;
-        rows += '<tr class="mh"><td colspan="2">' + k + '</td><td class="n">' + fmt(mealTotals(l).kcal, 0) + ' kcal</td></tr>';
-        l.forEach((it) => { const f = getFood(it.id); rows += '<tr><td>' + esc(f ? f.n : it.n) + '</td><td class="n">' + esc(miktarHucre(it)) + '</td><td class="n">' + fmt(itemNut(it).kcal, 0) + '</td></tr>'; });
+        const en = mg('enerji');
+        rows += '<tr class="mh"><td colspan="2">' + k + '</td>' + (en ? '<td class="n">' + fmt(mealTotals(l).kcal, 0) + ' kcal</td>' : '') + '</tr>';
+        l.forEach((it) => { const f = getFood(it.id); rows += '<tr><td>' + esc(f ? f.n : it.n) + '</td><td class="n">' + esc(miktarHucre(it)) + '</td>' + (en ? '<td class="n">' + fmt(itemNut(it).kcal, 0) + '</td>' : '') + '</tr>'; });
       });
       return {
         title: 'PDF / Paylaş', tab: 'besin', back: 'menu/' + m.id,
         html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button><button class="btn ghost block" data-act="menuShare" data-m="' + m.id + '">Metin olarak paylaş</button></div>' +
           '<p class="noprint muted small">iPhone: “PDF olarak kaydet / yazdır” → önizlemeyi iki parmakla büyüt → paylaş simgesi → PDF’i Dosyalar’a kaydet ya da WhatsApp ile gönder.</p>' +
           kuralUyarisi(m) +
+          DA.cikti.panel('menu', [['enerji', 'Kalori'], ['makro', 'Makrolar']].concat(m.note ? [['not', 'Notlar']] : [])) +
           '<div class="printdoc">' + DA.antet() + '<h2>' + esc(m.title) + '</h2><div class="alt">' + esc(DA.fdate(m.date)) + (danisanAdi(m) ? ' · ' + esc(danisanAdi(m)) : '') + '</div>' +
-          '<table><thead><tr><th>Besin</th><th class="n">Miktar</th><th class="n">kcal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<div><b>Günlük toplam:</b> ' + fmt(t.kcal, 0) + ' kcal · Protein ' + fmt(t.p, 0) + ' g · Karbonhidrat ' + fmt(t.c, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g · Lif ' + fmt(t.fib, 0) + ' g</div>' +
-          (m.note ? '<div class="blok"><h3>Notlar</h3>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +
+          '<table><thead><tr><th>Besin</th><th class="n">Miktar</th>' + (mg('enerji') ? '<th class="n">kcal</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+          (gunlukToplam(t, ' · ') ? '<div class="gunluk-toplam"><b>Günlük toplam:</b> ' + gunlukToplam(t, ' · ') + '</div>' : '') +
+          (m.note && mg('not') ? '<div class="blok"><h3>Notlar</h3>' + esc(m.note).replace(/\n/g, '<br>') + '</div>' : '') +
           DA.dipnot('besin değerleri yaklaşık ortalamalardır; bu liste bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
       };
     }

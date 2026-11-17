@@ -44,6 +44,11 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   notları, izlenecek göstergeler; rapor bunları da basar
 - Menüler danışana kimliğiyle bağlanır (eskiden serbest metin): danışan dosyasında listelenir,
   danışanın adı değişince menüde ve aramada güncel ad görünür
+- Çıktıda bölüm aç/kapa: danışan raporu (ölçüm, grafik, değişim planı, enerji ve makrolar, biyokimya,
+  ilaçlar, beslenme tanısı, görüşme notları…), menü çıktısı (kalori, makrolar, notlar) ve değişim
+  planı çıktısı (enerji ve makrolar, öğün dağılımı, porsiyon örnekleri, yemeklerin karşılığı).
+  Seçim çıktı türüne göre hatırlanır, varsayılan hepsi açık; metin paylaşımı da aynı seçime uyar.
+  Diyet listesinin enerji/değişim tablosu seçimi listeye özeldir, çıktı ekranından da değişir
 - Klinik hızlı referans (TEMD diyabet tanı/hedefleri, TÜBER önerileri), çalışma kartları (aralıklı tekrar), staj günlüğü
 - TÜBER 2022 referans değerleri: yaşa ve cinsiyete göre makro aralıkları, protein (g/kg ve g/gün),
   posa, su, vitamin-mineral önerisi (PRI/AI), ortalama gereksinim (EAR) ve üst sınır (UL)

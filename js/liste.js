@@ -209,8 +209,7 @@
     const gorunen = ogunler().filter((o) => Object.keys(l.meal[o[0]] || {}).length || (l.ogun[o[0]] || []).length);
     const kalan = ogunler().filter((o) => gorunen.indexOf(o) < 0);
     const y = gununToplami(l), t = DA.exchange.totals(y);
-    const ayar = (k, etiket) => '<button class="chip' + (l.ayar[k] ? ' on' : '') + '" data-act="listeAyar" data-l="' + lid + '" data-k="' + k +
-      '" aria-pressed="' + (l.ayar[k] ? 'true' : 'false') + '">' + etiket + '</button>';
+    const ayar = (k, etiket) => ayarChip(l, k, etiket);
     const kural = DA.menuKural ? DA.menuKural.kartHtmlSonuc(kuralSonucu(l),
       '<button class="btn sec sm block" data-act="listeDiz" data-l="' + lid + '">Yazım sırasına diz</button>') : '';
     const bos = !gorunen.some((o) => (l.ogun[o[0]] || []).length);
@@ -429,6 +428,13 @@
   }
   DA.actions.listeShare = (el) => { const l = bul(el.dataset.l); if (l) DA.shareText(l.ad || 'Beslenme listesi', metin(l)); };
 
+  /* Listenin çıktı seçimi listeye özeldir (l.ayar, varsayılan kapalı):
+     aynı danışanın listesi bir hafta enerjiyle, bir hafta enerjisiz
+     verilebiliyor. Hem liste ekranında hem çıktı ekranında aynı düğmeler. */
+  function ayarChip(l, k, etiket) {
+    return '<button class="chip' + (l.ayar[k] ? ' on' : '') + '" data-act="listeAyar" data-l="' + esc(l.id) + '" data-k="' + k +
+      '" aria-pressed="' + (l.ayar[k] ? 'true' : 'false') + '">' + etiket + '</button>';
+  }
   DA.views._printListe = (parts) => {
     const l = bul(parts[0]);
     if (!l) return { title: 'Yazdır', back: 'liste', html: '<div class="card">Liste bulunamadı.</div>' };
@@ -451,6 +457,7 @@
       title: 'Liste çıktısı', tab: 'besin', back: 'liste/' + l.id, noRecent: true,
       html: uyari + '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="listeShare" data-l="' + esc(l.id) + '">Metin olarak paylaş</button></div>' +
+        DA.cikti.kutu(ayarChip(l, 'enerji', 'Enerji ve makrolar') + ayarChip(l, 'degisim', 'Değişim tablosu')) +
         '<div class="printdoc">' + DA.antet() + '<h2>' + esc(l.ad || 'Beslenme listesi') + '</h2>' +
         '<div class="alt">' + (c ? esc(c.name) + ' · ' : '') + esc(DA.fdate(l.d)) + '</div>' +
         (ogun || '<p>Listede satır yok.</p>') +

@@ -531,14 +531,16 @@
       'Burada olmayan yemeklerde içindeki besinleri gruplarına göre ayrı ayrı say.</p></div></details>';
   }
 
+  /* Metin de çıktı ayarına uyar (DA.cikti 'degisim'): PDF'te makro yokken
+     mesajda olması aynı danışana iki farklı şey söylemek olurdu. */
   function planText() {
-    const v = counts(), t = totals(v);
+    const v = counts(), t = totals(v), mk = DA.cikti.acik('degisim', 'makro');
     return DA.APP + ' — Değişim listesi planı\n' +
       GROUPS.filter((g) => cnt(g.k)).map((g) => '• ' + g.l + ': ' + fmt(cnt(g.k), 1) + ' değişim').join('\n') +
-      '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g' +
-      (MEALS.some((m) => mealTot(m[0]).n) ? '\n\nÖĞÜNLER\n' + MEALS.map((m) => {
+      (mk ? '\n\nToplam: ' + fmt(t.kcal, 0) + ' kcal · KH ' + fmt(t.c, 0) + ' g · Protein ' + fmt(t.p, 0) + ' g · Yağ ' + fmt(t.f, 0) + ' g' : '') +
+      (DA.cikti.acik('degisim', 'ogun') && MEALS.some((m) => mealTot(m[0]).n) ? '\n\nÖĞÜNLER\n' + MEALS.map((m) => {
         const mv = meals()[m[0]] || {}, det = GROUPS.filter((g) => mv[g.k]).map((g) => KISA[g.k] + ' ' + numText(mv[g.k])).join(', ');
-        return det ? m[1] + ' (' + fmt(mealTot(m[0]).kcal, 0) + ' kcal): ' + det : '';
+        return det ? m[1] + (mk ? ' (' + fmt(mealTot(m[0]).kcal, 0) + ' kcal)' : '') + ': ' + det : '';
       }).filter(Boolean).join('\n') : '') +
       '\n\n' + DA.dyt();
   }
@@ -858,17 +860,22 @@
     const yemekSatir = YEMEK.filter((y) => Object.keys(y.d).every((k) => plan.ex[k] > 0)).map((y) =>
       '<tr><td>' + esc(y.ad) + ', ' + esc(y.miktar) + '</td><td>' + esc(yemekKarsilik(y.d)) +
       (y.not ? ' (' + esc(y.not) + ')' : '') + '</td></tr>').join('');
+    const g = (k) => DA.cikti.acik('degisim', k);
+    const ogunVar = MEALS.some((mm) => { const v = (plan.meal || {})[mm[0]] || {}; return Object.keys(v).some((k) => v[k] > 0); });
+    const bolumler = [['makro', 'Enerji ve makrolar'], ['ogun', 'Öğün dağılımı', ogunVar], ['ornek', 'Porsiyon örnekleri'],
+      ['yemek', 'Yemeklerin karşılığı', yemekSatir]].filter((b) => b.length < 3 || b[2]).map((b) => [b[0], b[1]]);
     return {
       title: 'Değişim planı', tab: 'hesapla', back: cl ? 'danisan/' + cl.id : 'hesapla/degisim', noRecent: true,
       html: uyari + '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="exShare">Metin olarak paylaş</button></div>' +
+        DA.cikti.panel('degisim', bolumler) +
         '<div class="printdoc">' + DA.antet() + '<h2>Değişim listesi planı</h2>' +
         '<div class="alt">' + (cl ? esc(cl.name) + ' · ' : '') + esc(DA.fdate(plan.d)) +
-        ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal</div>' +
-        (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan) : '') +
-        '<div class="blok"><h3>1 değişim ne kadar?</h3>' +
-        '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' +
-        (yemekSatir ? '<div class="blok yemekler"><h3>Yemekler kaç değişim?</h3>' +
+        (g('makro') ? ' · hedef ' + fmt(plan.hedef.kcal, 0) + ' kcal' : '') + '</div>' +
+        (DA.exchangePlanHtml ? DA.exchangePlanHtml(plan, { makro: g('makro'), ogun: g('ogun') }) : '') +
+        (g('ornek') ? '<div class="blok"><h3>1 değişim ne kadar?</h3>' +
+        '<table><thead><tr><th>Grup</th><th class="n">Adet</th><th>Porsiyon örneği</th></tr></thead><tbody>' + orn + '</tbody></table></div>' : '') +
+        (yemekSatir && g('yemek') ? '<div class="blok yemekler"><h3>Yemekler kaç değişim?</h3>' +
           '<table><thead><tr><th>Yemek</th><th>Listeden düşülen</th></tr></thead><tbody>' + yemekSatir + '</tbody></table></div>' : '') +
         (cl && cl.avoid ? '<div class="sat"><b>Kaçınılan:</b> ' + esc(cl.avoid) + '</div>' : '') +
         DA.dipnot('bu plan bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
@@ -901,25 +908,29 @@
     DA.toast(c.name + ' dosyasına kaydedildi');
   };
   /* Rapor ve başka ekranlar için: kayıtlı planı okunabilir tabloya çevir */
-  DA.exchangePlanHtml = (plan) => {
+  /* o.makro false: KH/P/Y sütunları, toplam enerji ve hedef kcal basılmaz
+     (danışana yalnız değişim sayıları verilmek istendiğinde). o.ogun false:
+     öğün dağılımı basılmaz. Varsayılan ikisi de açık. */
+  DA.exchangePlanHtml = (plan, o) => {
     if (!plan || !plan.ex) return '';
+    const mk = !o || o.makro !== false, og = !o || o.ogun !== false;
     const rows = GROUPS.filter((g) => plan.ex[g.k]).map((g) =>
       '<tr><td>' + esc(g.l) + '</td><td class="n">' + fmt(plan.ex[g.k], 1) + '</td>' +
-      '<td class="n">' + fmt(plan.ex[g.k] * g.c, 0) + '</td><td class="n">' + fmt(plan.ex[g.k] * g.p, 0) + '</td>' +
-      '<td class="n">' + fmt(plan.ex[g.k] * g.f, 0) + '</td></tr>').join('');
+      (mk ? '<td class="n">' + fmt(plan.ex[g.k] * g.c, 0) + '</td><td class="n">' + fmt(plan.ex[g.k] * g.p, 0) + '</td>' +
+      '<td class="n">' + fmt(plan.ex[g.k] * g.f, 0) + '</td>' : '') + '</tr>').join('');
     if (!rows) return '';
     const top = planToplam(plan);
-    const ogun = MEALS.map((mm) => {
+    const ogun = !og ? '' : MEALS.map((mm) => {
       const mv = (plan.meal || {})[mm[0]] || {};
       const det = GROUPS.filter((g) => mv[g.k]).map((g) => KISA[g.k] + ' ' + numText(mv[g.k])).join(', ');
       return det ? '<div class="sat"><b>' + esc(mm[1]) + ':</b> ' + esc(det) + '</div>' : '';
     }).filter(Boolean).join('');
     return '<div class="blok"><h3>Değişim listesi planı <span class="ince">' +
-      esc(DA.fdate(plan.d)) + ' · hedef ' + fmt((plan.hedef || {}).kcal, 0) + ' kcal</span></h3>' +
-      '<table><thead><tr><th>Grup</th><th class="n">Değişim</th><th class="n">KH</th><th class="n">P</th><th class="n">Y</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody><tfoot><tr><th>Toplam</th><th></th><th class="n">' + fmt(top.c, 0) + '</th>' +
-      '<th class="n">' + fmt(top.p, 0) + '</th><th class="n">' + fmt(top.f, 0) + '</th></tr></tfoot></table>' +
-      '<div class="sat"><b>Toplam enerji:</b> ' + fmt(top.kcal, 0) + ' kcal</div>' +
+      esc(DA.fdate(plan.d)) + (mk ? ' · hedef ' + fmt((plan.hedef || {}).kcal, 0) + ' kcal' : '') + '</span></h3>' +
+      '<table><thead><tr><th>Grup</th><th class="n">Değişim</th>' + (mk ? '<th class="n">KH</th><th class="n">P</th><th class="n">Y</th>' : '') + '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' + (mk ? '<tfoot><tr><th>Toplam</th><th></th><th class="n">' + fmt(top.c, 0) + '</th>' +
+      '<th class="n">' + fmt(top.p, 0) + '</th><th class="n">' + fmt(top.f, 0) + '</th></tr></tfoot>' : '') + '</table>' +
+      (mk ? '<div class="sat"><b>Toplam enerji:</b> ' + fmt(top.kcal, 0) + ' kcal</div>' : '') +
       (ogun ? '<div class="mt-s">' + ogun + '</div>' : '') + '</div>';
   };
   /* Diyet listesi: planın ve öğün dağılımının kopyasıyla açılır. Öğünlere

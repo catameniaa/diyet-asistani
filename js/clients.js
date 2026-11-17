@@ -436,35 +436,46 @@
         '<td class="n">' + (x.fat ? fmt(x.fat, 1) : '—') + '</td></tr>';
     }).join('');
     const delta = (first && last && first !== last && first.w && last.w) ? last.w - first.w : null;
+    /* Bölümler açılıp kapatılır (DA.cikti, js/core.js). Ayar kartında
+       yalnız bu raporda içeriği olan bölümler görünür. */
+    const g = (k) => DA.cikti.acik('danisan', k);
+    const pediatrik = pediatrikYazdir(c, m);
+    const planVar = !!(c.plan && c.plan.ex && Object.keys(c.plan.ex).some((k) => c.plan.ex[k] > 0));
+    const bolumler = [['klinik', 'Klinik durum', (c.tags || []).length || c.avoid], ['olcum', 'Ölçümler', m.length],
+      ['grafik', 'Grafikler', wPts.length > 1 || bmiPts.length > 1], ['buyume', 'Büyüme persentili', pediatrik],
+      ['plan', 'Değişim planı', planVar], ['makro', 'Enerji ve makrolar', planVar && g('plan')],
+      ['hesap', 'Kayıtlı hesaplar', (c.calcs || []).length]].filter((b) => b[2]).map((b) => [b[0], b[1]])
+      .concat(DA.dosya ? DA.dosya.bolumler(c) : [], c.note ? [['not', 'Genel not']] : []);
     return {
       title: 'Danışan raporu', tab: 'danisan', back: 'danisan/' + c.id, noRecent: true,
       html: '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
         '<button class="btn ghost block" data-act="clientShare" data-id="' + c.id + '">Metin olarak paylaş</button></div>' +
+        DA.cikti.panel('danisan', bolumler) +
         '<div class="printdoc">' + DA.antet() + '<h2>' + esc(c.name) + '</h2>' +
         '<div class="alt">' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (a2 != null ? ' · ' + a2 + ' yaş' : '') +
         (c.h ? ' · ' + fmt(c.h, 0) + ' cm' : '') + ' · Rapor tarihi ' + esc(DA.fdate(DA.today())) + '</div>' +
-        (((c.tags || []).length || c.avoid) ? '<div class="sat blok">' +
+        (((c.tags || []).length || c.avoid) && g('klinik') ? '<div class="sat blok">' +
           ((c.tags || []).length ? '<b>Klinik durum:</b> ' + esc((c.tags || []).map((k) => {
             const e = (DA.clientTags || []).find((x) => x[0] === k); return e ? e[1] : k; }).join(', ')) : '') +
           (c.avoid ? (((c.tags || []).length ? ' · ' : '') + '<b>Kaçınılan:</b> ' + esc(c.avoid)) : '') + '</div>' : '') +
-        (m.length ? '<table><thead><tr><th>Tarih</th><th class="n">Kilo</th><th class="n">Boy</th><th class="n">BKİ</th><th class="n">Bel</th><th class="n">Yağ %</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p>Henüz ölçüm kaydı yok.</p>') +
-        (delta != null ? '<div><b>Toplam değişim:</b> ' + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta), 1) + ' kg (' + m.length + ' ölçüm)</div>' : '') +
-        (wPts.length > 1 ? '<div class="blok"><h3>Kilo seyri</h3>' + chartSvg(wPts, 'kg') + '</div>' : '') +
-        (bmiPts.length > 1 ? '<div class="blok"><h3>BKİ seyri</h3>' + chartSvg(bmiPts, 'kg/m²') + '</div>' : '') +
-        pediatrikYazdir(c, m) +
-        (DA.exchangePlanHtml ? DA.exchangePlanHtml(c.plan) : '') +
-        ((c.calcs || []).length ? '<div class="blok"><h3>Kayıtlı hesaplar</h3>' +
+        (!m.length ? '<p>Henüz ölçüm kaydı yok.</p>' : !g('olcum') ? '' : '<table><thead><tr><th>Tarih</th><th class="n">Kilo</th><th class="n">Boy</th><th class="n">BKİ</th><th class="n">Bel</th><th class="n">Yağ %</th></tr></thead><tbody>' + rows + '</tbody></table>') +
+        (delta != null && g('olcum') ? '<div><b>Toplam değişim:</b> ' + (delta > 0 ? '+' : '−') + fmt(Math.abs(delta), 1) + ' kg (' + m.length + ' ölçüm)</div>' : '') +
+        (wPts.length > 1 && g('grafik') ? '<div class="blok"><h3>Kilo seyri</h3>' + chartSvg(wPts, 'kg') + '</div>' : '') +
+        (bmiPts.length > 1 && g('grafik') ? '<div class="blok"><h3>BKİ seyri</h3>' + chartSvg(bmiPts, 'kg/m²') + '</div>' : '') +
+        (g('buyume') ? pediatrik : '') +
+        (DA.exchangePlanHtml && g('plan') ? DA.exchangePlanHtml(c.plan, { makro: g('makro') }) : '') +
+        ((c.calcs || []).length && g('hesap') ? '<div class="blok"><h3>Kayıtlı hesaplar</h3>' +
           (c.calcs || []).slice().reverse().map((x) => '<div class="sat">' + esc(DA.fdate(x.d)) + ' — ' + esc(x.t) + ': ' + esc(x.s) + '</div>').join('') + '</div>' : '') +
-        (DA.dosya ? DA.dosya.rapor(c) : '') +
-        (c.note ? '<div class="blok"><h3>Notlar</h3>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
+        (DA.dosya ? DA.dosya.rapor(c, g) : '') +
+        (c.note && g('not') ? '<div class="blok"><h3>Notlar</h3>' + esc(c.note).replace(/\n/g, '<br>') + '</div>' : '') +
         DA.dipnot('bu rapor bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
     };
   };
   DA.actions.clientShare = (el) => {
-    const c = clients().find((x) => x.id === el.dataset.id), m = sortedMeas(c);
+    const c = clients().find((x) => x.id === el.dataset.id), m = sortedMeas(c), g = (k) => DA.cikti.acik('danisan', k);
     const t = c.name + '\n' + (c.sex === 'K' ? 'Kadın' : 'Erkek') + (age(c) != null ? ' · ' + age(c) + ' yaş' : '') + '\n\n' +
-      m.slice().reverse().map((x) => DA.fdate(x.d) + ': ' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : ''].filter(Boolean).join(' · ')).join('\n') +
-      (c.note ? '\n\nNot: ' + c.note : '') + '\n\n' + DA.dyt();
+      (g('olcum') ? m : []).slice().reverse().map((x) => DA.fdate(x.d) + ': ' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : ''].filter(Boolean).join(' · ')).join('\n') +
+      (c.note && g('not') ? '\n\nNot: ' + c.note : '') + '\n\n' + DA.dyt();
     DA.shareText(c.name + ' — rapor', t);
   };
 

@@ -127,6 +127,15 @@
         ui[k] = nesneDizisi(ui[k]).filter((x) => typeof x.h === 'string' && ROTA.test(x.h));
       });
       if (ui.exClient != null) ui.exClient = kimlik(ui.exClient);
+      /* Çıktı bölümleri: yalnız "kapalı" (false) kayıtları anlamlıdır */
+      if (ui.cikti != null) {
+        if (!nesneMi(ui.cikti)) delete ui.cikti;
+        else Object.keys(ui.cikti).forEach((t) => {
+          const a = ui.cikti[t];
+          if (!nesneMi(a)) { delete ui.cikti[t]; return; }
+          Object.keys(a).forEach((k) => { if (a[k] !== false) delete a[k]; });
+        });
+      }
     }
     return o;
   };
@@ -212,6 +221,42 @@
     (kaynak ? 'Kaynak: ' + DA.esc(kaynak) + '<br>' : '') +
     DA.esc(DA.dyt()) + ' · ' + DA.esc(DA.APP) + ' · ' + DA.esc(DA.fdate(DA.today())) +
     (uyari ? ' — ' + DA.esc(uyari) : '') + '</div>';
+
+  /* ---- çıktı bölümleri ----
+     Aynı rapor bazen danışana, bazen dosyaya ya da staj sorumlusuna gidiyor;
+     ilaçlar, beslenme tanısı, kalori ve makrolar her kâğıtta istenmiyor.
+     Bölümler çıktı türüne göre (danisan, menu, degisim) açılıp kapatılır ve
+     seçim sonraki çıktılar için hatırlanır. Varsayılan açık: eski çıktılar
+     değişmesin. Ayar kartı kâğıda basılmaz (noprint); metin paylaşımı da
+     aynı seçime uyar ki PDF ile mesaj farklı şey söylemesin. */
+  const ciktiAyar = (tur) => ((nesneMi(state.ui.cikti) ? state.ui.cikti : {})[tur]) || {};
+  DA.cikti = {
+    acik: (tur, k) => ciktiAyar(tur)[k] !== false,
+    /* Düğmeler sarılır: yatay kaydırmada on beş bölümün çoğu görünmüyordu.
+       bolumler: [[anahtar, etiket], …] — yalnız bu çıktıda içeriği olanlar */
+    kutu: (chipler, ek) => '<div class="card noprint cikti-ayar"><div class="row between"><div class="small muted">Çıktıda göster</div>' +
+      (ek || '') + '</div><div class="chips wrap mt-s">' + chipler + '</div></div>',
+    panel(tur, bolumler) {
+      if (!bolumler.length) return '';
+      const kapali = bolumler.some((b) => !DA.cikti.acik(tur, b[0]));
+      return DA.cikti.kutu(bolumler.map((b) => {
+        const on = DA.cikti.acik(tur, b[0]);
+        return '<button class="chip' + (on ? ' on' : '') + '" data-act="ciktiBolum" data-tur="' + tur + '" data-k="' + b[0] +
+          '" aria-pressed="' + on + '">' + DA.esc(b[1]) + '</button>';
+      }).join(''), kapali ? '<button class="btn ghost sm" data-act="ciktiHepsi" data-tur="' + tur + '">Tümünü göster</button>' : '');
+    }
+  };
+  DA.actions.ciktiBolum = (el) => {
+    const ui = state.ui, tur = el.dataset.tur, k = el.dataset.k;
+    if (!nesneMi(ui.cikti)) ui.cikti = {};
+    if (!nesneMi(ui.cikti[tur])) ui.cikti[tur] = {};
+    if (DA.cikti.acik(tur, k)) ui.cikti[tur][k] = false; else delete ui.cikti[tur][k];
+    DA.save(); DA.render(true);
+  };
+  DA.actions.ciktiHepsi = (el) => {
+    if (nesneMi(state.ui.cikti)) delete state.ui.cikti[el.dataset.tur];
+    DA.save(); DA.render(true);
+  };
 
   DA.THEMES = [['auto', 'Otomatik'], ['light', 'Açık'], ['dark', 'Koyu']];
   DA.theme = () => state.ui.theme || 'auto';
