@@ -19,9 +19,10 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   menü hedefi ile karşılaştırma
 - Karbonhidrat sayımı: İ:KH oranı (500 kuralı), düzeltme faktörü (1800 kuralı), öğün ve düzeltme bolusu
 - Genel arama: besin, hesaplayıcı, referans, danışan ve menülerde tek kutudan
-- Favoriler, son açılanlar ve açık/koyu/otomatik tema; bakır-turuncu görsel dil (degrade zemin, cam
-  yüzeyler, halka göstergeler, yüzen sekme çubuğu ve hızlı işlem düğmesi); tüm metinler iki temada da
-  WCAG AA kontrastında (testle denetlenir)
+- Favoriler, son açılanlar ve koyu (varsayılan) / açık / otomatik tema; "gece bakırı" görsel dil:
+  siyah-koyu kahve zemin, turuncu (#FF6B25) vurgu, yarı saydam katmanlı kartlar, yarım daire takip
+  göstergesi, son 7 gün şeridi, menüde halka ve makro çubuklu toplam kartı, besin grubu ve öğün
+  simgeleri, yüzen sekme çubuğu ve hızlı işlem düğmesi; tüm metinler iki temada da WCAG AA kontrastında (testle denetlenir)
 - Yedek hatırlatması (son yedekten 14 gün geçince uyarır) ve yeni sürüm bildirimi
 - 74 çalışma kartı (aralıklı tekrar): TEMD, TÜBER, değişim listesi, WHO persentil eşikleri
 - Diyet listesi yazıcı: değişim planından öğün öğün liste; satırlar ev ölçüsüyle ("1 su bardağı yarım

@@ -629,7 +629,8 @@ function ornekDurum(tema) {
   const TOKENLAR = ['--bg', '--bg-2', '--card', '--card-2', '--card-opak', '--ink', '--ink-2', '--mute', '--line', '--line-2',
     '--pri', '--pri-2', '--pri-ink', '--pri-soft', '--pri-line', '--acc', '--acc-soft', '--ok', '--ok-bg', '--warn', '--warn-bg',
     '--bad', '--bad-bg', '--info', '--info-bg', '--grad-a', '--grad-b', '--hero-a', '--hero-b', '--hero-c', '--hero-kenar',
-    '--cam', '--parlak', '--parilti', '--zemin-tepe', '--zemin-kose', '--zemin-ust', '--zemin-alt', '--sh-1', '--sh-2', '--sh-3', 'color-scheme'];
+    '--cam', '--parlak', '--parilti', '--zemin-tepe', '--zemin-kose', '--zemin-ust', '--zemin-alt', '--sh-1', '--sh-2', '--sh-3',
+    '--kart-isik', '--iz', 'color-scheme'];
   const tokenOku = (pg) => pg.evaluate((T) => { const cs = getComputedStyle(document.documentElement);
     return T.map((k) => k + '=' + (k === 'color-scheme' ? cs.colorScheme : cs.getPropertyValue(k).trim())); }, TOKENLAR);
   const sistemKoyu = await tarayici.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', serviceWorkers: 'block' });
@@ -789,8 +790,9 @@ function ornekDurum(tema) {
       /* Sıfır olan kutu vurgulanmamalı: vurgu bilgi taşımalı */
       kartVurgulu: kutu[2] ? kutu[2].classList.contains('uyari') : false,
       kartDeger: kutu[2] ? kutu[2].querySelector('b').textContent.trim() : null,
-      /* Halka: takibi açık 2 danışandan 1'i gecikmiş → 1/2 zamanında;
-         yay uzunluğu çevrenin yarısı: 2π·42 = 263,9 → 131,9 */
+      /* Halka: takibi açık 2 danışandan 1'i gecikmiş → 1/2 zamanında.
+         Gösterge yarım daire (Kasım 2026): tam yay π·42 = 131,95;
+         yarısı 65,97 → "66.0" */
       halkaMetin: ((document.querySelector('.hero .halka .orta') || {}).textContent || '').trim(),
       halkaYay: ((document.querySelector('.hero .halka .yay') || { getAttribute: () => '' }).getAttribute('stroke-dasharray') || '').split(' ')[0],
       /* Hafta şeridi: yedi gün, sonuncusu bugün; 6 gün önce 1, bugün 1 ölçüm,
@@ -801,7 +803,7 @@ function ornekDurum(tema) {
     };
   });
   uiEkle('Hero halkası: takipte zamanında', '1/2zamanında', kahraman.halkaMetin);
-  uiEkle('Hero halkası: yay oranı (çevrenin yarısı)', '131.9', kahraman.halkaYay);
+  uiEkle('Hero göstergesi: yay oranı (yarım dairenin yarısı)', '66.0', kahraman.halkaYay);
   uiEkle('Hafta şeridi yedi gün', 7, kahraman.haftaGun);
   uiEkle('Hafta şeridi: ilk gün 1 ölçüm, son gün bugün ve 1 ölçüm', '1,1b', kahraman.haftaUclar);
   uiEkle('Bu hafta ölçüm sayısı doğru', 2, kahraman.hafta);
@@ -2018,6 +2020,108 @@ function ornekDurum(tema) {
     return JSON.stringify(a.ui.cikti) + ' | ' + ('cikti' in b.ui);
   } catch (e) { return 'hata: ' + e.message; } });
   uiEkle('Sınır denetimi: çıktı ayarı', '{"menu":{"makro":false}} | false', ciktiSinir);
+
+  /* ---- görsel yenileme (Kasım 2026) ----
+     Yalnız görünüm değişti; testler görünümün bilgi taşıyan kısmını ölçer:
+     varsayılan tema, gösterge geometrisi, makro kartındaki kalan miktarlar,
+     simgelerin doğru gruba gitmesi, seçili sekme işareti, ekran geçişi. */
+  const gy = await sayfa.evaluate(() => {
+    const S = DA.state(), ui = S.ui, o = {}, eskiTema = ui.theme;
+    try {
+      /* Hiç seçim yoksa koyu; elle "Otomatik" seçilmişse korunur */
+      delete ui.theme; DA.applyTheme();
+      o.tema = DA.theme() + '/' + document.documentElement.getAttribute('data-theme');
+      ui.theme = 'auto'; DA.applyTheme();
+      o.tema += '/' + DA.theme() + '/' + document.documentElement.hasAttribute('data-theme');
+
+      /* Yarım gösterge, elle: yay boyu π·42 = 131,95. Oran 0,25 → 32,99 → "33.0".
+         Uç noktası: açı π·(1 − 0,25) = 135°; x = 50 + 42·cos135° = 50 − 29,70 = 20,3;
+         y = 50 − 42·sin135° = 50 − 29,70 = 20,3. Oran 0 → uç noktası yok. */
+      const kap = document.createElement('div');
+      kap.innerHTML = DA.halka(0.25, '', { yarim: true }) + DA.halka(0, '', { yarim: true });
+      const [h1, h2] = kap.querySelectorAll('.halka');
+      const uc = h1.querySelector('.uc');
+      o.yarim = [h1.classList.contains('yarim'), h1.querySelector('.yay').getAttribute('stroke-dasharray'),
+        uc ? uc.getAttribute('cx') + ',' + uc.getAttribute('cy') : 'yok', !h2.querySelector('.uc')].join(' | ');
+
+      /* Menü toplam kartı, elle: beyaz ekmek 100 g = 265 kcal · P 9 · KH 49 · Y 3,2
+         (data-foods.js satırı). Hedef 1800/90/225/60:
+         kalan 1800 − 265 = 1535 kcal; protein 9/90 = %10, 81 g kaldı;
+         KH 49/225 = %21,78, 176 g kaldı; yağ 3,2/60 = %5,33, 56,8 → 57 g kaldı. */
+      const meals = {}; DA.foods.ogunler.forEach((k) => { meals[k] = []; });
+      meals[DA.foods.ogunler[0]].push({ id: 'beyaz-ekmek', g: 100 });
+      S.menus.unshift({ id: 'gy', title: 'Görsel', date: '2026-02-05', client: '', note: '', target: { kcal: 1800, p: 90, c: 225, f: 60 }, meals });
+      location.hash = 'menu/gy'; DA.render(false);
+      const kart = document.querySelector('.makro-kart');
+      const mk = Array.from(kart.querySelectorAll('.mk')).map((d) => {
+        const w = parseFloat(((d.querySelector('.bar > i') || {}).style || {}).width);
+        return d.querySelector('.mk-u span').textContent + ' ' + (isFinite(w) ? w.toFixed(2) : '-') + ' ' + d.querySelector('small').textContent;
+      });
+      o.makro = mk.join(' | ');
+      o.halka = kart.querySelector('.halka .orta').textContent + '/' + kart.querySelector('.halka').classList.contains('asim');
+      o.ogunIkon = document.querySelectorAll('h2.ogun-bas .oi svg').length + '/' + (document.querySelector('h2.ogun-bas') || {}).textContent;
+      /* Hedef 200 kcal: 265 > 210 (%5 eşiği) → kırmızı yay, 65 kcal fazla.
+         Protein hedefi 5 g: 9 > 5,25 → çubuk kırmızı, 9 − 5 = 4 g fazla;
+         KH ve yağ hedefi yok. */
+      S.menus[0].target = { kcal: 200, p: 5 }; DA.render(true);
+      const k2 = document.querySelector('.makro-kart');
+      o.asim = k2.querySelector('.halka .orta').textContent + '/' + k2.querySelector('.halka').classList.contains('asim') + '/' +
+        k2.querySelectorAll('.mk small').length + '/' + Array.from(k2.querySelectorAll('.mk small')).map((x) => x.textContent).join(',') + '/' +
+        k2.querySelector('.mk .bar').classList.contains('over');
+      S.menus = S.menus.filter((m) => m.id !== 'gy');
+
+      /* Besin grubu simgeleri: satırdaki simge kendi grubunun simgesi */
+      const ic = (ad) => { const d = document.createElement('div'); d.innerHTML = DA.icon(ad); return d.innerHTML; };
+      location.hash = 'besin'; DA.render(false);
+      DA.actions.foodCat({ dataset: { c: 'Süt & Ürünleri' } });
+      const ilk = document.querySelector('#foodList .li .ic.bg');
+      o.besinIkon = !!ilk && ilk.innerHTML === ic('sut');
+      DA.actions.foodCat({ dataset: { c: 'Tümü' } });
+      o.ikonAdi = ['Tahıl & Ekmek', 'Et, Balık & Tavuk', 'Kurubaklagiller', 'Yağlı tohumlar', 'bilinmeyen'].map(DA.besinIkonAdi).join(',');
+
+      /* Seçili sekme: renge ek olarak üst çizgi (::before) */
+      const sek = Array.from(document.querySelectorAll('#tabs a'));
+      const on = sek.find((a) => a.classList.contains('on')), off = sek.find((a) => !a.classList.contains('on'));
+      o.sekme = (on ? on.dataset.tab : '-') + '/' + (on ? getComputedStyle(on, '::before').content !== 'none' : false) + '/' +
+        (off ? getComputedStyle(off, '::before').content : '-');
+
+      /* Hafta şeridi: ölçüm girilen gün dolu (degrade), girilmeyen düz.
+         Bugüne bir ölçüm konur; altı gün öncesi boş kalır. */
+      S.clients.push({ id: 'gyc', name: 'Şerit', sex: 'K', h: 160, meas: [{ id: 'm', d: DA.today(), w: 60 }] });
+      location.hash = 'ana'; DA.render(false);
+      S.clients = S.clients.filter((c) => c.id !== 'gyc');
+      const gunler = Array.from(document.querySelectorAll('.hero .hafta .gun'));
+      const dolu = gunler.find((g) => g.dataset.n !== '0'), bos = gunler.find((g) => g.dataset.n === '0');
+      const arka = (g) => (g ? getComputedStyle(g.querySelector('b')).backgroundImage : '-');
+      o.seri = /gradient/.test(arka(dolu)) + '/' + (arka(bos) === 'none');
+
+      /* Ekran geçişi: adres değişince #app animasyonu yeniden başlar (style
+         dokunulur); aynı ekranın yeniden çizimi dokunmaz. */
+      const app = document.querySelector('#app'); let dokunus = 0;
+      const gozcu = new MutationObserver((l) => { dokunus += l.filter((x) => x.attributeName === 'style').length; });
+      gozcu.observe(app, { attributes: true });
+      DA.render(true);
+      o.gecis = [];
+      return new Promise((tamam) => setTimeout(() => {
+        o.gecis.push(dokunus); dokunus = 0;
+        location.hash = 'hesapla'; DA.render(false);
+        setTimeout(() => { o.gecis.push(dokunus > 0); gozcu.disconnect(); o.gecis = o.gecis.join('/');
+          ui.theme = eskiTema; if (eskiTema == null) delete ui.theme; DA.applyTheme(); DA.save(); tamam(o); }, 0);
+      }, 0));
+    } catch (e) { o.hata = String((e && e.message) || e); ui.theme = eskiTema; DA.applyTheme(); return o; }
+  });
+  uiEkle('Görsel: akış hatasız', '', gy.hata || '');
+  uiEkle('Görsel: seçim yoksa koyu tema, elle "Otomatik" korunuyor', 'dark/dark/auto/false', gy.tema);
+  uiEkle('Görsel: yarım gösterge yayı ve uç noktası (elle)', 'true | 33.0 131.9 | 20.3,20.3 | true', gy.yarim);
+  uiEkle('Görsel: menü makro çubukları ve kalan (elle)', 'Protein 10.00 81 g kaldı | Karbonhidrat 21.78 176 g kaldı | Yağ 5.33 57 g kaldı', gy.makro);
+  uiEkle('Görsel: menü halkası kalan kcal', '1535kcal kaldı/false', gy.halka);
+  uiEkle('Görsel: menü hedefi aşılınca kırmızı yay ve fazla', '65kcal fazla/true/3/4 g fazla,hedef yok,hedef yok/true', gy.asim);
+  uiEkle('Görsel: öğün başlıklarında simge, başlık metni aynı', '6/Kahvaltı', gy.ogunIkon);
+  uiEkle('Görsel: besin satırında kendi grubunun simgesi', true, gy.besinIkon);
+  uiEkle('Görsel: grup adından simge', 'tahil,balik,fasulye,badem,bowl', gy.ikonAdi);
+  uiEkle('Görsel: seçili sekmede üst çizgi var, diğerlerinde yok', 'besin/true/none', gy.sekme);
+  uiEkle('Görsel: hafta şeridinde ölçüm günü dolu, boş gün düz', 'true/true', gy.seri);
+  uiEkle('Görsel: ekran değişince geçiş, yeniden çizimde değil', '0/true', gy.gecis);
 
   /* ---- değişim listesi: hedef yüzde ya da gram ----
      Bildirilen hata: yüzdeler girilince "Yağ % (otomatik)" alanı güncellenmiyor,

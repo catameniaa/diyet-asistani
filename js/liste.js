@@ -245,7 +245,7 @@
   }
   function ogunKarti(l, o) {
     const lid = esc(l.id), satirlar = l.ogun[o[0]] || [];
-    return '<div class="card" data-ogun="' + o[0] + '"><h2>' + esc(o[1]) + '</h2>' + durumCipleri(l, o[0]) +
+    return '<div class="card" data-ogun="' + o[0] + '"><h2 class="ogun-bas">' + DA.ogunIkon(o[0]) + esc(o[1]) + '</h2>' + durumCipleri(l, o[0]) +
       (satirlar.length ? '<div class="list mt-s">' + satirlar.map((x, i) =>
         '<button class="li" data-act="listeSatir" data-l="' + lid + '" data-o="' + o[0] + '" data-i="' + i + '">' +
         '<span class="grow"><div class="t">' + esc(carp(x.t, x.n)) + '</div><div class="s">' + esc(karsilik(satirDegisim(x))) + '</div></span></button>').join('') + '</div>'

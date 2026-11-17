@@ -155,7 +155,7 @@
     }
     return '<div class="list">' + items.map((f) => {
       const on = fv.indexOf(f.id) >= 0;
-      return '<div class="li' + (on ? ' fav' : '') + '">' +
+      return '<div class="li' + (on ? ' fav' : '') + '">' + DA.besinIkon(f.cat) +
         '<button class="grow favli" data-act="foodDetail" data-id="' + esc(f.id) + '">' +
         '<div class="t">' + esc(f.n) + '</div><div class="s">P ' + fmt(f.p, 1) + ' · K ' + fmt(f.c, 1) + ' · Y ' + fmt(f.f, 1) + ' g' +
         (f.por ? ' · porsiyon ' + fmt(f.por, 0) + ' g' : '') + '</div></button>' +
@@ -333,11 +333,24 @@
     }
     const t = menuTotals(m), tg = targetOf(m);
     const pct = (a, b) => (b > 0 ? Math.min(100, a / b * 100) : 0);
-    const bar = (l, a, b, u) => '<div class="mt-s"><div class="row between small"><span>' + l + '</span><span><b>' + fmt(a, 0) + '</b> / ' + fmt(b, 0) + ' ' + u + '</span></div><div class="bar' + (a > b * 1.05 ? ' over' : '') + '"><i style="width:' + pct(a, b) + '%"></i></div></div>';
+    /* Toplam kartı (referanstaki "Your Macros Today"): solda planlanan ve
+       hedef enerji, sağda halka (kalan ya da fazla kcal), altta üç makro
+       çubuğu. Eskiden düz bir enerji çubuğu ve dört kutuydu; aynı bilgi,
+       hedefe kalan miktar artık doğrudan okunuyor. Hedefi %5'ten çok aşan
+       değer kırmızı (eski çubuktaki eşik). */
+    const kalanY = (a, b, u) => (a > b ? fmt(a - b, 0) + ' ' + u + ' fazla' : fmt(b - a, 0) + ' ' + u + ' kaldı');
+    const makro = (sinif, l, a, b) => '<div class="mk"><div class="mk-u"><span>' + l + '</span><b>' + fmt(a, 0) + DA.birim('g') + '</b></div>' +
+      (b > 0 ? '<div class="bar ince ' + sinif + (a > b * 1.05 ? ' over' : '') + '"><i style="width:' + pct(a, b) + '%"></i></div><small>' + kalanY(a, b, 'g') + '</small>'
+        : '<div class="bar ince"></div><small>hedef yok</small>') + '</div>';
+    const enAsim = tg.kcal > 0 && t.kcal > tg.kcal * 1.05;
     const html =
-      '<div class="sticky-tot">' + bar('Enerji', t.kcal, tg.kcal, 'kcal') +
-      '<div class="macros mt-s"><div><b>' + fmt(t.p, 0) + DA.birim('g') + '</b><small>protein</small></div><div><b>' + fmt(t.c, 0) + DA.birim('g') + '</b><small>karbonhidrat</small></div><div><b>' + fmt(t.f, 0) + DA.birim('g') + '</b><small>yağ</small></div><div><b>' + fmt(t.fib, 0) + DA.birim('g') + '</b><small>lif</small></div></div>' +
-      (t.kcal > 0 ? '<div class="tiny muted center mt-s">Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) + '</div>' : '') + '</div>' +
+      '<div class="sticky-tot makro-kart"><div class="mk-ust"><div class="mk-sayi">' +
+        '<div><b>' + fmt(t.kcal, 0) + '</b>' + DA.birim('kcal') + '<small>' + (m.tur === 'geri' ? 'alınan' : 'planlanan') + '</small></div>' +
+        '<div><b>' + fmt(tg.kcal, 0) + '</b>' + DA.birim('kcal') + '<small>hedef</small></div></div>' +
+        DA.halka(tg.kcal > 0 ? t.kcal / tg.kcal : 0, tg.kcal > 0 ? '<b>' + fmt(Math.abs(tg.kcal - t.kcal), 0) + '</b><small>' + (t.kcal > tg.kcal ? 'kcal fazla' : 'kcal kaldı') + '</small>' : '<b>—</b>',
+          { boyut: 76, kalin: 8, asim: enAsim, etiket: 'Enerji ' + fmt(t.kcal, 0) + ' / ' + fmt(tg.kcal, 0) + ' kcal' }) + '</div>' +
+      '<div class="mk-satir">' + makro('mk-p', 'Protein', t.p, tg.p) + makro('mk-c', 'Karbonhidrat', t.c, tg.c) + makro('mk-f', 'Yağ', t.f, tg.f) + '</div>' +
+      '<div class="tiny muted center mt-s">Lif ' + fmt(t.fib, 0) + ' g' + (t.kcal > 0 ? ' · Dağılım: KH %' + fmt(t.c * 4 / t.kcal * 100, 0) + ' · P %' + fmt(t.p * 4 / t.kcal * 100, 0) + ' · Y %' + fmt(t.f * 9 / t.kcal * 100, 0) : '') + '</div></div>' +
       (m.tur === 'geri' ? '<div class="note">24 saatlik geriçağırma: danışanın bir gününde yediklerini besin besin gir. ' +
         'Toplamlar hedefle karşılaştırılır; menü yazım kuralları burada uygulanmaz.</div>' : '') +
       exchangeCard(t) +
@@ -345,7 +358,7 @@
       mikroKartHtml(m) +
       MEALS.map((k) => {
         const list = m.meals[k] || [], mt = mealTotals(list);
-        return '<div class="card"><div class="row between"><h2>' + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
+        return '<div class="card"><div class="row between"><h2 class="ogun-bas">' + DA.ogunIkon(k) + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
           list.map((it, i) => {
             const f = getFood(it.id), n = itemNut(it);
             const olcu = olcuYazi(it);
@@ -462,7 +475,7 @@
   };
   function fillPick(mid, k) {
     const q = DA.trLower(pickQ), items = allFoods().filter((f) => !q || DA.trLower(f.n).includes(q)).slice(0, 60);
-    DA.$('#pickList').innerHTML = items.length ? items.map((f) => '<button class="li" data-act="pickFood" data-id="' + esc(f.id) + '" data-m="' + mid + '" data-k="' + esc(k) + '"><span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">' + esc(f.cat) + '</div></span><span class="end">' + fmt(f.kcal, 0) + ' kcal</span></button>').join('') : '<div class="empty">Bulunamadı</div>';
+    DA.$('#pickList').innerHTML = items.length ? items.map((f) => '<button class="li" data-act="pickFood" data-id="' + esc(f.id) + '" data-m="' + mid + '" data-k="' + esc(k) + '">' + DA.besinIkon(f.cat) + '<span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">' + esc(f.cat) + '</div></span><span class="end">' + fmt(f.kcal, 0) + ' kcal</span></button>').join('') : '<div class="empty">Bulunamadı</div>';
   }
   DA.live.pickSearch = (el) => { pickQ = el.value; fillPick(el.dataset.m, el.dataset.k); };
   DA.actions.pickFood = (el) => {

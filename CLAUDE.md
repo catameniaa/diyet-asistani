@@ -127,7 +127,12 @@ boşluk yazma.
 - **Boşluk:** `--s-1:4px` … `--s-6:32px`.
 - **Dokunma hedefi en az 44px** (iOS kılavuzu, WCAG 2.2). Test bunu tarıyor.
 - **İki tema** — açık ve koyu. Her ikisi de test ediliyor; yeni renk
-  eklersen koyu tema karşılığını da tanımla.
+  eklersen koyu tema karşılığını da tanımla. **Koyu varsayılan** (Kasım
+  2026 kararı); palet: zemin `#0A0807`/`#17110E`, kart `#211914`, vurgu
+  `#FF6B25`→`#FF8A36`, metin `#FFF`/`#A8A09B`. Turuncu dolgu üstünde yazı
+  ve simge koyu (`--pri-ink`): beyaz AA'yı geçmiyor.
+- Alt menü: beş sekme + sağda ayrı turuncu "+" düğmesi (ortaya gömmek
+  2 + 3 bölünme istiyordu; sağda kalması seçildi).
 - **`prefers-reduced-motion`** açıkken tüm animasyon ve geçiş kapanır.
   Bu bir tercih değil, erişilebilirlik gereği.
 - **Boş durum** = `DA.emptyState(ikon, {baslik, aciklama, eylem})`. Boş ekran

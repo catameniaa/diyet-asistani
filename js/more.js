@@ -11,8 +11,10 @@
   }
   /* Hero kutusu: değer büyük, etiket küçük; tamamı dokunulabilir bağlantı.
      ton = '' | 'uyari' | 'iyi' — sıfır olmayan iş yükü göze çarpsın diye. */
-  const stat = (href, n, l, ton) => '<a class="stat' + (ton ? ' ' + ton : '') + '" href="' + href + '">' +
-    '<b>' + esc(String(n)) + '</b><span>' + esc(l) + '</span></a>';
+  /* Gösterge kartı kutusu: solda ince simge, üstte etiket, altta değer
+     (referanstaki "Base Goal / 4,000" düzeni) */
+  const stat = (href, n, l, ton, ico) => '<a class="stat' + (ton ? ' ' + ton : '') + '" href="' + href + '">' +
+    (ico ? icon(ico) : '') + '<span>' + esc(l) + '</span><b>' + esc(String(n)) + '</b></a>';
 
   function greeting() {
     const h = new Date().getHours();
@@ -121,19 +123,26 @@
        her gün aynıdır; oran ise yapılacak işi gösterir. */
     const aktif = (S.clients || []).filter((c) => (c.aralik == null ? 21 : c.aralik) > 0).length;
     const zamaninda = Math.max(0, aktif - takip);
+    /* Referanstaki gösterge kartı: yarım daire, ortada büyük sayı. */
     const halka = DA.halka(aktif ? zamaninda / aktif : 0,
       aktif ? '<b>' + zamaninda + '/' + aktif + '</b><small>zamanında</small>' : '<b>—</b><small>danışan yok</small>',
-      { boyut: 96, etiket: aktif ? 'Takipte zamanında: ' + zamaninda + ' / ' + aktif + ' danışan' : 'Henüz takipte danışan yok' });
-    const hero = '<div class="hero"><div class="ust"><div><div class="hi">' + esc(greeting()) + '</div><h2>' + esc(DA.APP) + '</h2>' +
-      '<div class="by">' + esc(DA.dyt()) + '</div></div>' + halka + '</div>' +
+      { yarim: true, boyut: 236, kalin: 7, etiket: aktif ? 'Takipte zamanında: ' + zamaninda + ' / ' + aktif + ' danışan' : 'Henüz takipte danışan yok' });
+    const bugun = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    const hero = '<div class="hero"><div class="hero-kart">' +
+      '<div class="ust"><div><div class="hi">' + esc(greeting()) + ', ' + esc(DA.dyt()) + '</div><h2>Danışan takibi</h2></div>' +
+      '<span class="tarih">' + esc(bugun) + '</span></div>' +
+      '<div class="gosterge">' + halka + '</div>' +
       '<div class="stats">' +
         /* Envanter sayıları ("23 danışan") her gün aynıydı; hiçbir şey
            söylemiyordu. Kutular artık bugün yapılacak işi gösteriyor.
            Toplam sayılar aşağıdaki araç kutularına taşındı. */
-        stat('#/danisan', takip, 'takip bekliyor', takip ? 'uyari' : '') +
-        stat('#/danisan', hafta, 'bu hafta ölçüm', hafta ? 'iyi' : '') +
-        stat('#/kart', due, due ? 'kart bekliyor' : 'kart günü', due ? 'uyari' : '') +
-      '</div>' + haftaSeridi(S) + '</div>';
+        stat('#/danisan', takip, 'takip bekliyor', takip ? 'uyari' : '', 'users') +
+        stat('#/danisan', hafta, 'bu hafta ölçüm', hafta ? 'iyi' : '', 'scale') +
+        stat('#/kart', due, due ? 'kart bekliyor' : 'kart günü', due ? 'uyari' : '', 'cards') +
+      '</div></div>' +
+      '<div class="hero-kart seri"><div class="seri-bas"><span class="ikon">' + icon('pulse') + '</span>' +
+        '<div><b>Son 7 gün</b><small>' + (hafta ? hafta + ' ölçüm girildi' : 'Bu hafta ölçüm girilmedi') + '</small></div></div>' +
+      haftaSeridi(S) + '</div></div>';
 
     return {
       title: DA.APP, tab: 'ana',

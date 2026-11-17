@@ -259,13 +259,16 @@
   };
 
   DA.THEMES = [['auto', 'Otomatik'], ['light', 'Açık'], ['dark', 'Koyu']];
-  DA.theme = () => state.ui.theme || 'auto';
+  /* Varsayılan KOYU (Kasım 2026, Dyt. Can Bayramoğlu'nun seçimi): tasarım
+     koyu zemin için kuruldu. Elle seçilmiş "Otomatik" ya da "Açık" korunur;
+     yalnız hiç seçim yapılmamışsa koyu açılır. */
+  DA.theme = () => state.ui.theme || 'dark';
   DA.applyTheme = () => {
     const t = DA.theme(), root = document.documentElement;
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches);
     const m = document.querySelector('meta[name=theme-color]');
-    if (m) m.setAttribute('content', dark ? '#1a0d06' : '#f7efe8');
+    if (m) m.setAttribute('content', dark ? '#0a0807' : '#f6f1ed');
   };
   DA.setTheme = (t) => { state.ui.theme = t; DA.save(); DA.applyTheme(); };
   DA.applyTheme();
@@ -303,17 +306,36 @@
      birincinin degradesini (ya da hiçbirini) çiziyordu. Oran 1'i aşarsa yay
      dolu çizilir, aşım ortadaki metinde söylenir. */
   let _halkaNo = 0;
+  /* o.yarim: referanstaki yarım daire gösterge (soldan sağa 180°). Yay
+     uzunluğu yarım çevre, π·42; ucunda beyaz nokta. o.asim: hedef aşıldı,
+     yay kırmızı (ortadaki metin de söyler). Degrade uçları --grad-a/b:
+     açık temada --pri yazı için koyulaştırıldığından dolgu ondan ayrık. */
   DA.halka = (oran, orta, o) => {
     o = o || {};
-    const r = 42, cevre = 2 * Math.PI * r, x = isFinite(oran) ? Math.max(0, Math.min(1, oran)) : 0;
+    const r = 42, x = isFinite(oran) ? Math.max(0, Math.min(1, oran)) : 0;
     const id = 'hk' + (++_halkaNo);
-    return '<div class="halka' + (o.sinif ? ' ' + o.sinif : '') + '"' + (o.boyut ? ' style="--boyut:' + o.boyut + 'px"' : '') +
-      ' role="img" aria-label="' + DA.esc(o.etiket || '') + '">' +
-      '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">' +
-      '<stop offset="0" style="stop-color:var(--pri-2)"/><stop offset="1" style="stop-color:var(--pri)"/></linearGradient></defs>' +
-      '<circle class="iz" cx="50" cy="50" r="' + r + '"/>' +
-      '<circle class="yay" cx="50" cy="50" r="' + r + '" stroke="url(#' + id + ')" stroke-dasharray="' +
-        (cevre * x).toFixed(1) + ' ' + cevre.toFixed(1) + '"' + (x === 0 ? ' style="stroke-linecap:butt"' : '') + '/></svg>' +
+    const degrade = '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" style="stop-color:var(--grad-b)"/><stop offset="1" style="stop-color:var(--grad-a)"/></linearGradient></defs>';
+    const sinif = 'halka' + (o.yarim ? ' yarim' : '') + (o.asim ? ' asim' : '') + (o.sinif ? ' ' + o.sinif : '');
+    let svg;
+    if (o.yarim) {
+      const boy = Math.PI * r, a = Math.PI * (1 - x);
+      const ux = (50 + r * Math.cos(a)).toFixed(1), uy = (50 - r * Math.sin(a)).toFixed(1);
+      const yol = 'M ' + (50 - r) + ' 50 A ' + r + ' ' + r + ' 0 0 1 ' + (50 + r) + ' 50';
+      svg = '<svg viewBox="0 0 100 58" aria-hidden="true">' + degrade +
+        '<path class="iz" d="' + yol + '" style="stroke-linecap:round"/>' +
+        '<path class="yay" d="' + yol + '" stroke="url(#' + id + ')" stroke-dasharray="' + (boy * x).toFixed(1) + ' ' + boy.toFixed(1) + '"' +
+          (x === 0 ? ' style="stroke-linecap:butt"' : '') + '/>' +
+        (x > 0 ? '<circle class="uc" cx="' + ux + '" cy="' + uy + '" r="3.6"/>' : '') + '</svg>';
+    } else {
+      const cevre = 2 * Math.PI * r;
+      svg = '<svg viewBox="0 0 100 100" aria-hidden="true">' + degrade +
+        '<circle class="iz" cx="50" cy="50" r="' + r + '"/>' +
+        '<circle class="yay" cx="50" cy="50" r="' + r + '" stroke="url(#' + id + ')" stroke-dasharray="' +
+          (cevre * x).toFixed(1) + ' ' + cevre.toFixed(1) + '"' + (x === 0 ? ' style="stroke-linecap:butt"' : '') + '/></svg>';
+    }
+    return '<div class="' + sinif + '"' + (o.boyut ? ' style="--boyut:' + o.boyut + 'px' + (o.kalin ? ';--kalin:' + o.kalin : '') + '"' : '') +
+      ' role="img" aria-label="' + DA.esc(o.etiket || '') + '">' + svg +
       '<div class="orta">' + (orta || '') + '</div></div>';
   };
 
@@ -405,7 +427,37 @@
     leaf: '<path d="M20 4C10 4 4 9 4 16c0 2 .8 3.4.8 3.4S9 12 20 9c0 0-1 6-6 9 8 0 6-14 6-14z"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/>'
   };
+  /* Besin grubu ve öğün simgeleri (Kasım 2026 görsel yenileme): fotoğraf
+     yerine aynı çizgi dilinde çizim. Fotoğraf hem lisans ister hem
+     çevrimdışı önbelleği megabaytlarca büyütürdü. */
+  Object.assign(ICONS, {
+    tahil: '<path d="M12 21V7"/><path d="M12 11.5c-2.4 0-3.9-1.4-4.3-3.8 2.4 0 3.9 1.4 4.3 3.8zM12 11.5c2.4 0 3.9-1.4 4.3-3.8-2.4 0-3.9 1.4-4.3 3.8zM12 16c-2.4 0-3.9-1.4-4.3-3.8 2.4 0 3.9 1.4 4.3 3.8zM12 16c2.4 0 3.9-1.4 4.3-3.8-2.4 0-3.9 1.4-4.3 3.8zM12 7c-1.2-.9-1.6-2.3-1-3.8 1.4.5 1.9 2 1 3.8zM12 7c1.2-.9 1.6-2.3 1-3.8-1.4.5-1.9 2-1 3.8z"/>',
+    sut: '<path d="M9 2.5h6v3.2l2 3.3V20a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 20V9l2-3.3z"/><path d="M7 12.5h10"/><path d="M9 5.7h6"/>',
+    balik: '<path d="M2.5 12c3.2-4.6 9.4-6 14.4-1.8L21 7v10l-4.1-3.2C11.9 18 5.7 16.6 2.5 12z"/><path d="M7.5 10.8h.01"/>',
+    yumurta: '<path d="M12 2.8c-3.6 0-6.7 5.7-6.7 10.4a6.7 6.7 0 0 0 13.4 0c0-4.7-3.1-10.4-6.7-10.4z"/><path d="M9.2 13.5a2.8 2.8 0 0 0 2.8 2.8"/>',
+    havuc: '<path d="M15.6 8.4c-1.6-1.6-4.2-1.4-5.6.3L3.7 19.5c-.4.6.2 1.2.8.8l10.8-6.3c1.7-1.4 1.9-4 .3-5.6z"/><path d="M15.6 8.4L20 4M16.4 6.2l.6-3M17.8 7.6l3-.6"/><path d="M9.2 12.8l1.4 1.4M6.8 16.6l1.3 1.3"/>',
+    badem: '<path d="M12 2.8c-4.1 3-6 7.2-6 11a6 6 0 0 0 12 0c0-3.8-1.9-8-6-11z"/><path d="M12 7c-1.4 2.6-1.9 5.2-1.4 8.2"/>',
+    fasulye: '<path d="M8.3 3.6C5 4.6 3.4 8.8 5 13c1.7 4.4 6.2 7.7 10.2 6.2 4-1.4 5.1-6.1 2.6-8.6-1.5-1.5-3.1-1-4.6-2.6S11.5 2.6 8.3 3.6z"/><path d="M9.5 9.5c.5 1.5 1.7 2.4 3.2 2.6"/>',
+    bardak: '<path d="M6 8h12l-1.3 11.6a1.2 1.2 0 0 1-1.2 1H8.5a1.2 1.2 0 0 1-1.2-1z"/><path d="M5 8h14"/><path d="M13 8l2.2-5H18"/><path d="M7 13h10"/>',
+    aksam: '<path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 6.5v3M5.6 10.1l1.9 1.9M18.4 10.1l-1.9 1.9M8 21h8"/>',
+    ay: '<path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z"/>'
+  });
   DA.icon = (n) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[n] || '') + '</svg>';
+  const BESIN_IKON = { 'Tahıl & Ekmek': 'tahil', 'Süt & Ürünleri': 'sut', 'Et, Balık & Tavuk': 'balik', 'Yumurta & Baklagil': 'yumurta',
+    'Sebze': 'havuc', 'Meyve': 'apple', 'Kuruyemiş & Tohum': 'badem', 'Yağ, Şeker & Tatlı': 'treat', 'Türk Mutfağı': 'bowl', 'İçecek': 'bardak' };
+  /* TÜBER porsiyon tablosu gibi başka kaynakların grup adları: ada göre tahmin */
+  DA.besinIkonAdi = (cat) => {
+    if (BESIN_IKON[cat]) return BESIN_IKON[cat];
+    const k = DA.trLower ? DA.trLower(String(cat || '')) : String(cat || '').toLowerCase();
+    return /süt|yoğurt|peynir|kefir/.test(k) ? 'sut' : /et|balık|tavuk|kırmızı/.test(k) ? 'balik' : /yumurta/.test(k) ? 'yumurta'
+      : /baklagil|kurubaklagil/.test(k) ? 'fasulye' : /ekmek|tahıl|pirinç|makarna/.test(k) ? 'tahil' : /sebze/.test(k) ? 'havuc'
+      : /meyve/.test(k) ? 'apple' : /kuruyemiş|yağlı tohum|tohum/.test(k) ? 'badem' : /yağ|şeker|tatlı/.test(k) ? 'treat'
+      : /içecek/.test(k) ? 'bardak' : 'bowl';
+  };
+  DA.besinIkon = (cat) => '<span class="ic bg" aria-hidden="true">' + DA.icon(DA.besinIkonAdi(cat)) + '</span>';
+  const OGUN_IKON = { kahvalti: 'sun', ara1: 'apple', ogle: 'bowl', ara2: 'badem', aksam: 'aksam', gece: 'ay',
+    'Kahvaltı': 'sun', 'Kuşluk': 'apple', 'Öğle': 'bowl', 'İkindi': 'badem', 'Akşam': 'aksam', 'Gece ara öğünü': 'ay', 'Gece': 'ay' };
+  DA.ogunIkon = (k) => '<span class="oi" aria-hidden="true">' + DA.icon(OGUN_IKON[k] || 'bowl') + '</span>';
 
   /* ---- arayüz: toast / sheet ---- */
   let toastT;
@@ -522,6 +574,7 @@
     return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(i >= 0 ? h.slice(i + 1) : '') };
   }
   DA.go = (p) => { location.hash = '#/' + p; };
+  let _sonAdres = null;
   DA.render = (keepScroll) => {
     const { parts, q } = parseHash();
     const root = parts[0] || 'ana';
@@ -537,6 +590,12 @@
     /* Depolama kilitliyse her ekranın başında uyar: sessizce çalışmaya devam etmek,
        kullanıcının kaydedildiğini sanıp veri kaybetmesine yol açar. */
     app.innerHTML = (_kilit ? kilitHtml() : '') + out.html;
+    /* Ekran değişince giriş animasyonu yeniden oynar (yalnız ilk açılışta
+       oynuyordu). Aynı ekranın yeniden çizimi (keepScroll) oynatmaz: her
+       düğmede sayfa titrerdi. reduced-motion açıkken CSS animasyonu siler. */
+    const adres = parts.join('/');
+    if (!keepScroll && adres !== _sonAdres) { app.style.animation = 'none'; void app.offsetWidth; app.style.animation = ''; }
+    _sonAdres = adres;
     DA.$('#title').textContent = out.title || 'Diyet Asistanı';
     const back = DA.$('#backBtn');
     back.hidden = !out.back;
