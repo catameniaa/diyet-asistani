@@ -7,6 +7,10 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - 15 hesaplayıcı: BKİ, enerji (BMH/TEH, makrolar), ideal kilo, bel/kalça ve vücut yağı, kilo kaybı %,
   sıvı, enteral, GIR, gebelik/laktasyon, stres faktörü, çocuk enerji-protein, glisemik indeks ve yük
 - Çocuk persentil (WHO): ağırlık/yaş, boy/yaş, BKİ/yaş için z-skoru, persentil ve büyüme eğrisi
+- GLIM malnütrisyon tanısı (Cederholm 2019): fenotipik + etiyolojik ölçüt, evre 1 (orta) / 2 (ağır),
+  ≥70 yaş BKİ eşikleri; NRS-2002, MUST, MNA-SF taramasının ardından
+- Yeniden beslenme (refeeding) riski (NICE CG32): tek başına ve ikili ölçütler, başlangıç enerjisi
+  (10 ya da 5 kcal/kg/gün), K/P/Mg ve tiamin; >5 gün az yiyende ilk 2 gün gereksinimin %50'si
 - Değişim listesi: sayaçlı giriş; makro hedefi yüzde ya da gram olarak (yağ kalan, canlı gösterilir);
   klasik basamaklı otomatik dağıtım (süt, sebze, meyve, kuruyemiş
   TÜBER Ek 3.1.1 örüntüsünden; ekmek KH'den, et proteinden, yağ yağ hedefinden) ve hesap adımlarının

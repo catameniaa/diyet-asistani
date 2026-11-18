@@ -295,9 +295,9 @@
       ['Enerji ve makrolar', ['enerji', 'sivi', 'stres']],
       ['Değişim ve karbonhidrat', ['degisim', 'khsayim', 'khdagilim', 'gy']],
       ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
-      ['Tarama', ['nrs', 'must', 'mnasf', 'diyabetrisk']],
+      ['Tarama', ['nrs', 'must', 'mnasf', 'glim', 'diyabetrisk']],
       ['Spor beslenmesi', ['sporcu', 'sporkh', 'sporyaris', 'terleme', 'sporke', 'takviye']],
-      ['Klinik', ['enteral', 'gir']],
+      ['Klinik', ['enteral', 'refeeding', 'gir']],
       ['Toplu beslenme', ['toplumenu']]
     ],
     referans: [

@@ -349,6 +349,80 @@
       kosul(G, 'Geçersiz yağ oranında hata verir', !!calistir('sporke', { alim: 2800, egzersiz: 1500, w: 60, yag: 0 }).err);
     }
 
+    /* --- GLIM (Cederholm 2019, Tablo 3–4) ---
+       1) 50 y, 54 kg, 170 cm: BKİ 54 / 2,89 = 18,69 (<20 → evre 1, ≥18,5);
+          6 ayda 62 → 54 kg = %12,9 (>10 → evre 2); alım ≤%50 >1 hf → tanı, evre 2
+       2) 75 y, 60 kg, 165 cm: BKİ 22,04 (≥70 yaşta <22 değil); kayıp 3/63 =
+          %4,8 (>5 değil); hafif kas kaybı → evre 1; kronik inflamasyon
+       3) Fenotipik var (%5,4) ama etiyolojik yok → tanı konmaz
+       4) 6 ay içinde tam %10: >5 karşılanır, >10 değil → evre 1
+       5) Aynı %10, 6 aydan uzun: >10 gerekir → ölçüt yok
+       6) BKİ 60,7 / 2,89 = 21,0: 70 yaşta (<22) evre 1, 69 yaşta (<20 değil) yok
+       7) 6 aydan uzun %25 (>20) → evre 2 */
+    r = calistir('glim', { yas: 50, w: 54, h: 170, once: 62, sure: 'ic', kas: 'yok', alim: 'h1', inf: 'yok' });
+    ekle(G, 'GLIM: BKİ', '18,7 kg/m²', deger(r, 'BKİ'));
+    ekle(G, 'GLIM: fenotipik ölçütler', 'Kilo kaybı %12,9 (6 ay içinde) · BKİ 18,7 (<20, <70 yaş)', deger(r, 'Fenotipik'));
+    ekle(G, 'GLIM: en ağır fenotipik ölçüt evreyi belirler', 'Malnütrisyon — evre 2 (ağır)', deger(r, 'Sonuç'));
+    r = calistir('glim', { yas: 75, w: 60, h: 165, once: 63, sure: 'ic', kas: 'hafif', alim: 'yok', inf: 'kronik' });
+    ekle(G, 'GLIM: ≥70 yaşta BKİ 22,04 ölçüt değil, kas kaybı evre 1', 'Kas kütlesinde hafif–orta azalma | Malnütrisyon — evre 1 (orta)',
+      deger(r, 'Fenotipik') + ' | ' + deger(r, 'Sonuç'));
+    ekle(G, 'GLIM: etiyolojik yoksa tanı konmaz', 'Tanı konmaz: etiyolojik ölçüt yok',
+      deger(calistir('glim', { yas: 40, w: 70, h: 175, once: 74, sure: 'ic', kas: 'yok', alim: 'yok', inf: 'yok' }), 'Sonuç'));
+    ekle(G, 'GLIM: 6 ay içinde tam %10 → evre 1', 'Malnütrisyon — evre 1 (orta)',
+      deger(calistir('glim', { yas: 50, w: 90, h: 180, once: 100, sure: 'ic', kas: 'yok', alim: 'gis', inf: 'yok' }), 'Sonuç'));
+    ekle(G, 'GLIM: 6 aydan uzun tam %10 → ölçüt değil', 'GLIM ölçütleri karşılanmıyor',
+      deger(calistir('glim', { yas: 50, w: 90, h: 180, once: 100, sure: 'dis', kas: 'yok', alim: 'gis', inf: 'yok' }), 'Sonuç'));
+    ekle(G, 'GLIM: BKİ 21 — 70 yaş evre 1, 69 yaş ölçüt yok', 'Malnütrisyon — evre 1 (orta) | GLIM ölçütleri karşılanmıyor',
+      deger(calistir('glim', { yas: 70, w: 60.7, h: 170, sure: 'ic', kas: 'yok', alim: 'h2', inf: 'yok' }), 'Sonuç') + ' | ' +
+      deger(calistir('glim', { yas: 69, w: 60.7, h: 170, sure: 'ic', kas: 'yok', alim: 'h2', inf: 'yok' }), 'Sonuç'));
+    /* BKİ evre 2 eşiği: 52,6 / 2,89 = 18,20 (<18,5) → evre 2; ≥70 yaşta 56,4 / 2,89 = 19,52 (<20) → evre 2.
+       En ağır ölçüt: 56 → 52 kg = %7,1 (evre 1) ama BKİ 17,99 (evre 2) → evre 2 */
+    ekle(G, 'GLIM: BKİ evre 2 eşiği (<70: 18,5 · ≥70: 20)', 'Malnütrisyon — evre 2 (ağır) | Malnütrisyon — evre 2 (ağır)',
+      deger(calistir('glim', { yas: 50, w: 52.6, h: 170, sure: 'ic', kas: 'yok', alim: 'h1', inf: 'yok' }), 'Sonuç') + ' | ' +
+      deger(calistir('glim', { yas: 72, w: 56.4, h: 170, sure: 'ic', kas: 'yok', alim: 'h1', inf: 'yok' }), 'Sonuç'));
+    ekle(G, 'GLIM: evre ilk değil en ağır ölçütten', 'Malnütrisyon — evre 2 (ağır)',
+      deger(calistir('glim', { yas: 50, w: 52, h: 170, once: 56, sure: 'ic', kas: 'yok', alim: 'h1', inf: 'yok' }), 'Sonuç'));
+    ekle(G, 'GLIM: 6 aydan uzun %25 → evre 2', 'Malnütrisyon — evre 2 (ağır)',
+      deger(calistir('glim', { yas: 50, w: 75, h: 170, once: 100, sure: 'dis', kas: 'yok', alim: 'yok', inf: 'akut' }), 'Sonuç'));
+
+    /* --- Yeniden beslenme (NICE CG32) ---
+       1) 40 kg, 165 cm: BKİ 40 / 2,7225 = 14,7 (<16 tek başına); 50 → 40 = %20
+          (>15 tek başına); 7 gün (>5) → yüksek risk; başlangıç ≤10 × 40 = 400 kcal;
+          K 2–4 × 40 = 80–160; P 0,3–0,6 × 40 = 12–24; Mg 0,2 × 40 = 8 IV, 0,4 × 40 = 16 oral
+       2) 36 kg: BKİ 13,2 (<14) → çok yüksek, 5 × 36 = 180 kcal
+       3) 55 kg, 175 cm: BKİ 17,96 (<18,5) + 6 gün (>5) + ilaç = 3 ikili ölçüt → yüksek, 550 kcal;
+          kayıp 5/60 = %8,3 (>10 değil)
+       4) 70 kg, 175 cm, 6 gün: tek ikili ölçüt → yüksek değil; >5 gün → ilk 2 gün ≤%50
+       5) 10 gün: >10 değil (yalnız >5) → yüksek değil; 11 gün → yüksek; 16 gün (>15) → çok yüksek, 5 × 60 = 300 */
+    r = calistir('refeeding', { w: 40, h: 165, once: 50, gun: 7, elek: 'yok', oyku: 'yok' });
+    ekle(G, 'Refeeding: BKİ ve kayıp', '14,7 kg/m² | %20', deger(r, 'BKİ') + ' | ' + deger(r, 'Kilo kaybı'));
+    ekle(G, 'Refeeding: tek başına yeten ölçütler', 'BKİ <16 · kayıp >%15', deger(r, 'Tek başına'));
+    ekle(G, 'Refeeding: ikili ölçütler', '3: BKİ <18,5 · kayıp >%10 · >5 gün beslenmeme', deger(r, 'İkisi gereken'));
+    ekle(G, 'Refeeding: yüksek risk, 10 kcal/kg', 'Yüksek risk | en fazla 400 kcal/gün', deger(r, 'Risk') + ' | ' + deger(r, 'Başlangıç enerjisi'));
+    ekle(G, 'Refeeding: elektrolitler 40 kg', '80–160 mmol/gün | 12–24 mmol/gün | 8 mmol/gün IV ya da 16 oral',
+      deger(r, 'Potasyum') + ' | ' + deger(r, 'Fosfat') + ' | ' + deger(r, 'Magnezyum'));
+    r = calistir('refeeding', { w: 36, h: 165, elek: 'yok', oyku: 'yok' });
+    ekle(G, 'Refeeding: BKİ <14 çok yüksek, 5 kcal/kg', 'Çok yüksek risk | en fazla 180 kcal/gün', deger(r, 'Risk') + ' | ' + deger(r, 'Başlangıç enerjisi'));
+    r = calistir('refeeding', { w: 55, h: 175, once: 60, gun: 6, elek: 'yok', oyku: 'var' });
+    ekle(G, 'Refeeding: üç ikili ölçüt yüksek risk', 'Yüksek risk | en fazla 550 kcal/gün', deger(r, 'Risk') + ' | ' + deger(r, 'Başlangıç enerjisi'));
+    r = calistir('refeeding', { w: 70, h: 175, gun: 6, elek: 'yok', oyku: 'yok' });
+    ekle(G, 'Refeeding: tek ikili ölçüt yüksek değil, ilk 2 gün %50', 'Yüksek risk ölçütü yok | gereksinimin en fazla %50’si',
+      deger(r, 'Risk') + ' | ' + deger(r, 'İlk 2 gün'));
+    ekle(G, 'Refeeding: 10 / 11 / 16 gün', 'Yüksek risk ölçütü yok | Yüksek risk | Çok yüksek risk · en fazla 300 kcal/gün',
+      deger(calistir('refeeding', { w: 60, h: 170, gun: 10, elek: 'yok', oyku: 'yok' }), 'Risk') + ' | ' +
+      deger(calistir('refeeding', { w: 60, h: 170, gun: 11, elek: 'yok', oyku: 'yok' }), 'Risk') + ' | ' +
+      deger(calistir('refeeding', { w: 60, h: 170, gun: 16, elek: 'yok', oyku: 'yok' }), 'Risk') + ' · ' +
+      deger(calistir('refeeding', { w: 60, h: 170, gun: 16, elek: 'yok', oyku: 'yok' }), 'Başlangıç enerjisi'));
+    ekle(G, 'Refeeding: düşük elektrolit tek başına yüksek risk', 'Yüksek risk', deger(calistir('refeeding', { w: 60, h: 170, elek: 'dusuk', oyku: 'yok' }), 'Risk'));
+    /* 42,5 / 2,7225 = 15,61: <16 tek başına yeter. 55 kg, 175 cm, 6 gün: tam iki ikili ölçüt (BKİ <18,5, >5 gün).
+       15 gün: >10 → yüksek, >15 değil → çok yüksek değil. 5 gün: >5 değil → ilk 2 gün satırı yok */
+    ekle(G, 'Refeeding: BKİ 15,6 tek başına yüksek risk', 'Yüksek risk', deger(calistir('refeeding', { w: 42.5, h: 165, elek: 'yok', oyku: 'yok' }), 'Risk'));
+    ekle(G, 'Refeeding: tam iki ikili ölçüt yeter', 'Yüksek risk', deger(calistir('refeeding', { w: 55, h: 175, gun: 6, elek: 'yok', oyku: 'yok' }), 'Risk'));
+    ekle(G, 'Refeeding: 15 gün yüksek, çok yüksek değil', 'Yüksek risk', deger(calistir('refeeding', { w: 60, h: 170, gun: 15, elek: 'yok', oyku: 'yok' }), 'Risk'));
+    ekle(G, 'Refeeding: 5 gün → ilk 2 gün satırı yok', '(satır yok: İlk 2 gün)', deger(calistir('refeeding', { w: 60, h: 170, gun: 5, elek: 'yok', oyku: 'yok' }), 'İlk 2 gün'));
+    r = calistir('refeeding', { w: 60, h: 170, elek: 'yok', oyku: 'yok' });
+    ekle(G, 'Refeeding: risk yoksa ilk 2 gün satırı da yok', 'Yüksek risk ölçütü yok | (satır yok: İlk 2 gün)', deger(r, 'Risk') + ' | ' + deger(r, 'İlk 2 gün'));
+
     /* --- Çocuk persentil: WHO medyanında z = 0 --- */
     if (DA.growth) {
       const zMed = DA.growth.z('wfa', 'E', 24, DA.growth.lms('wfa', 'E', 24)[1]);
