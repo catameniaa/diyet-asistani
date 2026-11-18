@@ -370,6 +370,10 @@ input[type=checkbox], input[type=radio] { width: 24px; height: 24px; accent-colo
    "eksi|k" diye harf ortasından bölünüyordu. */
 .durum{display:flex;flex-wrap:wrap;gap:6px}
 .durum .badge{white-space:nowrap;font-size:var(--t-xs);line-height:var(--lh-xs);padding:3px 9px}
+/* IDDSI düzey numarası: kartın solunda büyük rakam. Renk kodu kullanılmadı
+   (IDDSI renkleri resmî malzemeye ait); düzey yazıyla da başlıkta. */
+.iddsi-no{flex:none;min-width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--font-sayi);font-size:var(--t-xl);font-weight:700;background:var(--card-2);color:var(--ink)}
 .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink-2);padding:0 16px;border-radius:99px;font-size:var(--t-sm);font-weight:600;cursor:pointer;text-decoration:none;transition:background .14s,color .14s,box-shadow .14s}
 .chip svg.i{width:17px;height:17px}
 .chip.on{background:var(--grad);color:var(--pri-ink);border-color:transparent;box-shadow:0 6px 16px rgba(255,107,37,.3)}

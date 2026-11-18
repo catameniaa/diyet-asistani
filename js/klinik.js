@@ -30,7 +30,7 @@
    yiyene ilk 2 gün gereksinimin en fazla %50'si. */
 (function () {
   'use strict';
-  const { fmt } = DA;
+  const { fmt, esc } = DA;
   const R = (l, v, s, hl) => ({ l, v, s, hl });
   const num_ = (k, l, ph, opt, rng) => ({ k, l, t: 'num', ph: ph || '', opt: !!opt, rng });
   const bkiHesap = (w, h) => w / Math.pow(h / 100, 2);
@@ -228,6 +228,54 @@
           'Kronik böbrek hastalığı tanısı için bulgunun ≥3 ay sürmesi gerekir; G1–G2 tek başına KBH demek değildir. ' +
           'Protein kısıtlaması metabolik olarak stabil hastada, hekim ve diyetisyen izleminde uygulanır; hangi ağırlığın (gerçek, ' +
           'standart, ödemsiz) kullanılacağı klinik karara bağlıdır. Kaynaklar: KDIGO 2024 KBH kılavuzu; KDOQI 2020 beslenme kılavuzu.'
+      };
+    }
+  });
+
+  /* ---- IDDSI düzeyleri ----
+     © The International Dysphagia Diet Standardisation Initiative 2019 @
+     https://iddsi.org/framework/ — CC BY-SA 4.0. Dil çevirisi dışında türev
+     çalışmaya izin verilmiyor: tanımlar ve test eşikleri IDDSI posterinden
+     değiştirilmeden çevrildi, kısaltılmadı ya da yorum eklenmedi. Türkçe adlar
+     uygulamanın çevirisidir; resmî Türkçe çeviri bulunamadı (doğrulanmalı),
+     İngilizce resmî ad yanında durur. IDDSI logosu ve renk kodları
+     kullanılmadı: logo resmî malzemelere ayrılmış. */
+  const IDDSI = [
+    [0, 'Thin', 'İnce', 'İçecek', 'Su gibi akar.', 'Akış testi: 10 saniye sonra şırıngada 1 ml’den az kalır.'],
+    [1, 'Slightly Thick', 'Hafif koyu', 'İçecek', 'Sudan koyu; standart pipetten akar.', 'Akış testi: 10 saniye sonra 1–4 ml kalır.'],
+    [2, 'Mildly Thick', 'Az koyu', 'İçecek', 'Bardaktan yudumlanır; standart pipetle içmek çaba ister.', 'Akış testi: 10 saniye sonra 4–8 ml kalır.'],
+    [3, 'Moderately Thick · Liquidised', 'Orta koyu · Sıvılaştırılmış', 'İçecek ve yiyecek',
+      'Bardaktan içilebilir ya da kaşıkla yenir; geniş pipetle içmek çaba ister.',
+      'Akış testi: 10 saniye sonra 8 ml’den az kalmaz. Çatal damlatma testi: çatal dişlerinin arasından topak topak, yavaşça damlar.'],
+    [4, 'Extremely Thick · Pureed', 'Çok koyu · Püre', 'İçecek ve yiyecek',
+      'Pürüzsüz, topaksız, yapışkan değil; çiğneme gerekmez. Kaşıkla yenir.',
+      'Çatal damlatma testi: çatalın üstünde yığın hâlinde durur, sürekli akmaz ya da damlamaz. Kaşık eğme testi: kaşıkta şeklini korur, kaşık eğilince kolayca düşer.'],
+    [5, 'Minced & Moist', 'Kıyılmış ve nemli', 'Yiyecek', 'Çok yumuşak, küçük, nemli topaklar; az çiğneme gerekir.',
+      'Topak boyutu yetişkinde 4 mm, çocukta 2 mm. Çatal baskı testi ile denetlenir.'],
+    [6, 'Soft & Bite-Sized', 'Yumuşak ve lokma boyutunda', 'Yiyecek', 'Yumuşak, yumuşacık ve her yeri nemli; ince sıvı sızmaz. Çiğneme gerekir.',
+      'Parça yetişkinde en fazla 1,5 × 1,5 cm, bebek ve çocukta 8 × 8 mm. Çatal baskı testi: başparmak tırnağı beyazlayana kadar bastırılınca tamamen ezilir, eski şekline dönmez.'],
+    [7, 'Regular · Easy to Chew', 'Normal · Kolay çiğnenen', 'Yiyecek', 'Normal: farklı dokulardaki günlük yiyecekler. Kolay çiğnenen: yumuşak dokulu günlük yiyecekler.',
+      'Normal düzey için özel test yok.']
+  ];
+  DA.calcs.push({
+    id: 'iddsi', title: 'IDDSI düzeyleri', desc: 'Disfajide içecek kıvamı ve yiyecek dokusu · 0–7', ico: 'drip',
+    view() {
+      return {
+        title: 'IDDSI düzeyleri', tab: 'referans', back: 'referans', ico: 'drip',
+        fav: { h: '#/hesapla/iddsi', t: 'IDDSI düzeyleri', ico: 'drip' },
+        html: '<div class="note">İçecekler 0–4, yiyecekler 3–7 düzeyleriyle tanımlanır. Düzey, kapsamlı klinik değerlendirmeyle seçilir; ' +
+          'testler ürünün servis koşulunda (özellikle sıcaklık) yapılır.</div>' +
+          IDDSI.map((d) => '<div class="card iddsi" data-duzey="' + d[0] + '"><div class="row" style="gap:var(--s-3);align-items:flex-start">' +
+            '<span class="iddsi-no" aria-hidden="true">' + d[0] + '</span><div class="grow"><h2 style="margin:0">' + esc(d[2]) + '</h2>' +
+            '<div class="small muted">' + esc(d[1]) + ' · ' + esc(d[3]) + '</div>' +
+            '<p class="small mt-s" style="margin-bottom:var(--s-1)">' + esc(d[4]) + '</p><p class="small" style="margin:0"><b>Test:</b> ' + esc(d[5]) + '</p>' +
+            '</div></div></div>').join('') +
+          '<div class="card"><h2>Testler</h2><p class="small">Akış testi: 10 ml’lik şırınga 10 ml çizgisine doldurulur, uç parmakla kapatılır; ' +
+          'parmak çekilip 10 saniye akıtılır ve kalan hacim okunur. Geçiş yiyecekleri: 1,5 × 1,5 cm örneğe 1 ml su eklenip 1 dakika beklenir, ' +
+          'ardından çatal baskı testi yapılır. Ayrıntılı yönergeler iddsi.org’da.</p></div>' +
+          '<p class="tiny muted">© The International Dysphagia Diet Standardisation Initiative 2019 @ https://iddsi.org/framework/ · ' +
+          'CreativeCommons Attribution Sharealike 4.0 (https://creativecommons.org/licenses/by-sa/4.0/legalcode). Dil çevirisi dışında türev ' +
+          'çalışmaya izin verilmez. Türkçe adlar ve metin bu uygulamanın çevirisidir; İngilizce adlar resmîdir.</p>'
       };
     }
   });

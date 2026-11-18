@@ -137,6 +137,16 @@
     ekle(G, 'Toplam bolus', '7 Ü', deger(r, 'Toplam bolus'));
     ekle(G, 'Hekimin verdiği İ:KH oranı korunur', '1 Ü / 10 g KH',
       deger(calistir('khsayim', { ikh: 10, idf: 50, kh: 45 }), 'İ:KH oranı'));
+    /* Regüler insülin (TÜRKDİAB 2021 s. 29): 450 ÷ 40 = 11,25 → 11,3; 1500 ÷ 40 = 37,5 → 38 (yuvarlanmış gösterim);
+       öğün 60 ÷ 11,25 = 5,33 → 5,3; düzeltme (200 − 100) ÷ 37,5 = 2,67 → 2,7; toplam 8 */
+    r = calistir('khsayim', { gtid: 40, ins: 'regular', kh: 60, bg: 200, hedef: 100 });
+    ekle(G, 'Regüler insülin: 450 ve 1500 kuralı', '1 Ü / 11,3 g KH | 38 mg/dL | 5,3 Ü | 2,7 Ü | 8 Ü',
+      [deger(r, 'İ:KH oranı'), deger(r, 'Düzeltme faktörü'), deger(r, 'Öğün bolusu'), deger(r, 'Düzeltme dozu'), deger(r, 'Toplam bolus')].join(' | '));
+    ekle(G, 'Regüler insülinde kural adı etikette', 'İ:KH oranı (450 kuralı),Düzeltme faktörü (1500 kuralı)', (r.rows || []).slice(0, 2).map((x) => x.l).join(','));
+    /* Yalnız hekimin İ:KH oranı: düzeltme faktörü hesaplanamaz, düzeltme dozu yazılmaz, öğün bolusu 45 ÷ 15 = 3 */
+    r = calistir('khsayim', { ikh: 15, kh: 45, bg: 180 });
+    ekle(G, 'GTİD yokken eksik faktör yazılıyor, doz uydurulmuyor', 'girilmedi | 3 Ü | (satır yok: Düzeltme dozu) | 3 Ü',
+      [deger(r, 'Düzeltme faktörü'), deger(r, 'Öğün bolusu'), deger(r, 'Düzeltme dozu'), deger(r, 'Toplam bolus')].join(' | '));
     ekle(G, 'Kan şekeri 60 mg/dL hipoglisemi uyarısı', 'bad', calistir('khsayim', { gtid: 40, bg: 60 }).tone);
     kosul(G, 'Girdisiz karbonhidrat sayımı hata verir', !!calistir('khsayim', {}).err);
 

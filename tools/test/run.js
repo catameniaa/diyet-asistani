@@ -36,7 +36,7 @@ const ROTALAR = [
   '#/hesapla/cocukenerji', '#/hesapla/gy', '#/hesapla/nrs', '#/hesapla/must', '#/hesapla/mnasf',
   '#/hesapla/diyabetrisk', '#/hesapla/sporcu', '#/hesapla/terleme', '#/hesapla/sporke',
   '#/hesapla/sporkh', '#/hesapla/sporyaris', '#/hesapla/derikivrim', '#/hesapla/takviye',
-  '#/hesapla/glim', '#/hesapla/refeeding', '#/hesapla/egfr',
+  '#/hesapla/glim', '#/hesapla/refeeding', '#/hesapla/egfr', '#/hesapla/iddsi',
   '#/hesapla/degisimliste',
   '#/hesapla/tuber', '#/hesapla/oruntu', '#/hesapla/hedef', '#/hesapla/porsiyon',
   '#/hesapla/porsiyonbesin', '#/hesapla/istege', '#/hesapla/bebek', '#/hesapla/gebe',
@@ -1978,6 +1978,19 @@ function ornekDurum(tema) {
   uiEkle('Hafta: silince 7 gün birden gidiyor', 0, hf.silindi);
   uiEkle('Hafta: geri alınca günler eski yerlerinde', true, hf.geriGeldi);
   uiEkle('Hafta: içe aktarmada bozuk gün ve boş hafta düzeltiliyor', '0:false:false', hf.denetim);
+
+  /* ---- IDDSI referansı: 8 düzey, eşikler, atıf ---- */
+  const idd = await sayfa.evaluate(async () => {
+    location.hash = 'hesapla/iddsi'; DA.render(false);
+    await new Promise((ok) => { const b = () => (document.querySelector('.iddsi') ? ok() : setTimeout(b, 20)); b(); });
+    const k = Array.from(document.querySelectorAll('.iddsi'));
+    const t = (n) => (k.find((x) => x.dataset.duzey === String(n)) || {}).textContent || '';
+    return { duzey: k.map((x) => x.dataset.duzey).join(''), d0: /1 ml’den az/.test(t(0)), d2: /4–8 ml/.test(t(2)), d5: /4 mm.*2 mm/.test(t(5)),
+      d6: /1,5 × 1,5 cm.*8 × 8 mm/.test(t(6)), atif: /International Dysphagia Diet Standardisation Initiative 2019.*by-sa\/4\.0.*türev/.test(document.querySelector('#app').textContent) };
+  });
+  uiEkle('IDDSI: 0–7 düzey sırayla', '01234567', idd.duzey);
+  uiEkle('IDDSI: akış ve parça eşikleri (0, 2, 5, 6)', 'true,true,true,true', [idd.d0, idd.d2, idd.d5, idd.d6].join(','));
+  uiEkle('IDDSI: CC BY-SA atfı ve türev notu', true, idd.atif);
 
   /* ---- toplu beslenme menü taslağı ----
      Elle, Ulusal Menü Rehberi Tablo 4.5'ten (21 gün; [azami kış, yaz, asgari

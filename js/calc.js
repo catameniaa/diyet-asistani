@@ -305,6 +305,7 @@
       ['Porsiyon ve besin değerleri', ['degisimliste', 'porsiyon', 'porsiyonbesin', 'istege']],
       ['Yaşam dönemleri', ['bebek', 'gebe', 'pal', 'vejetaryen']],
       ['Örnek planlar', ['ornekmenu']],
+      ['Klinik beslenme', ['iddsi']],
       ['Yöntem', ['yontem']]
     ]
   };

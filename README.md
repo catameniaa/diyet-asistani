@@ -24,7 +24,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   her danışanın kendi planı; porsiyon örnekleri, yemeklerin değişim karşılığı (çorba = 1 ekmek + 1 yağ,
   zeytinyağlı sebze yemeği = 1 sebze + 1 yağ, pilav yalnız ekmek…) ekranda ve çıktıda,
   menü hedefi ile karşılaştırma
-- Karbonhidrat sayımı: İ:KH oranı (500 kuralı), düzeltme faktörü (1800 kuralı), öğün ve düzeltme bolusu
+- Karbonhidrat sayımı: İ:KH oranı ve düzeltme faktörü insülin türüne göre (hızlı etkili analog 500/1800,
+  regüler insan insülini 450/1500; TÜRKDİAB 2021), öğün ve düzeltme bolusu
+- IDDSI düzeyleri (0–7): içecek kıvamı ve yiyecek dokusu, akış ve çatal testlerinin eşikleri (CC BY-SA 4.0 atıflı çeviri)
 - Genel arama: besin, hesaplayıcı, referans, danışan ve menülerde tek kutudan
 - Favoriler, son açılanlar ve koyu (varsayılan) / açık / otomatik tema; "gece bakırı" görsel dil:
   siyah-koyu kahve zemin, turuncu (#FF6B25) vurgu, yarı saydam katmanlı kartlar, yarım daire takip
