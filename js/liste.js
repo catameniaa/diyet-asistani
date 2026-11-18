@@ -76,6 +76,26 @@
   const kisa = (k) => (DA.exchange.kisa || {})[k] || k;
 
   const S = () => DA.state();
+  /* ---- haftalık liste ----
+     Her gün ayrı bir listedir (taslak, kural denetimi, günlük çıktı aynen
+     çalışsın); günler ortak "hafta" kimliği ve 0–6 "gun" sırasıyla bağlı.
+     Başlık, öneriler ve çıktı seçimi haftanın ortak bilgisidir: birinde
+     değişince hepsine yazılır. */
+  const GUN_ADI = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  const GUN_KISA = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const tarihNesne = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  function gunSonra(iso, n) {
+    const d = tarihNesne(iso) || new Date(); d.setDate(d.getDate() + n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  const haftaGunleri = (hid) => (hid ? listeler().filter((x) => x.hafta === hid).sort((a, b) => a.gun - b.gun) : []);
+  const haftaninBiri = (l) => (l.hafta ? haftaGunleri(l.hafta) : [l]);
+  /* İndekste hafta tek satır: ilk günü temsil eder */
+  const gorunurListeler = (L) => L.filter((l) => !l.hafta || haftaGunleri(l.hafta)[0] === l);
+  function gunEtiketi(l, uzun) {
+    const d = tarihNesne(l.d), g = d ? d.getDay() : null;
+    return (l.gun + 1) + '. gün' + (g == null ? '' : ' · ' + (uzun ? GUN_ADI[g] + ', ' + DA.fdate(l.d) : GUN_KISA[g]));
+  }
   const listeler = () => (S().listeler = S().listeler || []);
   const esdegerler = () => (S().esdegerler = S().esdegerler || []);
   const bul = (id) => listeler().find((l) => l.id === id) || null;
@@ -239,11 +259,11 @@
     const L = listeler();
     return {
       title: 'Diyet listeleri', tab: 'besin', back: 'besin',
-      html: L.length ? '<div class="list">' + L.map((l) => {
+      html: L.length ? '<div class="list">' + gorunurListeler(L).map((l) => {
         const c = danisan(l.c);
         return '<a class="li chev" href="#/liste/' + esc(l.id) + '"><span class="ic">' + icon('note') + '</span>' +
           '<span class="grow"><div class="t">' + esc(l.ad || 'Beslenme listesi') + '</div><div class="s">' + esc(DA.fdate(l.d)) +
-          (c ? ' · ' + esc(c.name) : '') + '</div></span></a>';
+          (l.hafta ? ' · ' + haftaGunleri(l.hafta).length + ' günlük' : '') + (c ? ' · ' + esc(c.name) : '') + '</div></span></a>';
       }).join('') + '</div>'
         : DA.emptyState('note', { baslik: 'Henüz diyet listesi yok',
           aciklama: 'Değişim listesinde planı kur, öğünlere dağıt ve “Diyet listesi yaz”a dokun; öğün hedefleri hazır gelsin.',
@@ -260,9 +280,14 @@
     const kural = DA.menuKural ? DA.menuKural.kartHtmlSonuc(kuralSonucu(l),
       '<button class="btn sec sm block" data-act="listeDiz" data-l="' + lid + '">Yazım sırasına diz</button>') : '';
     const bos = !gorunen.some((o) => (l.ogun[o[0]] || []).length);
+    const gunler = l.hafta ? haftaGunleri(l.hafta) : [];
+    const sekmeler = gunler.length ? '<div class="card gun-sekme"><div class="small muted mb">' + gunler.length + ' günlük liste · ' +
+      esc(gunEtiketi(l, true)) + '</div><div class="chips" role="list">' +
+      gunler.map((g) => '<a role="listitem" class="chip' + (g === l ? ' on" aria-current="page' : '') + '" href="#/liste/' + esc(g.id) + '">' +
+        esc(gunEtiketi(g)) + '</a>').join('') + '</div></div>' : '';
     return {
-      title: l.ad || 'Diyet listesi', tab: 'besin', back: c ? 'danisan/' + c.id : 'liste',
-      html:
+      title: (l.ad || 'Diyet listesi') + (l.hafta ? ' · ' + (l.gun + 1) + '. gün' : ''), tab: 'besin', back: c ? 'danisan/' + c.id : 'liste',
+      html: sekmeler +
         '<div class="card"><label class="fld"><span>Liste başlığı</span><input type="text" value="' + esc(l.ad) + '" data-live="listeMeta" data-f="ad" data-l="' + lid + '"></label>' +
         '<div class="grid2"><label class="fld"><span>Tarih</span><input type="date" value="' + esc(l.d) + '" data-live="listeMeta" data-f="d" data-l="' + lid + '"></label>' +
         '<div class="fld"><span>Danışan</span><div class="small" style="padding-top:12px">' +
@@ -280,10 +305,15 @@
           '</div></div>' : '') +
         '<div class="card"><label class="fld"><span>Öneriler (listenin altına basılır)</span><textarea data-live="listeMeta" data-f="not" data-l="' + lid + '" placeholder="Su tüketimi, pişirme yöntemi, öğün saatleri…">' + esc(l.not) + '</textarea></label>' +
         '<div class="small muted mb">Çıktıda göster</div><div class="chips">' + ayar('enerji', 'Enerji ve makrolar') + ayar('degisim', 'Değişim tablosu') + '</div></div>' +
-        '<div class="grid2"><a class="btn block" href="#/yazdir/liste/' + lid + '">' + icon('share') + ' PDF / Yazdır</a>' +
-        '<button class="btn ghost block" data-act="listeShare" data-l="' + lid + '">Metin olarak paylaş</button></div>' +
-        '<div class="grid2 mt-s"><button class="btn ghost block" data-act="listeKopya" data-l="' + lid + '">Kopyala</button>' +
-        '<button class="btn danger block" data-act="listeSil" data-l="' + lid + '">Listeyi sil</button></div>'
+        (l.hafta
+          ? '<div class="grid2"><a class="btn block" href="#/yazdir/hafta/' + esc(l.hafta) + '">' + icon('share') + ' Haftalık PDF</a>' +
+            '<a class="btn ghost block" href="#/yazdir/liste/' + lid + '">Yalnız bu gün</a></div>' +
+            '<button class="btn ghost block mt-s" data-act="listeHaftaShare" data-l="' + lid + '">Haftayı metin olarak paylaş</button>'
+          : '<div class="grid2"><a class="btn block" href="#/yazdir/liste/' + lid + '">' + icon('share') + ' PDF / Yazdır</a>' +
+            '<button class="btn ghost block" data-act="listeShare" data-l="' + lid + '">Metin olarak paylaş</button></div>' +
+            (planVar(l) ? '<button class="btn sec block mt-s" data-act="listeHafta" data-l="' + lid + '">' + icon('plus') + ' 7 günlük liste yap</button>' : '')) +
+        '<div class="grid2 mt-s"><button class="btn ghost block" data-act="listeKopya" data-l="' + lid + '">' + (l.hafta ? 'Bu günü kopyala' : 'Kopyala') + '</button>' +
+        '<button class="btn danger block" data-act="listeSil" data-l="' + lid + '">' + (l.hafta ? 'Haftayı sil' : 'Listeyi sil') + '</button></div>'
     };
   }
   function gunOzetHtml(l, y, t) {
@@ -431,12 +461,17 @@
   /* ---- liste eylemleri ---- */
   DA.live.listeMeta = (el) => {
     const l = bul(el.dataset.l); if (!l) return;
-    l[el.dataset.f] = el.value; DA.save();
-    if (el.dataset.f === 'ad') DA.$('#title').textContent = el.value || 'Diyet listesi';
+    const f = el.dataset.f;
+    /* Tarih güne özel; başlık ve öneriler haftanın ortak bilgisi */
+    (f === 'd' ? [l] : haftaninBiri(l)).forEach((x) => { x[f] = el.value; });
+    DA.save();
+    if (f === 'ad') DA.$('#title').textContent = (el.value || 'Diyet listesi') + (l.hafta ? ' · ' + (l.gun + 1) + '. gün' : '');
   };
   DA.actions.listeAyar = (el) => {
     const l = bul(el.dataset.l); if (!l) return;
-    l.ayar[el.dataset.k] = !l.ayar[el.dataset.k]; DA.save(); DA.render(true);
+    const v = !l.ayar[el.dataset.k];
+    haftaninBiri(l).forEach((x) => { x.ayar[el.dataset.k] = v; });
+    DA.save(); DA.render(true);
   };
   DA.actions.listeDiz = (el) => {
     const l = bul(el.dataset.l); if (!l) return;
@@ -539,10 +574,17 @@
       } else if (tur === 'gece') {
         sutSec('gece'); meyve(); galeta(); tohum();
       } else {
-        const corba = var_('eyg') && var_('yag') ? ekle(dondur(['=Mercimek çorbası', '=Şehriye, pirinç, tarhana ya da un çorbası', '=Yayla çorbası', 'h-corba'], t), 1) : null;
+        /* Üç çorba: öğle ve akşamın sırası 2 farkla döner, aynı gün aynı
+           çorba iki kez gelmez. Veri yüklenmemişse genel "1 kase çorba". */
+        const corba = var_('eyg') && var_('yag')
+          ? ekle(dondur(['=Şehriye, pirinç, tarhana ya da un çorbası', '=Mercimek çorbası', '=Yayla çorbası'], t) || taslakSecenek('h-corba'), 1) : null;
         /* Mercimek çorbasının yanına mercimek yemeği yazılmaz */
         ekle(dondur(['h-nohut', 'h-mercimek', 'h-kurufasulye'], t, corba && /mercimek/.test(corba.t) ? ['h-mercimek'] : null), kal.baklagil);
-        ekle(dondur(['h-kofte', 'h-et-tavuk', 'h-et-kirmizi', '=İstavrit'], t), kal.et);
+        /* Yedi seçenek: haftanın her günü başka; balık haftada iki kez
+           (TÜBER'in haftada en az iki kez balık önerisi) ve aynı gün öğle ile
+           akşama düşmez. Kesirli ölçüsü çeyreğe denk gelen balık seçildi
+           (çipura 1/4); levrek 1/5 ile "2 × 1/5…" yazılırdı. */
+        ekle(dondur(['h-kofte', 'h-et-tavuk', 'h-et-kirmizi', '=Çipura', '=Hindi eti (kemiksiz, derisiz)', '=Tavuk baget (kemiksiz)', '=Somon'], t), kal.et);
         /* Sebze: 2 ve üstündeyse biri tek kase salata, gerisi yağ yettiğince
            zeytinyağlı yemek, yağ da bitince pişmiş sebze. 1 ise yağ varsa
            yemek, yoksa yağsız salata. */
@@ -600,16 +642,58 @@
   DA.actions.listeKopya = (el) => {
     const l = bul(el.dataset.l); if (!l) return;
     const c = JSON.parse(JSON.stringify(l));
-    c.id = DA.uid(); c.ad = (l.ad || 'Beslenme listesi') + ' (kopya)'; c.d = DA.today();
+    c.id = DA.uid(); c.ad = (l.ad || 'Beslenme listesi') + (l.hafta ? ' (' + (l.gun + 1) + '. gün kopyası)' : ' (kopya)'); c.d = DA.today();
+    /* Haftanın bir günü kopyalanınca tek günlük bağımsız liste olur */
+    delete c.hafta; delete c.gun;
     listeler().unshift(c); DA.save(); DA.go('liste/' + c.id);
     DA.toast('Liste kopyalandı');
   };
+  /* Haftalık liste indekste tek satır olduğu için "sil" bütün haftayı siler;
+     geri alınca günler eski yerlerine döner. */
   DA.actions.listeSil = (el) => {
-    const L = listeler(), i = L.findIndex((x) => x.id === el.dataset.l);
-    if (i < 0) return;
-    const silinen = L.splice(i, 1)[0], c = danisan(silinen.c);
+    const L = listeler(), l = bul(el.dataset.l);
+    if (!l) return;
+    const yer = haftaninBiri(l).map((x) => [L.indexOf(x), x]).sort((a, b) => a[0] - b[0]);
+    for (let j = yer.length - 1; j >= 0; j--) L.splice(yer[j][0], 1);
+    const c = danisan(l.c);
     DA.save(); DA.go(c ? 'danisan/' + c.id : 'liste');
-    DA.silGeriAl((silinen.ad || 'Liste') + ' silindi', () => { listeler().splice(i, 0, silinen); });
+    DA.silGeriAl((l.ad || 'Liste') + (l.hafta ? ' (' + yer.length + ' gün)' : '') + ' silindi',
+      () => { yer.forEach((y) => { listeler().splice(y[0], 0, y[1]); }); });
+  };
+
+  /* 7 günlük yap: 2–7. günler ya taslakla (her gün farklı seçim, tohum =
+     gün sırası) ya da 1. günün kopyası olarak açılır. Geri alınabilir. */
+  DA.actions.listeHafta = (el) => {
+    const l = bul(el.dataset.l); if (!l) return;
+    const lid = esc(l.id);
+    DA.sheet('7 günlük liste',
+      '<p class="small muted">Bu liste 1. gün olur; ' + esc(DA.fdate(l.d)) + ' tarihinden başlayarak 6 gün daha eklenir. ' +
+      'Plan ve öğün hedefleri aynı kalır; başlık, öneriler ve çıktı seçimi haftaya ortaktır.</p>' +
+      '<button class="btn block mt" data-act="listeHaftaYap" data-l="' + lid + '" data-y="taslak">Diğer günleri taslakla doldur</button>' +
+      '<p class="small muted mt-s">Her gün başka çorba, et, meyve ve tahıl gelir; yazım kurallarına uyar, sonra düzeltirsin.</p>' +
+      '<button class="btn ghost block mt" data-act="listeHaftaYap" data-l="' + lid + '" data-y="kopya">1. günü 7 güne kopyala</button>');
+  };
+  DA.actions.listeHaftaYap = (el) => {
+    const l = bul(el.dataset.l); if (!l || l.hafta) return Promise.resolve();
+    const calis = () => {
+      const L = listeler(), hid = DA.uid(), yeni = [];
+      l.hafta = hid; l.gun = 0;
+      for (let i = 1; i < 7; i++) {
+        const g = JSON.parse(JSON.stringify(l));
+        g.id = DA.uid(); g.gun = i; g.d = gunSonra(l.d, i);
+        if (el.dataset.y === 'taslak') { g.ogun = {}; taslakDoldur(g, g.ogun, i); }
+        else Object.keys(g.ogun).forEach((k) => g.ogun[k].forEach((x) => { x.id = DA.uid(); }));
+        yeni.push(g);
+      }
+      /* Günler sırayla, 1. günün ardına */
+      L.splice.apply(L, [L.indexOf(l) + 1, 0].concat(yeni));
+      DA.save(); DA.closeSheet(); DA.render(true);
+      DA.silGeriAl('7 günlük liste hazır', () => {
+        delete l.hafta; delete l.gun;
+        DA.state().listeler = listeler().filter((x) => yeni.indexOf(x) < 0);
+      });
+    };
+    return el.dataset.y === 'taslak' ? DA.need(['degisim']).then(calis, calis) : Promise.resolve(calis());
   };
 
   /* ---- paylaşım ve çıktı ---- */
@@ -624,6 +708,20 @@
     return s;
   }
   DA.actions.listeShare = (el) => { const l = bul(el.dataset.l); if (l) DA.shareText(l.ad || 'Beslenme listesi', metin(l)); };
+  function metinHafta(l) {
+    const G = haftaGunleri(l.hafta), c = danisan(l.c);
+    let s = (l.ad || 'Beslenme listesi') + ' — ' + G.length + ' günlük\n' + (c ? c.name + '\n' : '') + DA.dyt() + '\n';
+    G.forEach((g) => {
+      s += '\n=== ' + gunEtiketi(g, true).toLocaleUpperCase('tr-TR') + ' ===\n';
+      ogunler().forEach((o) => {
+        const d = g.ogun[o[0]] || []; if (!d.length) return;
+        s += o[1] + ': ' + d.map((x) => carp(x.t, x.n)).join(', ') + '\n';
+      });
+    });
+    if (l.not) s += '\nÖneriler\n' + l.not + '\n';
+    return s;
+  }
+  DA.actions.listeHaftaShare = (el) => { const l = bul(el.dataset.l); if (l && l.hafta) DA.shareText(l.ad || 'Beslenme listesi', metinHafta(l)); };
 
   /* Listenin çıktı seçimi listeye özeldir (l.ayar, varsayılan kapalı):
      aynı danışanın listesi bir hafta enerjiyle, bir hafta enerjisiz
@@ -666,15 +764,64 @@
     };
   };
 
+  /* Haftalık çıktı: yedi gün tek belgede. Gün içinde öğünler iki sütun:
+     tek sütunda bir gün ~35 satır tutuyor, hafta 7 sayfaya yayılıyordu; iki
+     sütunla iki gün bir A4'e sığar. Gün bloğu sayfa sonunda bölünmez.
+     Değişim tablosu planın günlük toplamıdır (günler aynı plana bağlı);
+     enerji seçiliyse her günün yazılan enerjisi kendi başlığında. */
+  DA.views._printHafta = (parts) => {
+    const G = haftaGunleri(parts[0]);
+    if (!G.length) return { title: 'Yazdır', back: 'liste', html: '<div class="card">Haftalık liste bulunamadı.</div>' };
+    const l = G[0], c = danisan(l.c);
+    const uyumsuz = [], kuralli = [];
+    G.forEach((g) => {
+      uyumsuzluk(g).forEach((u) => uyumsuz.push((g.gun + 1) + '. gün ' + u));
+      if (DA.menuKural && kuralSonucu(g).length) kuralli.push(g);
+    });
+    const uyari = (uyumsuz.length ? '<div class="note warn noprint"><b>Plana uymayan günler:</b> ' + esc(uyumsuz.join(' · ')) + '</div>' : '') +
+      (kuralli.length ? '<div class="note warn noprint">Yazım kuralı notu olan günler: ' + kuralli.map((g) =>
+        '<a href="#/liste/' + esc(g.id) + '">' + (g.gun + 1) + '. gün</a>').join(', ') + '.</div>' : '');
+    const gunHtml = G.map((g) => {
+      const t = DA.exchange.totals(gununToplami(g));
+      const og = ogunler().map((o) => {
+        const d = g.ogun[o[0]] || []; if (!d.length) return '';
+        return '<div class="ogun"><h4>' + esc(o[1]) + '</h4><ul>' + d.map((x) => '<li>' + esc(carp(x.t, x.n)) + '</li>').join('') + '</ul></div>';
+      }).join('');
+      return '<div class="blok gun-blok"><h3>' + esc(gunEtiketi(g, true)) +
+        (l.ayar.enerji ? ' <span class="ince">· yaklaşık ' + fmt(t.kcal, 0) + ' kcal</span>' : '') + '</h3>' +
+        (og ? '<div class="ogun-izgara">' + og + '</div>' : '<p>Bu güne satır yazılmadı.</p>') + '</div>';
+    }).join('');
+    const p = {};
+    Object.keys(l.meal || {}).forEach((k) => Object.keys(l.meal[k] || {}).forEach((g) => { p[g] = (p[g] || 0) + (l.meal[k][g] || 0); }));
+    const dolu = gruplar().filter((g) => p[g.k] > 0), yarim = Math.ceil(dolu.length / 2);
+    const hucre = (g) => (g ? '<td>' + esc(g.l) + '</td><td class="n">' + esc(miktar(p[g.k])) + '</td>' : '<td></td><td></td>');
+    const tablo = l.ayar.degisim && dolu.length ? '<div class="blok"><h3>Günlük değişim sayıları (her gün)</h3><table class="degisim-cift"><tbody>' +
+      dolu.slice(0, yarim).map((g, i) => '<tr>' + hucre(g) + hucre(dolu[yarim + i]) + '</tr>').join('') + '</tbody></table></div>' : '';
+    return {
+      title: 'Haftalık liste çıktısı', tab: 'besin', back: 'liste/' + l.id, noRecent: true,
+      html: uyari + '<div class="noprint grid2 mb"><button class="btn block" data-act="doPrint">PDF olarak kaydet / yazdır</button>' +
+        '<button class="btn ghost block" data-act="listeHaftaShare" data-l="' + esc(l.id) + '">Metin olarak paylaş</button></div>' +
+        DA.cikti.kutu(ayarChip(l, 'enerji', 'Enerji') + ayarChip(l, 'degisim', 'Değişim tablosu')) +
+        '<div class="printdoc hafta-doc">' + DA.antet() + '<h2>' + esc(l.ad || 'Beslenme listesi') + '</h2>' +
+        '<div class="alt">' + (c ? esc(c.name) + ' · ' : '') + G.length + ' günlük · ' + esc(DA.fdate(G[0].d)) +
+        (G.length > 1 ? ' – ' + esc(DA.fdate(G[G.length - 1].d)) : '') + '</div>' +
+        gunHtml +
+        (l.not ? '<div class="blok"><h3>Öneriler</h3>' + esc(l.not).replace(/\n/g, '<br>') + '</div>' : '') +
+        tablo +
+        DA.dipnot('bu liste bireysel tıbbi tavsiye yerine geçmez.') + '</div>'
+    };
+  };
+
   /* Danışan dosyası için: bu danışanın listeleri */
   function danisanKarti(c) {
     const L = listeler().filter((l) => l.c === c.id);
     return '<div class="card"><h2>Diyet listeleri</h2>' +
-      (L.length ? '<div class="list">' + L.map((l) => '<a class="li chev" href="#/liste/' + esc(l.id) + '"><span class="grow"><div class="t">' +
-        esc(l.ad || 'Beslenme listesi') + '</div><div class="s">' + esc(DA.fdate(l.d)) + '</div></span></a>').join('') + '</div>'
+      (L.length ? '<div class="list">' + gorunurListeler(L).map((l) => '<a class="li chev" href="#/liste/' + esc(l.id) + '"><span class="grow"><div class="t">' +
+        esc(l.ad || 'Beslenme listesi') + '</div><div class="s">' + esc(DA.fdate(l.d)) +
+        (l.hafta ? ' · ' + haftaGunleri(l.hafta).length + ' günlük' : '') + '</div></span></a>').join('') + '</div>'
         : '<p class="muted small">Henüz liste yok. Değişim planından liste yazılır.</p>') +
       '<a class="btn sec sm block mt-s" href="#/hesapla/degisim?c=' + esc(c.id) + '">' + icon('note') + ' Değişim planından liste yaz</a></div>';
   }
 
-  DA.liste = { olustur, carp, topla, karsilik, danisanKarti, metin, satirTur, hazir: HAZIR, taslakDoldur, kuralSonucu };
+  DA.liste = { olustur, carp, topla, karsilik, danisanKarti, metin, metinHafta, satirTur, hazir: HAZIR, taslakDoldur, kuralSonucu, gunSonra };
 })();

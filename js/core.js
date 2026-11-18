@@ -93,6 +93,9 @@
     l.d = metin(l.d);
     l.c = l.c ? kimlik(l.c) : '';
     l.ex = degisimDenetle(l.ex);
+    /* Haftalık listenin günü: ortak hafta kimliği + 0–6 gün sırası */
+    if (l.hafta) { l.hafta = kimlik(l.hafta); if (!(Number.isInteger(l.gun) && l.gun >= 0 && l.gun <= 6)) l.gun = 0; }
+    else { delete l.hafta; delete l.gun; }
     if (!nesneMi(l.ayar)) l.ayar = {};
     ['meal', 'ogun'].forEach((k) => { if (!nesneMi(l[k])) l[k] = {}; });
     Object.keys(l.meal).forEach((k) => { l.meal[k] = degisimDenetle(l.meal[k]); });

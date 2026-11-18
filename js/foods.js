@@ -651,6 +651,7 @@
     if (parts[0] === 'danisan') return DA.views._printClient(parts.slice(1));
     if (parts[0] === 'degisim' && DA.views._printExchange) return DA.views._printExchange(parts.slice(1));
     if (parts[0] === 'liste' && DA.views._printListe) return DA.views._printListe(parts.slice(1));
+    if (parts[0] === 'hafta' && DA.views._printHafta) return DA.views._printHafta(parts.slice(1));
     if (parts[0] === 'ornekmenu' && DA.views._printOrnek) return DA.views._printOrnek(parts.slice(1));
     return { title: 'Yazdır', html: '<div class="card">Bulunamadı.</div>' };
   };

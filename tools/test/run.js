@@ -43,7 +43,7 @@ const ROTALAR = [
   '#/hesapla/porsiyon?t=olcu&ara=ceviz', '#/hesapla/ornekmenu?m=ek53',
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
   '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
-  '#/liste', '#/liste/ll', '#/yazdir/liste/ll'
+  '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -86,6 +86,11 @@ function ornekDurum(tema) {
   S.listeler = [{ id: 'll', ad: 'Test listesi', d: DA.today(), c: 'c1', ex: { sutyy: 1, eyg: 2 }, hedef: { kcal: 223 }, not: 'Su iç.',
     ayar: { enerji: true, degisim: true }, meal: { kahvalti: { sutyy: 1, eyg: 2 } },
     ogun: { kahvalti: [{ id: 's1', t: '1 su bardağı yarım yağlı süt', n: 1, d: { sutyy: 1 } }, { id: 's2', t: '1 ince dilim ekmek', n: 2, d: { eyg: 1 } }] } }];
+  /* Haftalık listenin iki günü: gün sekmeleri ve haftalık çıktı da
+     dokunma hedefi, kontrast ve taşma taramasına girsin. */
+  ['hw0', 'hw1'].forEach((id, i) => S.listeler.push({ id, hafta: 'hw', gun: i, ad: 'Haftalık test', d: '2026-11-2' + (3 + i), c: 'c1',
+    ex: {}, hedef: {}, not: 'Su iç.', ayar: { enerji: true, degisim: true }, meal: { kahvalti: { sutyy: 1 } },
+    ogun: { kahvalti: [{ id: 'w' + i, t: '1 su bardağı yarım yağlı süt', n: 1, d: { sutyy: 1 } }] } }));
   DA.save();
 }
 
@@ -1835,6 +1840,142 @@ function ornekDurum(tema) {
   uiEkle('Taslak: yazım kuralı notu çıkmıyor', '', tsl.kural);
   uiEkle('Taslak: yapacak iş kalmayınca düğme gizli', false, tsl.dugmeSonra);
   uiEkle('Taslak: geri alınca yalnız elle yazılan satır', 'ogle:3 yemek kaşığı bulgur pilavı', tsl.geriAl);
+
+  /* ---- haftalık diyet listesi ----
+     Plan: öğle {ekmek 2, et 1, yağ 1}, kuşluk {meyve 1, kuruyemiş 1}; 1. gün
+     (Pzt 23 Kasım 2026) elle yalnız 1 dilim ekmek. "Taslakla doldur" 2–7.
+     günleri tohum = gün sırası i (1–6) ile yazar; öğle t = i + 2, kuşluk
+     t = i + 1. Elle, listelerden:
+       çorba [şehriye, mercimek, yayla][(i+2) mod 3] · et [köfte, tavuk,
+       kuşbaşı, çipura, hindi, baget, somon][(i+2) mod 7] · kalan 1 ekmek
+       [ekmek, bulgur, ekmek, makarna][i mod 4]
+       i=1 şehriye/çipura/bulgur · 2 mercimek/hindi/ekmek · 3 yayla/baget/
+       makarna · 4 şehriye/somon/ekmek · 5 mercimek/köfte/bulgur · 6 yayla/
+       tavuk/ekmek — altı günde altı ayrı et.
+       kuşluk meyve [elma, portakal, mandalina, muz, armut, üzüm][(i+1) mod 6],
+       kuruyemiş [ceviz, badem, fındık][(i+1) mod 3].
+     Enerji (değişim değerleri: ekmek 68, et 69, yağ 45, meyve 60, kuruyemiş
+     53): 2–7. gün 2·68 + 69 + 45 + 60 + 53 = 363 kcal; 1. gün 68 kcal.
+     Değişim tablosu planın günlük toplamı (et 1, ekmek 2, meyve 1, yağ 1,
+     kuruyemiş 1), yazılan değil: 1. gün eksik olsa da tablo plana göre. */
+  const hf = await sayfa.evaluate(async () => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    const C = DA.liste.carp, sat = (t, d, n) => ({ id: 's' + Math.random().toString(36).slice(2, 7), t, n: n || 1, d });
+    const L = { id: 'lh', ad: 'Hafta', d: '2026-11-23', c: 'pc', ex: {}, hedef: {}, not: 'Su iç.', ayar: {},
+      meal: { ogle: { eyg: 2, et: 1, yag: 1 }, ara1: { meyve: 1, tohum: 1 } }, ogun: { ogle: [sat('1 ince dilim ekmek', { eyg: 1 })] } };
+    S.listeler.unshift(L); DA.save();
+    location.hash = 'liste/lh'; DA.render(false);
+    o.dugme = !!document.querySelector('button[data-act=listeHafta]');
+    DA.actions.listeHafta({ dataset: { l: 'lh' } });
+    await DA.actions.listeHaftaYap({ dataset: { l: 'lh', y: 'taslak' } });
+    const G = S.listeler.filter((x) => x.hafta && x.hafta === L.hafta).sort((a, b) => a.gun - b.gun);
+    o.gunSayisi = G.length;
+    o.tarihler = G.map((g) => g.gun + ':' + g.d).join(',');
+    o.sira = S.listeler.slice(0, 7).map((x) => x.gun).join(',');
+    o.ogle = G.map((g) => (g.ogun.ogle || []).map((x) => C(x.t, x.n)).join(' + ')).join(' | ');
+    o.ara1 = G.slice(1).map((g) => (g.ogun.ara1 || []).map((x) => C(x.t, x.n)).join(' + ')).join(' | ');
+    location.hash = 'liste/' + G[2].id; DA.render(false);
+    o.sekmeler = Array.from(document.querySelectorAll('.gun-sekme .chip')).map((x) => x.textContent).join(',');
+    o.etkin = (document.querySelector('.gun-sekme .chip[aria-current=page]') || {}).textContent;
+    o.baslik = DA.$('#title').textContent;
+    o.haftaPdf = !!document.querySelector('a[href="#/yazdir/hafta/' + L.hafta + '"]') && !document.querySelector('button[data-act=listeHafta]');
+    /* başlık ve öneri haftaya, tarih yalnız güne */
+    DA.live.listeMeta({ dataset: { l: G[2].id, f: 'ad' }, value: 'Kasım haftası' });
+    DA.live.listeMeta({ dataset: { l: G[2].id, f: 'd' }, value: '2026-12-01' });
+    o.adOrtak = G.every((g) => g.ad === 'Kasım haftası');
+    o.tarihGune = G.map((g) => g.d).join(',');
+    DA.live.listeMeta({ dataset: { l: G[2].id, f: 'd' }, value: '2026-11-25' });
+    DA.actions.listeAyar({ dataset: { l: G[4].id, k: 'enerji' } });
+    DA.actions.listeAyar({ dataset: { l: G[4].id, k: 'degisim' } });
+    o.ayarOrtak = G.every((g) => g.ayar.enerji && g.ayar.degisim);
+    /* indeks: hafta tek satır */
+    location.hash = 'liste'; DA.render(false);
+    o.indeks = Array.from(document.querySelectorAll('#app .li .t')).filter((x) => x.textContent === 'Kasım haftası').length;
+    o.indeksAlt = Array.from(document.querySelectorAll('#app .li')).filter((x) => /Kasım haftası/.test(x.textContent)).map((x) => / 7 günlük/.test(x.textContent))[0];
+    location.hash = 'danisan/pc'; DA.render(false);
+    o.dosya = Array.from(document.querySelectorAll('#app a.li')).filter((x) => /Kasım haftası/.test(x.textContent)).length;
+    /* çıktı */
+    location.hash = 'yazdir/hafta/' + L.hafta; DA.render(false);
+    const doc = document.querySelector('.printdoc');
+    o.gunBlok = doc.querySelectorAll('.gun-blok').length;
+    o.gunBas = Array.from(doc.querySelectorAll('.gun-blok h3')).slice(0, 2).map((x) => x.textContent.replace(/\s+/g, ' ')).join(' / ');
+    o.izgara = doc.querySelectorAll('.gun-blok .ogun-izgara').length;
+    o.tablo = Array.from(doc.querySelectorAll('.degisim-cift td')).map((x) => x.textContent).join('|');
+    const not = Array.from(document.querySelectorAll('.note.noprint')).map((x) => x.textContent).join(' ');
+    o.notMetni = not;
+    o.uyari = [/1\. gün Öğle: 1 et eksik, 1 ekmek eksik, 1 yağ eksik/.test(not), /[2-7]\. gün/.test(not.replace(/Yazım kuralı[^.]*\./, ''))].join(',');
+    o.oneri = /Öneriler\s*Su iç\./.test(doc.textContent);
+    /* 2. günün bölümü: "=== 2." ile "=== 3." arası */
+    const mt = DA.liste.metinHafta(G[0]).split('\n'), b2 = mt.findIndex((x) => /^=== 2\./.test(x));
+    o.metin = [mt[b2]].concat(mt.slice(b2 + 1, mt.findIndex((x) => /^=== 3\./.test(x))).filter((x) => /^Öğle/.test(x))).join(' / ');
+    /* kopya kipi: 2–7. gün 1. günün aynı satırları, kimlikler ayrı */
+    const K = { id: 'lk', ad: 'Kopya', d: '2026-11-30', c: '', ex: {}, hedef: {}, not: '', ayar: {},
+      meal: { kahvalti: { sut: 1 } }, ogun: { kahvalti: [sat('1 su bardağı süt', { sut: 1 })] } };
+    S.listeler.unshift(K); DA.save();
+    await DA.actions.listeHaftaYap({ dataset: { l: 'lk', y: 'kopya' } });
+    const kh = K.hafta, KG = S.listeler.filter((x) => x.hafta === kh);
+    o.kopya = KG.length + ':' + KG.every((g) => g.ogun.kahvalti.length === 1 && g.ogun.kahvalti[0].t === '1 su bardağı süt') + ':' +
+      new Set(KG.map((g) => g.ogun.kahvalti[0].id)).size;
+    /* oluşturmayı geri al */
+    DA.actions.geriAl();
+    o.kopyaGeri = S.listeler.filter((x) => x.hafta === kh).length + ':' + ('hafta' in K) + ':' + S.listeler.some((x) => x.id === 'lk');
+    S.listeler = S.listeler.filter((x) => x.id !== 'lk');
+    /* bir günü kopyala: bağımsız tek gün */
+    location.hash = 'liste/' + G[3].id; DA.render(false);
+    DA.actions.listeKopya({ dataset: { l: G[3].id } });
+    const tek = S.listeler[0];
+    o.gunKopya = [tek.ad, 'hafta' in tek, 'gun' in tek].join(':');
+    S.listeler.shift();
+    /* hafta silinir ve geri gelir, yerleri korunur */
+    const once = S.listeler.map((x) => x.id).join(',');
+    DA.actions.listeSil({ dataset: { l: G[5].id } });
+    o.silindi = S.listeler.filter((x) => x.hafta === L.hafta).length;
+    DA.actions.geriAl();
+    o.geriGeldi = DA.state().listeler.map((x) => x.id).join(',') === once;
+    /* içe aktarma denetimi: bozuk gün sırası 0, boş hafta silinir */
+    const v = DA.veriDenetle({ listeler: [{ id: 'a', hafta: 'h', gun: 9 }, { id: 'b', hafta: '', gun: 3 }] });
+    o.denetim = v.listeler[0].gun + ':' + ('hafta' in v.listeler[1]) + ':' + ('gun' in v.listeler[1]);
+    DA.state().listeler = DA.state().listeler.filter((x) => x.hafta !== L.hafta);
+    DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Hafta: planlı listede "7 günlük" düğmesi', true, hf.dugme);
+  uiEkle('Hafta: 7 gün oluşuyor', 7, hf.gunSayisi);
+  uiEkle('Hafta: günlerin tarihi ardışık', '0:2026-11-23,1:2026-11-24,2:2026-11-25,3:2026-11-26,4:2026-11-27,5:2026-11-28,6:2026-11-29', hf.tarihler);
+  uiEkle('Hafta: günler listede sırayla', '0,1,2,3,4,5,6', hf.sira);
+  uiEkle('Hafta: 1. gün elle, 2–7. gün taslak; her gün başka çorba, et, tahıl',
+    '1 ince dilim ekmek | 1 küçük kase şehriye, pirinç, tarhana ya da un çorbası + 1/4 küçük boy çipura + 3 yemek kaşığı bulgur pilavı | ' +
+    '1 küçük kase mercimek çorbası + 3 parmak boyutunda hindi eti (kemiksiz, derisiz) + 1 ince dilim ekmek | ' +
+    '1 küçük kase yayla çorbası + 1 küçük boy tavuk baget (kemiksiz) + 3 yemek kaşığı makarna | ' +
+    '1 küçük kase şehriye, pirinç, tarhana ya da un çorbası + 2 parmak boyutunda somon + 1 ince dilim ekmek | ' +
+    '1 küçük kase mercimek çorbası + 1 küçük yumurta boyutunda köfte + 3 yemek kaşığı bulgur pilavı | ' +
+    '1 küçük kase yayla çorbası + 1/4 küçük boy tavuk göğsü + 1 ince dilim ekmek', hf.ogle);
+  uiEkle('Hafta: kuşlukta meyve ve kuruyemiş döner',
+    '2 orta boy mandalina + 8 orta boy fındık | 1 küçük boy muz + 2 bütün ceviz | 1 küçük boy armut + 10 orta boy badem | ' +
+    '25 adet üzüm + 8 orta boy fındık | 1 orta boy elma + 2 bütün ceviz | 1 orta boy portakal + 10 orta boy badem', hf.ara1);
+  uiEkle('Hafta: gün sekmeleri', '1. gün · Pzt,2. gün · Sal,3. gün · Çar,4. gün · Per,5. gün · Cum,6. gün · Cmt,7. gün · Paz', hf.sekmeler);
+  uiEkle('Hafta: açık gün işaretli', '3. gün · Çar', hf.etkin);
+  uiEkle('Hafta: başlıkta gün', 'Hafta · 3. gün', hf.baslik);
+  uiEkle('Hafta: haftalık PDF var, "7 günlük yap" yok', true, hf.haftaPdf);
+  uiEkle('Hafta: başlık bütün günlere yazılıyor', true, hf.adOrtak);
+  uiEkle('Hafta: tarih yalnız o güne', '2026-11-23,2026-11-24,2026-12-01,2026-11-26,2026-11-27,2026-11-28,2026-11-29', hf.tarihGune);
+  uiEkle('Hafta: çıktı seçimi bütün günlere', true, hf.ayarOrtak);
+  uiEkle('Hafta: indekste tek satır', 1, hf.indeks);
+  uiEkle('Hafta: indekste "7 günlük"', true, hf.indeksAlt);
+  uiEkle('Hafta: danışan dosyasında tek satır', 1, hf.dosya);
+  uiEkle('Hafta çıktısı: 7 gün bloğu, öğünler iki sütun', '7/7', hf.gunBlok + '/' + hf.izgara);
+  uiEkle('Hafta çıktısı: gün başlığı ve enerji', '1. gün · Pazartesi, 23 Kas 2026 · yaklaşık 68 kcal / 2. gün · Salı, 24 Kas 2026 · yaklaşık 363 kcal', hf.gunBas);
+  uiEkle('Hafta çıktısı: değişim tablosu planın günlük toplamı', 'Et|1|Yağ|1|Ekmek ve yerine geçenler|2|Kuruyemiş (yağlı tohum)|1|Meyve|1||', hf.tablo);
+  uiEkle('Hafta çıktısı: yalnız plana uymayan gün uyarıda', 'true,false', hf.uyari + (hf.uyari === 'true,false' ? '' : ' — ' + hf.notMetni));
+  uiEkle('Hafta çıktısı: öneriler bir kez', true, hf.oneri);
+  uiEkle('Hafta metni: gün başlığı ve öğün satırı', '=== 2. GÜN · SALI, 24 KAS 2026 === / ' +
+    'Öğle: 1 küçük kase şehriye, pirinç, tarhana ya da un çorbası, 1/4 küçük boy çipura, 3 yemek kaşığı bulgur pilavı', hf.metin);
+  uiEkle('Hafta: kopya kipinde 7 gün aynı satır, kimlikler ayrı', '7:true:7', hf.kopya);
+  uiEkle('Hafta: oluşturma geri alınıyor', '0:false:true', hf.kopyaGeri);
+  uiEkle('Hafta: bir gün kopyalanınca bağımsız liste', 'Kasım haftası (4. gün kopyası):false:false', hf.gunKopya);
+  uiEkle('Hafta: silince 7 gün birden gidiyor', 0, hf.silindi);
+  uiEkle('Hafta: geri alınca günler eski yerlerinde', true, hf.geriGeldi);
+  uiEkle('Hafta: içe aktarmada bozuk gün ve boş hafta düzeltiliyor', '0:false:false', hf.denetim);
 
   /* ---- danışan dosyası (ADIME) ----
      Biyokimya elle: HbA1c 10 Oca 7,2 · 1 Şub 7,0 (küçük harfle "hba1c" yazıldı,

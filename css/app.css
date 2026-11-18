@@ -632,6 +632,13 @@ table.t tr.on>td{background:var(--pri-soft);color:var(--ink);font-weight:650}
 .printdoc .blok{margin-top:12px}                               /* sayfa sonu bölünmeyecek bölüm */
 .printdoc .liste-enerji{margin-top:12px}                       /* diyet listesi: günlük toplam */
 .printdoc .degisim-cift td{padding:3px 6px}                      /* iki sütunlu sıkı değişim tablosu */
+/* Haftalık liste: gün içinde öğünler iki sütun. Tek sütunda bir gün ~35
+   satır tutup haftayı 7 sayfaya yayıyordu; iki sütunla iki gün bir A4'e
+   sığar. Öğün kendi içinde sütun ortasından bölünmez. */
+.printdoc .ogun-izgara{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+.printdoc .ogun-izgara .ogun{break-inside:avoid;page-break-inside:avoid}
+.printdoc h4{font-size:10pt;line-height:1.25;margin:4px 0 1px;font-weight:700}
+.printdoc .gun-blok{margin-top:14px}
 .printdoc .degisim-cift td.n{padding-right:14px}
 .printdoc table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:9.5pt}
 .printdoc caption{caption-side:top;text-align:left;font-weight:700;font-size:10pt;padding-bottom:4px}

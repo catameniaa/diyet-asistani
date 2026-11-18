@@ -33,6 +33,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   doldurur (ara öğünde galeta, gecede süt/kefir ve peynir yok, ana öğünde çorba başta, bulgurun
   yanında ekmek yok, mercimek çorbasının yanında mercimek yok); yazılmış satır silinmez, geri
   alınabilir. Kuralın doldurmadığı eksik (ör. gecede et) mesajda söylenir
+- 7 günlük liste: plandan 7 gün; 2–7. günler taslakla (her gün başka çorba, et, meyve, tahıl; balık
+  haftada iki kez) ya da 1. günün kopyası olarak açılır. Gün sekmeleri, başlık/öneri/çıktı seçimi
+  haftaya ortak; tek PDF'te yedi gün (öğünler iki sütun, iki gün bir A4) ve haftalık metin paylaşımı
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş; besinin miktarı ve ölçüsü
   sonradan düzenlenir, çıktıya ev ölçüsü basılır ("3 dilim (75 g)")
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
