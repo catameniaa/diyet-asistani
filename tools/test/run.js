@@ -45,7 +45,7 @@ const ROTALAR = [
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
   '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
   '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw',
-  '#/hesapla/toplumenu', '#/yazdir/toplu'
+  '#/hesapla/toplumenu', '#/yazdir/toplu', '#/ilerleme/c1'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -2074,6 +2074,71 @@ function ornekDurum(tema) {
   uiEkle('Sporcu: RED-S kaydı silinip geri alınıyor', '1/2', sp.silindi + '/' + sp.geri);
   uiEkle('Sporcu: etiketsiz ve verisiz danışanda kart yok', true, sp.digerKartYok);
   uiEkle('Sporcu: içe aktarmada bozuk kayıt ayıklanıyor', '[["uyku"]]|false', sp.denetim);
+
+  /* ---- ilerleme kartı ----
+     Elle: 1 Eyl 80 → 1 Eki 77 → 1 Kas 74,5 kg, hedef 70: değişim −5,5; kalan
+     4,5; yol (74,5 − 80) ÷ (70 − 80) = 0,55 → %55. Kilo almada 50 → 52, hedef 55:
+     2 ÷ 5 = 0,4. Ters yön 80 → 82, hedef 70: 0. */
+  const ik = await sayfa.evaluate(async () => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    const mk = (id, ws, hedef) => ({ id, name: 'Ayşe Demir', sex: 'K', hedef, meas: ws.map((w, i) => ({ id: id + i, d: ['2026-09-01', '2026-10-01', '2026-11-01'][i], w })) });
+    S.clients.push(mk('ik', [80, 77, 74.5], 70), mk('ia', [50, 52], 55), mk('it', [80, 82], 70), mk('i1', [80], 70));
+    S.ui.ilerleme = {}; DA.save();
+    const oz = (id) => { const r = DA.ilerleme.ozet(S.clients.find((c) => c.id === id)); return r ? [r.fark, r.kalan, r.ilerleme].map((x) => Math.round(x * 100) / 100).join('|') : 'yok'; };
+    o.ozet = [oz('ik'), oz('ia'), oz('it'), oz('i1')].join(' / ');
+    const c = S.clients.find((x) => x.id === 'ik');
+    let r = DA.ilerleme.ciz(c, {});
+    o.boyut = r.cv.width + 'x' + r.cv.height;
+    o.metin = ['−5,5 kg', '80 kg → 74,5 kg', 'Hedef 70 kg', 'kalan 4,5 kg', '%55 yol alındı'].map((t) => r.metinler.indexOf(t) >= 0).join(',');
+    o.adYok = !r.metinler.some((t) => /Ayşe|Demir/.test(t));
+    /* Çizgi gerçekten çizilmiş mi: ilk noktanın merkezi turuncu, grafik kutusunun boş köşesi değil */
+    const px = (X, Y) => Array.from(r.cv.getContext('2d').getImageData(Math.round(X), Math.round(Y), 1, 1).data.slice(0, 3));
+    const t0 = new Date('2026-09-01T00:00').getTime();
+    /* Nokta (#FF8A36, yarıçap 11) ile çizgi (#FF6B25, kalınlık 8) ayrı ölçülür:
+       ilk noktanın 8 px solu yalnız noktanın içinde (çizgi orada başlamıyor);
+       ilk iki ölçümün orta noktası yalnız çizginin üstünde. */
+    const t1 = new Date('2026-10-01T00:00').getTime();
+    const nokta = px(r.grafik.X(t0) - 8, r.grafik.Y(80));
+    const cizgi = px((r.grafik.X(t0) + r.grafik.X(t1)) / 2, (r.grafik.Y(80) + r.grafik.Y(77)) / 2), bos = px(100, 1180);
+    o.nokta = nokta[0] > 240 && nokta[1] >= 125 && nokta[1] <= 150 && nokta[2] < 80;
+    o.cizgi = cizgi[0] > 240 && cizgi[1] >= 95 && cizgi[1] <= 120 && cizgi[2] < 60;
+    o.bos = !(bos[0] > 200 && bos[2] < 100);
+    r = DA.ilerleme.ciz(c, { ad: true });
+    o.ad = r.metinler.indexOf('Ayşe') >= 0 && !r.metinler.some((t) => /Demir/.test(t));
+    /* ekran */
+    location.hash = 'ilerleme/ik'; DA.render(false);
+    const img = document.querySelector('#ilerlemeGorsel');
+    o.img = !!img && /^data:image\/png/.test(img.src) && /−5,5 kg/.test(img.alt);
+    location.hash = 'ilerleme/i1'; DA.render(false);
+    o.tekOlcum = !document.querySelector('#ilerlemeGorsel') && /iki kilo ölçümü/.test(document.querySelector('#app').textContent);
+    location.hash = 'danisan/ik'; DA.render(false);
+    o.dugme = !!document.querySelector('#app a[href="#/ilerleme/ik"]');
+    location.hash = 'danisan/i1'; DA.render(false);
+    o.dugmeYok = !document.querySelector('#app a[href="#/ilerleme/i1"]');
+    /* paylaşım: dosya paylaşılabiliyorsa share, değilse indirme */
+    const nav = { cs: navigator.canShare, sh: navigator.share }, tik = HTMLAnchorElement.prototype.click;
+    let paylasilan = null, indirilen = null;
+    navigator.canShare = () => true; navigator.share = (d) => { paylasilan = d; return Promise.resolve(); };
+    await DA.actions.ilerlemePaylas({ dataset: { id: 'ik' } });
+    o.paylas = paylasilan ? paylasilan.files[0].name + '|' + paylasilan.files[0].type : 'yok';
+    navigator.canShare = undefined; HTMLAnchorElement.prototype.click = function () { indirilen = this.download; };
+    await DA.actions.ilerlemePaylas({ dataset: { id: 'ik' } });
+    o.indir = indirilen;
+    HTMLAnchorElement.prototype.click = tik; navigator.canShare = nav.cs; navigator.share = nav.sh;
+    S.clients = S.clients.filter((x) => ['ik', 'ia', 'it', 'i1'].indexOf(x.id) < 0); DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('İlerleme: özet (fark | kalan | yol) — kayıp, alım, ters yön, tek ölçüm', '-5.5|4.5|0.55 / 2|3|0.4 / 2|12|0 / yok', ik.ozet);
+  uiEkle('İlerleme: görsel 1080 × 1350', '1080x1350', ik.boyut);
+  uiEkle('İlerleme: kartta değişim, başlangıç-son, hedef, kalan, yüzde', 'true,true,true,true,true', ik.metin);
+  uiEkle('İlerleme: ad varsayılan yazılmıyor', true, ik.adYok);
+  uiEkle('İlerleme: istenince yalnız ilk ad', true, ik.ad);
+  uiEkle('İlerleme: nokta, çizgi çizilmiş; boş alan boş', 'true/true/true', ik.nokta + '/' + ik.cizgi + '/' + ik.bos);
+  uiEkle('İlerleme: ekranda PNG önizleme ve açıklayıcı alt metin', true, ik.img);
+  uiEkle('İlerleme: tek ölçümde boş durum', true, ik.tekOlcum);
+  uiEkle('İlerleme: dosyada düğme yalnız iki ölçümle', 'true/true', ik.dugme + '/' + ik.dugmeYok);
+  uiEkle('İlerleme: dosya paylaşımı', 'ilerleme-' + (await sayfa.evaluate(() => DA.today())) + '.png|image/png', ik.paylas);
+  uiEkle('İlerleme: paylaşım yoksa indirme', 'ilerleme-' + (await sayfa.evaluate(() => DA.today())) + '.png', ik.indir);
 
   /* ---- IDDSI referansı: 8 düzey, eşikler, atıf ---- */
   const idd = await sayfa.evaluate(async () => {

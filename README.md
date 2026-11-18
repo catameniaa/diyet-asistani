@@ -67,6 +67,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   müsabaka takvimine göre haftalık KH planı (>90 dk ise önceki iki gün 10–12 g/kg yükleme, değilse
   önceki gün 7–12 g/kg) dosyaya kaydedilir ve A4 basılır; RED-S belirtileri tarih tarih (IOC 2023),
   kayıtlar arasında yeni ve geçen belirti
+- İlerleme kartı: danışanın kilo grafiği, başlangıç → son, değişim, hedefe kalan ve yol yüzdesi tek
+  görselde (1080 × 1350 PNG); paylaşım sayfasından WhatsApp'a, paylaşım yoksa indirme. Ad varsayılan
+  olarak yazılmaz (istenirse yalnız ilk ad); görsel cihazda çizilir
 - Danışan dosyası Beslenme Bakım Süreci (ADIME) düzeninde: tarihli biyokimya (test başına son değer,
   önceki değer ve değişim yönü; referans aralığı bilerek yok — laboratuvara göre değişir), tıbbi
   tanılar, ilaç/takviye ve beslenme öyküsü, 24 saatlik geriçağırma (menü olarak girilir, toplamı

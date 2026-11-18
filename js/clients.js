@@ -256,7 +256,8 @@
         '<div class="grid2 mb"><a class="btn sec block" href="#/hesapla/enerji?c=' + c.id + '">Enerji hesapla</a><button class="btn block" data-act="measNew" data-id="' + c.id + '">' + DA.icon('plus') + ' Ölçüm ekle</button></div>' +
         kisayolHtml(c) +
         pediatric(c, m) +
-        '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg', c.hedef) + hedefOzet(c, last) + '</div>' +
+        '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg', c.hedef) + hedefOzet(c, last) +
+          (wPts.length >= 2 ? '<a class="btn ghost block mt-s" href="#/ilerleme/' + c.id + '">' + DA.icon('share') + ' İlerleme kartı (görsel)</a>' : '') + '</div>' +
         (DA.sporTakip ? DA.sporTakip.kart(c) : '') +
         '<div class="sect">Ölçümler</div>' +
         (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : '', x.kiv ? 'Σ kıvrım ' + fmt(x.kiv, 1) + ' mm' : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : DA.emptyState('scale', { baslik: 'Henüz ölçüm yok',
