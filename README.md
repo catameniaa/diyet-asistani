@@ -29,6 +29,10 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   yağlı süt", "3 yemek kaşığı bulgur pilavı"), öğünde kalan değişim canlı, yeni satır yazım sırasındaki
   yerine girer, kendi satırını yazıp seçeneklerine kaydetme; danışan dosyasına bağlı, A4 çıktı
   (isteğe göre enerji/makro ve değişim tablosu) ve metin paylaşımı
+- Otomatik taslak: "Eksikleri taslakla doldur" plandaki eksik değişimleri yazım kurallarına göre
+  doldurur (ara öğünde galeta, gecede süt/kefir ve peynir yok, ana öğünde çorba başta, bulgurun
+  yanında ekmek yok, mercimek çorbasının yanında mercimek yok); yazılmış satır silinmez, geri
+  alınabilir. Kuralın doldurmadığı eksik (ör. gecede et) mesajda söylenir
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş; besinin miktarı ve ölçüsü
   sonradan düzenlenir, çıktıya ev ölçüsü basılır ("3 dilim (75 g)")
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla

@@ -1755,6 +1755,87 @@ function ornekDurum(tema) {
   uiEkle('Liste: hedefsiz listede durum etiketi yok', 0, ls.hedefsizCip);
   uiEkle('Liste: silinince geri alınabiliyor', 'true/true', ls.silindi + '/' + ls.geriGeldi);
 
+  /* ---- diyet listesi: otomatik taslak ----
+     Beklenenler kurallardan elle yazıldı (tohum s = 0; öğün sırası kahvaltı 0,
+     kuşluk 1, öğle 2, ikindi 3, akşam 4, gece 5; dönen listede indeks
+     (s + öğün) mod uzunluk):
+       Kahvaltı {süt 1, et 2, ekmek 2, yağ 2, sebze 1}: süt; et → 1 peynir +
+         1 yumurta; yağ → 10 zeytin + 1 tk zeytinyağı; sebze → domates (0);
+         ekmek 2 dilim en sonda.
+       Kuşluk {ekmek 2, süt 1}: süt listesi [kefir, yoğurt, ayran][1] =
+         yoğurt; ekmek → galeta 1,5 × 2 = 3 büyük boy.
+       Öğle {ekmek 3, et 2, sebze 2, yağ 3, süt yy 1} + elle 3 yk bulgur:
+         kalan ekmek 2 · çorba [mercimek, şehriye, yayla, kase][2] = yayla
+         (ekmek 1 + yağ 1) · et [köfte, tavuk, kuşbaşı, istavrit][2] =
+         kuşbaşı 3 × 2 = 6 · sebze 2 → zy yemek 1 + zy salata 1 (yağ 3−1−1−1
+         = 0) · kalan 1 ekmek: öğle listesi [ekmek, …][0] ekmek derdi ama
+         elle bulgur yazılı → bulgura eklenir, 3 × 2 = 6 yk · yy yoğurt.
+         Aynı sıradakiler giriş sırasında kalır: bulgur önce yazılmıştı.
+       İkindi {meyve 1, kuruyemiş 1}: meyve [...][3] = muz, kuruyemiş
+         [ceviz, badem, fındık][3 mod 3 = 0] = ceviz.
+       Akşam {ekmek 2, baklagil 2, sebze 1, yağ 1}: çorba [..][4 mod 4 = 0]
+         = mercimek çorbası · baklagil [nohut, mercimek, k.fasulye][1] =
+         mercimek AMA mercimek çorbası var → kuru fasulye 3 × 2 = 6 yk ·
+         yağ bitti → yağsız salata · ekmek 1 → akşam listesi [bulgur, …][0].
+       Gece {süt 1, et 1, meyve 1}: süt [süt, kefir][5 mod 2 = 1] = kefir ·
+         meyve [elma, portakal, mandalina, muz, armut, üzüm][5] = üzüm ·
+         et YAZILMAZ (gece peynir yok) → "Gece: 1 et eksik" kalır.
+     Sonra hiçbir yazım kuralı notu çıkmamalı; geri alınca yalnız elle yazılan
+     ekmek kalmalı. */
+  const tsl = await sayfa.evaluate(async () => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    const C = DA.liste.carp;
+    o.carp = [C('1,5 büyük boy galeta', 2), C('1,5 büyük boy galeta', 0.5), C('1/4 küçük boy tavuk göğsü fileto', 3),
+      C('3/4 su bardağı (4 tepeleme yemek kaşığı) yoğurt (150 g)', 2), C('1 su bardağı ev yoğurdu (200 g)', 2),
+      C('1,5 su bardağı (1 büyük su bardağı) ayran', 0.5), C('1/5 orta boy bazlama', 2), C('1/4 adet simit (çeyrek)', 2),
+      C('1 porsiyon yarım ekmek döner (1/2 ekmek)', 2), C('1 büyük boy domates (çiğ)', 2)].join(' | ');
+    const sat = (t, d, n) => ({ id: 's' + Math.random().toString(36).slice(2, 7), t, n: n || 1, d });
+    const L = { id: 'lx', ad: 'Taslak', d: DA.today(), c: 'pc', ex: {}, hedef: {}, not: '', ayar: {},
+      ogun: { ogle: [sat('3 yemek kaşığı bulgur pilavı', { eyg: 1 })] },
+      meal: { kahvalti: { sut: 1, et: 2, eyg: 2, yag: 2, sebze: 1 }, ara1: { eyg: 2, sut: 1 },
+        ogle: { eyg: 3, et: 2, sebze: 2, yag: 3, sutyy: 1 }, ara2: { meyve: 1, tohum: 1 },
+        aksam: { eyg: 2, baklagil: 2, sebze: 1, yag: 1 }, gece: { sut: 1, et: 1, meyve: 1 } } };
+    S.listeler.unshift(L); DA.save();
+    location.hash = 'liste/lx'; DA.render(false);
+    await DA.need(['degisim']); DA.render(false);
+    o.dugme = !!document.querySelector('button[data-act=listeTaslak]');
+    await DA.actions.listeTaslak({ dataset: { l: 'lx' } });
+    const Lx = S.listeler.find((x) => x.id === 'lx');
+    const ogun = (k) => (Lx.ogun[k] || []).map((x) => C(x.t, x.n)).join(' > ');
+    ['kahvalti', 'ara1', 'ogle', 'ara2', 'aksam', 'gece'].forEach((k) => { o[k] = ogun(k); });
+    o.mesaj = (document.querySelector('#toast .gmsg') || {}).textContent || '';
+    DA.render(false);
+    o.kural = Array.from(document.querySelectorAll('#menuKural li[data-kural]')).map((x) => x.dataset.kural).join(',');
+    o.geceCip = Array.from(document.querySelectorAll('[data-ogun=gece] .durum .badge')).map((b) => b.textContent.trim()).join(' | ');
+    /* gece eti taslağın işi değil: düğme gizlenir, boşa basılmaz */
+    o.dugmeSonra = !!document.querySelector('button[data-act=listeTaslak]');
+    DA.actions.geriAl();
+    const Lg = S.listeler.find((x) => x.id === 'lx');
+    o.geriAl = Object.keys(Lg.ogun).map((k) => k + ':' + Lg.ogun[k].map((x) => C(x.t, x.n)).join('/')).filter((x) => !/:$/.test(x)).join(',');
+    S.listeler = S.listeler.filter((x) => x.id !== 'lx'); DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Liste: kesirli ve parantezli ölçü çarpımı',
+    '3 büyük boy galeta | ¾ büyük boy galeta | ¾ küçük boy tavuk göğsü fileto | ' +
+    '1½ su bardağı (8 tepeleme yemek kaşığı) yoğurt (300 g) | 2 su bardağı ev yoğurdu (400 g) | ' +
+    '¾ su bardağı (½ büyük su bardağı) ayran | 2 × 1/5 orta boy bazlama | 2 × 1/4 adet simit (çeyrek) | ' +
+    '2 × 1 porsiyon yarım ekmek döner (1/2 ekmek) | 2 büyük boy domates (çiğ)', tsl.carp);
+  uiEkle('Taslak: eksik varken düğme görünüyor', true, tsl.dugme);
+  uiEkle('Taslak: kahvaltı', '1 su bardağı süt > 2 parmak boyutunda beyaz peynir > 1 küçük boy yumurta > 10 orta boy zeytin > ' +
+    '1 tatlı kaşığı zeytinyağı > 1 büyük boy domates (çiğ) > 2 ince dilim ekmek', tsl.kahvalti);
+  uiEkle('Taslak: kuşlukta ekmek yerine galeta', '3/4 su bardağı (4 tepeleme yemek kaşığı) yoğurt (150 g) > 3 büyük boy galeta', tsl.ara1);
+  uiEkle('Taslak: öğle (çorba başta, elle yazılan bulgura eklenir, ekmek yok)', '1 küçük kase yayla çorbası > 6 yemek kaşığı bulgur pilavı > ' +
+    '6 orta boy kuşbaşı et > 1 kase zeytinyağlı sebze yemeği > 1 kase zeytinyağlı salata > 3/4 su bardağı (4 tepeleme yemek kaşığı) yarım yağlı yoğurt (150 g)', tsl.ogle);
+  uiEkle('Taslak: ikindi', '1 küçük boy muz > 2 bütün ceviz', tsl.ara2);
+  uiEkle('Taslak: akşam (mercimek çorbasıyla mercimek yok, bulgurun yanında ekmek yok)',
+    '1 küçük kase mercimek çorbası > 6 yemek kaşığı kuru fasulye > 1 kase yağsız salata > 3 yemek kaşığı bulgur pilavı', tsl.aksam);
+  uiEkle('Taslak: gece süt ürünü + meyve, peynir yok', '1 su bardağı kefir > 25 adet üzüm', tsl.gece);
+  uiEkle('Taslak: gece eti eksik kalıyor', 'Süt (tam yağlı) 1/1 ✓ | Et 0/1 eksik | Meyve 1/1 ✓', tsl.geceCip);
+  uiEkle('Taslak: mesajda sayım ve elle tamamlanacak eksik', 'Taslak: 22 satır eklendi, 1 satır artırıldı. Elle tamamla: Gece: 1 et eksik', tsl.mesaj);
+  uiEkle('Taslak: yazım kuralı notu çıkmıyor', '', tsl.kural);
+  uiEkle('Taslak: yapacak iş kalmayınca düğme gizli', false, tsl.dugmeSonra);
+  uiEkle('Taslak: geri alınca yalnız elle yazılan satır', 'ogle:3 yemek kaşığı bulgur pilavı', tsl.geriAl);
+
   /* ---- danışan dosyası (ADIME) ----
      Biyokimya elle: HbA1c 10 Oca 7,2 · 1 Şub 7,0 (küçük harfle "hba1c" yazıldı,
      aynı test sayılmalı) · 10 Mar 6,8 → son 6,8, önceki 7, yön ↓. "İdrarda

@@ -94,16 +94,45 @@
      "12–15 adet üzüm" ×2 → "24–30 adet üzüm", "1 su bardağı süt" ×½ →
      "½ su bardağı süt". Sayı tam çıkmazsa (5 zeytinin yarısı) uydurmamak
      için "½ × 5 adet zeytin" yazılır. */
+  /* Kesirli ve ondalıklı ölçü de çarpılır: "1/4 küçük boy tavuk göğsü" ×3 →
+     "¾ küçük boy…", "1,5 büyük boy galeta" ×2 → "3 büyük boy galeta". Eskiden
+     yalnız tam sayı çarpılıyordu; taslak galetayı, yoğurdu katlarıyla yazınca
+     "2 × 1,5 büyük boy galeta" çıkıyordu.
+     Parantezdeki ölçü de birlikte çarpılır: "(4 tepeleme yemek kaşığı) yoğurt
+     (150 g)" ×2 → "(8 tepeleme yemek kaşığı) … (300 g)". Önceden "1 su
+     bardağı ev yoğurdu (200 g)" ×2 "2 su bardağı … (200 g)" oluyordu, gram
+     yanlıştı. Parantezde ölçü olmayan sayı ("1/2 ekmek") ya da "çeyrek,
+     yarım" varsa ya da sonuç çeyreğe denk gelmiyorsa (1/5 ×2) metne
+     dokunulmaz: "2 × 1/5 orta boy bazlama". Yanlış sayı yazmaktansa çarpan
+     görünür kalır. */
+  const sayiOku = (x) => (x.indexOf('/') > 0 ? +x.split('/')[0] / +x.split('/')[1] : +x.replace(',', '.'));
+  const tam = (x) => Math.abs(x - Math.round(x)) < 1e-9;
+  const OLCU = /^(g|ml|(tepeleme )?yemek kaşığı|(büyük )?su bardağı)$/;
+  function parantezCarp(r, n) {
+    let olmaz = false;
+    const sonuc = r.replace(/\(([^)]*)\)/g, (tum, ic) => {
+      if (/çeyrek|yarım/.test(ic)) { olmaz = true; return tum; }
+      if (!/\d/.test(ic)) return tum;
+      const m = /^(\d+(?:,\d+)?|\d+\/\d+)\s+(.+)$/.exec(ic);
+      const v = m ? sayiOku(m[1]) * n : 0;
+      if (!m || !OLCU.test(m[2]) || !tam(v * 4)) { olmaz = true; return tum; }
+      return '(' + (tam(v) ? Math.round(v) : miktar(v)) + ' ' + m[2] + ')';
+    });
+    return olmaz ? null : sonuc;
+  }
   function carp(t, n) {
     t = String(t || '');
     if (!(n > 0) || n === 1) return t;
-    const m = /^(\d+)(?:–(\d+))?(\s.*)$/.exec(t);
-    if (m) {
-      if (m[1] === '1' && !m[2]) return miktar(n) + m[3];
-      const a = +m[1] * n, b = m[2] ? +m[2] * n : null;
-      if (Number.isInteger(a) && (b == null || Number.isInteger(b))) return a + (b != null ? '–' + b : '') + m[3];
-    }
-    return miktar(n) + ' × ' + t;
+    const geri = miktar(n) + ' × ' + t;
+    const m = /^(\d+(?:,\d+)?|\d+\/\d+)(?:–(\d+))?(\s.*)$/.exec(t);
+    if (!m) return geri;
+    const kalan = parantezCarp(m[3], n);
+    if (kalan == null) return geri;
+    if (m[1] === '1' && !m[2]) return miktar(n) + kalan;
+    const a = sayiOku(m[1]) * n, b = m[2] ? +m[2] * n : null;
+    if (tam(a) && (b == null || tam(b))) return Math.round(a) + (b != null ? '–' + Math.round(b) : '') + kalan;
+    if (/[,/]/.test(m[1]) && b == null && tam(a * 4)) return miktar(a) + kalan;
+    return geri;
   }
   /* Satırın değişim toplamı (d × n) */
   function satirDegisim(x) {
@@ -197,6 +226,12 @@
     if (!id) return listeIndeks();
     const l = bul(id);
     if (!l) return { title: 'Diyet listesi', back: 'liste', html: '<div class="card">Liste bulunamadı.</div>' };
+    /* Taslak düğmesi galeta, kefir gibi seçenekleri değişim listesinden alır;
+       veri yüklenmeden kuru çalıştırma onları bulamaz ve düğme gizli
+       kalabilirdi. Arka planda yüklenir, gelince ekran yenilenir. */
+    if (DA.hazir && !DA.hazir(['degisim'])) {
+      DA.need(['degisim']).then(() => { if (location.hash === '#/liste/' + id) DA.render(true); }, () => {});
+    }
     return listeEkrani(l);
   };
 
@@ -235,7 +270,9 @@
         '<div class="halka-satir mt-s">' + DA.halka(l.hedef && l.hedef.kcal > 0 ? t.kcal / l.hedef.kcal : 0,
           '<b>' + fmt(t.kcal, 0) + '</b><small>kcal yazıldı</small>',
           { boyut: 96, etiket: 'Yazılan ' + fmt(t.kcal, 0) + ' kcal' + (l.hedef && l.hedef.kcal ? ', plan ' + fmt(l.hedef.kcal, 0) + ' kcal' : '') }) +
-        '<div class="grow small muted" id="listeGun">' + gunOzetHtml(l, y, t) + '</div></div></div>' +
+        '<div class="grow small muted" id="listeGun">' + gunOzetHtml(l, y, t) + '</div></div>' +
+        (taslakYapar(l)
+          ? '<button class="btn sec block mt" data-act="listeTaslak" data-l="' + lid + '">' + icon('plus') + ' Eksikleri taslakla doldur</button>' : '') + '</div>' +
         (bos ? '' : kural) +
         gorunen.map((o) => ogunKarti(l, o)).join('') +
         (kalan.length ? '<div class="card"><div class="small muted mb">Başka öğüne satır ekle</div><div class="chips">' +
@@ -414,6 +451,152 @@
     DA.save(); DA.render(true);
     DA.silGeriAl('Liste yazım sırasına dizildi', () => { l.ogun = eski; });
   };
+  /* ---- Otomatik taslak ----
+     Neden: değişim planı hazır olunca listeyi satır satır seçmek her
+     danışanda aynı işti. Taslak yalnız EKSİK değişimleri doldurur (yazılmış
+     satır silinmez, değiştirilmez; aynı satır varsa çarpanı artar), geri
+     alınabilir ve Dyt. Can Bayramoğlu'nun yazım kurallarına uyar:
+       · ara öğünde ekmek yerine galeta
+       · gecede süt, kefir ya da yoğurt; peynir (et) gece yazılmaz, eksik kalır
+       · ana öğünde çorba başta (1 ekmek + 1 yağ); karbonhidrat tek kaynaktan:
+         bulgur ya da pilav varsa yanına ekmek yazılmaz
+       · sebze: önce zeytinyağlı sebze yemeği, sonra tek kase salata ("2 kase
+         salata" yazılmaz); artan sebze yemeğe eklenir
+       · kahvaltıda peynir bir kez, kalan et yumurtayla
+     Seçimler gün ve öğüne göre döner (tohum: s); haftalık listede her gün
+     başka yemek gelir. Seçenekler HAZIR ve değişim listesinden; olmayan
+     seçenek atlanır, eksik kalan değişim kartta "eksik" görünür. */
+  const TASLAK_ANA = ['ogle', 'aksam'], TASLAK_ARA = ['ara1', 'ara2'];
+  function taslakSecenek(x) {
+    if (!x) return null;
+    if (x.charAt(0) === '=') {
+      const D = DA.data.degisim, r = D && D.satirlar.find((y) => y.ad === x.slice(1));
+      return r ? { t: r.t, d: r.d } : null;
+    }
+    const e = secenek(x);
+    return e ? { t: e.t, d: e.d } : null;
+  }
+  /* Dönen listeden sıradaki bulunabilen seçenek; haric'tekiler atlanır */
+  function dondur(liste, s, haric) {
+    for (let i = 0; i < liste.length; i++) {
+      const x = liste[(s + i) % liste.length];
+      if (haric && haric.indexOf(x) >= 0) continue;
+      const e = taslakSecenek(x); if (e) return e;
+    }
+    return null;
+  }
+  /* Dönüş: { yeni, artan } — eklenen satır ve çarpanı artan satır sayısı */
+  function taslakDoldur(l, ogun, s) {
+    const say = { yeni: 0, artan: 0 };
+    ogunler().forEach((o, oi) => {
+      const k = o[0], h = (l.meal || {})[k] || {}, y = topla(ogun[k]), kal = {};
+      Object.keys(h).forEach((g) => { const v = Math.round(((h[g] || 0) - (y[g] || 0)) * 4) / 4; if (v >= 0.25) kal[g] = v; });
+      if (!Object.keys(kal).length) return;
+      const tur = TASLAK_ANA.indexOf(k) >= 0 ? 'ana' : TASLAK_ARA.indexOf(k) >= 0 ? 'ara' : k === 'gece' ? 'gece' : 'kahvalti';
+      const t = s + oi;
+      const ekle = (e, n) => {
+        if (!e || !(n >= 0.25)) return;
+        ogun[k] = ogun[k] || [];
+        /* Aynı satır öğünde zaten varsa çarpanı artar; iki ayrı "bulgur
+           pilavı" satırı yazılmaz. */
+        const ayni = ogun[k].find((x) => x.t === e.t && JSON.stringify(x.d) === JSON.stringify(e.d));
+        if (ayni) { ayni.n = Math.round(((ayni.n || 1) + n) * 4) / 4; say.artan++; }
+        else { yerlestir(ogun[k], { id: DA.uid(), t: e.t, n, d: Object.assign({}, e.d) }); say.yeni++; }
+        Object.keys(e.d).forEach((g) => { if (kal[g]) kal[g] = Math.round((kal[g] - e.d[g] * n) * 4) / 4; if (kal[g] < 0.25) delete kal[g]; });
+        return e;
+      };
+      const var_ = (g, n) => (kal[g] || 0) >= (n || 1);
+      const sutSec = (yer) => {
+        ['sut', 'sutyy'].forEach((g) => {
+          if (!kal[g]) return;
+          const yy = g === 'sutyy';
+          const L = {
+            kahvalti: yy ? ['h-sut-yy'] : ['h-sut'],
+            ara: yy ? ['h-yogurt-yy', '=Ayran (light)', 'h-sut-yy'] : ['=Kefir', 'h-yogurt', 'h-ayran'],
+            ana: yy ? ['h-yogurt-yy'] : ['h-yogurt', 'h-ev-yogurdu'],
+            gece: yy ? ['h-sut-yy', 'h-yogurt-yy'] : ['h-sut', '=Kefir']
+          }[yer];
+          ekle(dondur(L, t), kal[g]);
+        });
+      };
+      const meyve = () => ekle(dondur(['h-elma', 'h-portakal', '=Mandalina', 'h-muz', '=Armut', 'h-uzum'], t), kal.meyve);
+      const tohum = () => ekle(dondur(['h-ceviz', 'h-badem', '=Fındık'], t), kal.tohum);
+      const galeta = () => ekle(dondur(['=Galeta'], 0), kal.eyg);
+      if (tur === 'kahvalti') {
+        sutSec('kahvalti');
+        if (kal.et) { const p = Math.min(1, kal.et); ekle(taslakSecenek('h-peynir'), p); ekle(taslakSecenek('h-yumurta'), kal.et); }
+        if (kal.yag) { ekle(taslakSecenek('h-zeytin'), Math.min(1, kal.yag)); ekle(taslakSecenek('h-zeytinyagi'), kal.yag); }
+        if (kal.sebze) ekle(dondur(['=Domates', '=Salatalık, acur'], t), Math.min(1, kal.sebze));
+        if (kal.sebze) ekle(taslakSecenek('h-salata'), Math.min(1, kal.sebze));
+        tohum(); meyve();
+        ekle(taslakSecenek('h-nohut'), kal.baklagil);
+        ekle(dondur(['h-ekmek', '=Çavdar, yulaf, tam buğday ya da kepekli ekmek'], t), kal.eyg);
+      } else if (tur === 'ara') {
+        sutSec('ara'); galeta(); meyve(); tohum();
+        ekle(taslakSecenek('h-peynir'), kal.et);
+        ekle(taslakSecenek('h-nohut'), kal.baklagil);
+        ekle(taslakSecenek('h-salata'), Math.min(1, kal.sebze || 0));
+      } else if (tur === 'gece') {
+        sutSec('gece'); meyve(); galeta(); tohum();
+      } else {
+        const corba = var_('eyg') && var_('yag') ? ekle(dondur(['=Mercimek çorbası', '=Şehriye, pirinç, tarhana ya da un çorbası', '=Yayla çorbası', 'h-corba'], t), 1) : null;
+        /* Mercimek çorbasının yanına mercimek yemeği yazılmaz */
+        ekle(dondur(['h-nohut', 'h-mercimek', 'h-kurufasulye'], t, corba && /mercimek/.test(corba.t) ? ['h-mercimek'] : null), kal.baklagil);
+        ekle(dondur(['h-kofte', 'h-et-tavuk', 'h-et-kirmizi', '=İstavrit'], t), kal.et);
+        /* Sebze: 2 ve üstündeyse biri tek kase salata, gerisi yağ yettiğince
+           zeytinyağlı yemek, yağ da bitince pişmiş sebze. 1 ise yağ varsa
+           yemek, yoksa yağsız salata. */
+        const s0 = kal.sebze || 0;
+        if (s0 >= 2) {
+          ekle(taslakSecenek('h-sebze-zy'), Math.min(s0 - 1, kal.yag || 0));
+          ekle(taslakSecenek(var_('yag') ? 'h-salata-zy' : 'h-salata'), 1);
+          ekle(taslakPisSebze(t), kal.sebze);
+        } else if (s0 > 0) {
+          ekle(taslakSecenek((kal.yag || 0) >= s0 ? 'h-sebze-zy' : 'h-salata'), s0);
+        }
+        /* Karbonhidrat tek kaynaktan: öğlen ekmek, akşam pilav ağırlıklı, gün
+           gün döner. Öğüne elle ekmek ya da bulgur yazılmışsa ona eklenir:
+           yoksa taslak bulgurun yanına ekmek koyabilirdi. */
+        const yazili = (ogun[k] || []).map(satirTur);
+        const khL = yazili.some((x) => x.bulgur) ? ['h-bulgur'] : yazili.some((x) => x.ekmek && !x.galeta) ? ['h-ekmek']
+          : k === 'ogle' ? ['h-ekmek', 'h-bulgur', 'h-ekmek', 'h-makarna'] : ['h-bulgur', 'h-ekmek', 'h-pilav', 'h-ekmek'];
+        ekle(dondur(khL, s), kal.eyg);
+        sutSec('ana'); meyve(); tohum();
+        ekle(taslakSecenek('h-zeytinyagi'), kal.yag);
+      }
+    });
+    return say;
+  }
+  /* Düğme yalnız taslak bir şey yazabilecekse görünür: gecedeki et gibi
+     kuralın doldurmadığı eksik için düğme boşa basılmasın. Kuru çalıştırma
+     kopyada yapılır. */
+  function taslakYapar(l) {
+    if (!planVar(l)) return false;
+    const r = taslakDoldur(l, JSON.parse(JSON.stringify(l.ogun || {})), 0);
+    return r.yeni + r.artan > 0;
+  }
+  /* Artan sebze: yağ kalmadıysa pişmiş sebze (yağı ayrıca sayılmaz) */
+  function taslakPisSebze(s) {
+    const D = DA.data.degisim, ad = DA.trLower(['Ispanak', 'Taze fasulye', 'Taze kabak', 'Brokoli'][s % 4]);
+    const e = D && D.secenekler.find((x) => x.id.slice(-2) === '-p' && x.t.indexOf(' ' + ad + ' (pişmiş)') >= 0);
+    return e ? { t: e.t, d: e.d } : { t: '1 kase yağsız salata', d: { sebze: 1 } };
+  }
+  DA.actions.listeTaslak = (el) => {
+    const l = bul(el.dataset.l); if (!l) return Promise.resolve();
+    const calis = () => {
+      const eski = JSON.parse(JSON.stringify(l.ogun));
+      const r = taslakDoldur(l, l.ogun, 0);
+      if (!(r.yeni + r.artan)) { DA.toast('Taslağın dolduracağı eksik yok'); return; }
+      DA.save(); DA.render(true);
+      /* Kuralın doldurmadığı eksik (ör. gecede et) mesajda söylenir: plan
+         ya da satır elle düzeltilir. */
+      const kalan = uyumsuzluk(l).filter((x) => / eksik/.test(x));
+      DA.silGeriAl('Taslak: ' + r.yeni + ' satır eklendi' + (r.artan ? ', ' + r.artan + ' satır artırıldı' : '') +
+        (kalan.length ? '. Elle tamamla: ' + kalan.join(' · ') : ''), () => { l.ogun = eski; }, kalan.length ? 9000 : 0);
+    };
+    return DA.need(['degisim']).then(calis, calis);
+  };
+
   DA.actions.listeKopya = (el) => {
     const l = bul(el.dataset.l); if (!l) return;
     const c = JSON.parse(JSON.stringify(l));
@@ -493,5 +676,5 @@
       '<a class="btn sec sm block mt-s" href="#/hesapla/degisim?c=' + esc(c.id) + '">' + icon('note') + ' Değişim planından liste yaz</a></div>';
   }
 
-  DA.liste = { olustur, carp, topla, karsilik, danisanKarti, metin, satirTur, hazir: HAZIR };
+  DA.liste = { olustur, carp, topla, karsilik, danisanKarti, metin, satirTur, hazir: HAZIR, taslakDoldur, kuralSonucu };
 })();
