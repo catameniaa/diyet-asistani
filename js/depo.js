@@ -1,4 +1,4 @@
-/* Depolama dayanıklılığı: anlık kopyalar (IndexedDB) ve depolama teşhisi.
+/* Depolama: birincil kayıt (IndexedDB), anlık kopyalar ve depolama teşhisi.
 
    Neden ayrı bir depo? localStorage tek bir anahtarda tutuluyor. O anahtar
    bozulursa, yanlış bir geri yükleme üzerine yazarsa ya da bir kayıt yarım
@@ -92,6 +92,131 @@
 
   DA.depoTemizle = () => islem('readwrite', (st) => st.clear()).then(() => true).catch(() => false);
 
+  /* ---- birincil kayıt: IndexedDB (dyt-ana) ----
+     Neden: localStorage ~5 MB ile sınırlı ve her yazımda ana iş parçacığını
+     bekletiyor; danışan, liste ve menü arttıkça sınır yaklaşıyordu. Kayıt
+     artık IndexedDB'de; localStorage 'dyt.v1' eşzamanlı AYNA olarak sürüyor:
+       · açılış beklemesin diye ilk durum aynadan eşzamanlı okunur;
+       · IndexedDB yazımı eşzamansız: sekme o an kapanırsa ayna daha yenidir,
+         açılışta zaman damgasıyla (dyt.v1.ts) hangisinin yeni olduğu seçilir.
+     Taşıma kayıpsız: birincil kayıt yoksa aynadaki metin AYNEN yazılır, geri
+     okunup karakter karakter karşılaştırılır; tutmazsa localStorage birincil
+     kalır ve ayarlarda uyarı çıkar. Ayna hiç silinmez.
+     Seçim kuralı (DA.depoBaslat):
+       · ikisi aynı → bir şey yapılmaz
+       · birincil var, ayna yok ya da birincil eşit/yeni → birincil yüklenir,
+         ayna onarılır (bozuk ayna böyle kurtulur)
+       · ayna daha yeni (IndexedDB yazımı yarıda kaldı) → ayna kalır,
+         birincile yazılır; ayna bozuksa (kilit) birincile YAZILMAZ
+       · birincil yok → taşıma (ayna bozuksa taşınmaz, ham metin korunur) */
+  const ANA_DB = 'dyt-ana', ANA_ST = 'kayit', TS = DA.depoAnahtari + '.ts';
+  const ana = { kaynak: '', goc: null, hata: '', hazir: false };
+  function anaAc() {
+    return new Promise((ok, hata) => {
+      if (!self.indexedDB) return hata(new Error('IndexedDB yok'));
+      const r = indexedDB.open(ANA_DB, 1);
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(ANA_ST)) d.createObjectStore(ANA_ST, { keyPath: 'k' }); };
+      r.onsuccess = () => ok(r.result);
+      r.onerror = () => hata(r.error);
+    });
+  }
+  function anaIslem(mod, fn) {
+    return anaAc().then((d) => new Promise((ok, hata) => {
+      const t = d.transaction(ANA_ST, mod), st = t.objectStore(ANA_ST);
+      let istek;
+      try { istek = fn(st); } catch (e) { d.close(); hata(e); return; }
+      t.oncomplete = () => { d.close(); ok(istek && istek.result !== undefined ? istek.result : null); };
+      t.onerror = () => { d.close(); hata(t.error); };
+      t.onabort = () => { d.close(); hata(t.error || new Error('iptal')); };
+    }));
+  }
+  const anaOku = () => anaIslem('readonly', (st) => st.get('ana')).then((r) => r || null);
+  const anaYaz = (metin, ts) => anaIslem('readwrite', (st) => st.put({ k: 'ana', metin, ts }));
+  const zamanli = (p, ms) => Promise.race([p, new Promise((_, h) => setTimeout(() => h(new Error('IndexedDB yanıt vermedi')), ms))]);
+
+  /* Yazım kuyruğu: art arda kayıtlar birleştirilir, en son metin yazılır */
+  let bekleyen = null, akis = null;
+  async function bosalt() {
+    try {
+      while (bekleyen) {
+        const b = bekleyen; bekleyen = null;
+        await anaYaz(b.metin, b.ts);
+      }
+      ana.hata = '';
+    } catch (e) {
+      ana.hata = 'IndexedDB’ye yazılamadı: ' + ((e && e.message) || 'bilinmeyen hata');
+      if (DA.toast) DA.toast('Kayıt IndexedDB’ye yazılamadı; tarayıcı depolamasını kontrol et');
+    } finally { akis = null; }
+  }
+  /* DA.save() buradan yazar. Ayna eşzamanlı, birincil sıraya alınır.
+     Dönüş: kayıt bir yerde güvende mi (ayna yazıldı ya da birincil hazır) */
+  DA.depoYaz = (metin) => {
+    const ts = Date.now();
+    let ayna = true;
+    try { localStorage.setItem(DA.depoAnahtari, metin); localStorage.setItem(TS, String(ts)); } catch (e) { ayna = false; }
+    if (self.indexedDB) { bekleyen = { metin, ts }; if (!akis) akis = bosalt(); }
+    if (!ayna && ana.hazir && !ana.aynaUyari) {
+      ana.aynaUyari = true;
+      if (DA.toast) DA.toast('localStorage dolu; kayıt IndexedDB’de sürüyor');
+    }
+    return ayna || ana.hazir;
+  };
+  /* Bekleyen birincil yazım bitene kadar (test ve sayfa kapanışı için) */
+  DA.depoBekle = () => akis || Promise.resolve();
+  addEventListener('pagehide', () => { if (bekleyen && !akis) akis = bosalt(); });
+
+  DA.depoBaslat = async () => {
+    /* Her çağrı sıfırdan karar verir (açılışta bir kez; testte yeniden) */
+    ana.kaynak = ''; ana.goc = null; ana.hata = ''; ana.hazir = false;
+    let L = null, Lts = 0;
+    try { L = localStorage.getItem(DA.depoAnahtari); Lts = +(localStorage.getItem(TS) || 0); } catch (e) { /* ayna okunamıyor */ }
+    let r;
+    try { r = await zamanli(anaOku(), 2500); } catch (e) { ana.kaynak = 'ayna'; ana.hata = (e && e.message) || 'IndexedDB açılamadı'; return ana.kaynak; }
+    try {
+      if (r && typeof r.metin === 'string') {
+        if (L === r.metin) { ana.kaynak = 'idb'; ana.hazir = true; return ana.kaynak; }
+        /* Birincil kayıt okunamıyorsa sağlam aynanın üzerine yazılmaz: ayna
+           yüklü kalır, ilk kayıt birincili onarır. */
+        let gecerli = true;
+        try { JSON.parse(r.metin); } catch (e) { gecerli = false; }
+        if (!gecerli) {
+          ana.hata = 'IndexedDB’deki kayıt okunamadı; aynadan açıldı';
+          ana.kaynak = 'ayna'; ana.hazir = !(DA.depoKilit && DA.depoKilit()); return ana.kaynak;
+        }
+        if (L == null || (r.ts || 0) >= Lts) {
+          DA._yukle(r.metin);
+          try { localStorage.setItem(DA.depoAnahtari, r.metin); localStorage.setItem(TS, String(r.ts || Date.now())); } catch (e) { /* ayna yazılamadı */ }
+          ana.kaynak = 'idb'; ana.hazir = true; return ana.kaynak;
+        }
+        if (DA.depoKilit && DA.depoKilit()) { ana.kaynak = 'kilit'; return ana.kaynak; }
+        await anaYaz(L, Lts);
+        ana.kaynak = 'ayna-yeni'; ana.hazir = true; return ana.kaynak;
+      }
+      if (L == null) { ana.kaynak = 'bos'; ana.hazir = true; return ana.kaynak; }
+      if (DA.depoKilit && DA.depoKilit()) { ana.kaynak = 'kilit'; return ana.kaynak; }
+      const ts = Lts || Date.now();
+      await anaYaz(L, ts);
+      const g = await anaOku();
+      if (g && g.metin === L) {
+        ana.goc = ts; ana.kaynak = 'goc'; ana.hazir = true;
+        try { if (!Lts) localStorage.setItem(TS, String(ts)); } catch (e) { /* yok say */ }
+        return ana.kaynak;
+      }
+      ana.kaynak = 'ayna'; ana.hata = 'IndexedDB’ye taşıma doğrulanamadı; kayıt localStorage’da kalıyor';
+      return ana.kaynak;
+    } catch (e) {
+      ana.kaynak = 'ayna'; ana.hata = (e && e.message) || 'IndexedDB hatası';
+      return ana.kaynak;
+    }
+  };
+  /* Kasa sıfırlama: ayna, zaman damgası ve birincil kayıt birlikte silinir */
+  DA.depoAnaSil = async () => {
+    bekleyen = null; await DA.depoBekle();
+    try { localStorage.removeItem(DA.depoAnahtari); localStorage.removeItem(TS); } catch (e) { /* yok say */ }
+    try { await anaIslem('readwrite', (st) => st.delete('ana')); } catch (e) { /* yok say */ }
+  };
+  DA.depoAna = () => Object.assign({}, ana);
+
   /* ---- teşhis ---- */
 
   DA.depoDurum = async () => {
@@ -104,7 +229,8 @@
         d.kullanim = e.usage; d.kota = e.quota;
       }
     } catch (e) { /* desteklenmiyor */ }
-    try { d.ls = (localStorage.getItem('dyt.v1') || '').length; } catch (e) { d.ls = null; }
+    try { d.ls = (localStorage.getItem(DA.depoAnahtari) || '').length; } catch (e) { d.ls = null; }
+    d.ana = DA.depoAna();
     const liste = await DA.depoListe();
     d.anlik = liste.length;
     d.sonAnlik = liste[0] || null;

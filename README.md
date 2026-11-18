@@ -100,10 +100,13 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - Besin favorileri (listenin başına alınır) ve menü kopyalama
 - iPhone Numbers için `sablonlar/Diyet-Asistani-Sablonlar.xlsx`
 
-Veriler yalnızca kullanıcının cihazında (localStorage) saklanır. Ayarlar → Yedek ile JSON yedeği alınabilir.
+Veriler yalnızca kullanıcının cihazında saklanır: birincil kayıt IndexedDB'de, localStorage'da eşzamanlı
+bir aynası durur (ayna dolsa da kayıt sürer). Eski kurulumda ilk açılışta kayıt IndexedDB'ye aynen taşınır
+ve geri okunarak doğrulanır; doğrulanamazsa localStorage birincil kalır ve Ayarlar → Depolama durumu uyarır.
+Ayarlar → Yedek ile JSON yedeği alınabilir.
 
-Veri dayanıklılığı: kayıt okunamazsa uygulama üzerine yazmaz — kaydetme kilitlenir ve ham
-metin indirilebilir kalır. Her kayıtta IndexedDB'de ayrı bir depoya anlık kopya alınır
+Veri dayanıklılığı: ayna ya da birincil kayıttan biri bozulursa sağlam olandan açılır ve bozuk olan
+onarılır; ikisi de okunamazsa uygulama üzerine yazmaz — kaydetme kilitlenir ve ham metin indirilebilir kalır. Her kayıtta IndexedDB'de ayrı bir depoya anlık kopya alınır
 (son 12); yanlış geri yükleme ya da bozulma durumunda Ayarlar → Depolama durumu'ndan
 dönülebilir. Anlık kopyalar cihazda durur; cihaz kaybı ve site verilerini temizleme için
 dosya yedeği şarttır.

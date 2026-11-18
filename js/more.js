@@ -281,6 +281,12 @@
         ? '<p class="muted tiny">Tarayıcı, yer darlığında bu verileri silebilir. İzni yeniden istemeyi dene; ' +
           'uygulamayı ana ekrana eklemek izin alma ihtimalini artırır.</p>' +
           '<button class="btn ghost sm block" data-act="depoIste">Kalıcı depolama izni iste</button>' : '') +
+      /* Birincil kayıt yeri (js/depo.js): IndexedDB, localStorage aynası */
+      '<div class="res" id="depoYer"><span class="l">Kayıt yeri</span><span class="v" style="font-size:15px">' +
+        (d.ana && d.ana.hazir ? 'IndexedDB' : 'localStorage') + '<span class="sub">' +
+        (d.ana && d.ana.hazir ? 'localStorage’da eşzamanlı ayna' : 'IndexedDB kullanılamıyor') +
+        (d.ana && d.ana.goc ? ' · taşındı: ' + saat(d.ana.goc) : '') + '</span></span></div>' +
+      (d.ana && d.ana.hata ? '<div class="note warn small">' + esc(d.ana.hata) + '</div>' : '') +
       '<div class="res"><span class="l">Bu cihazdaki veri</span><span class="v" style="font-size:15px">' +
         S.clients.length + ' danışan<span class="sub">' + S.menus.length + ' menü · ' + S.journal.length +
         ' staj kaydı · ' + mb(d.ls) + '</span></span></div>' +

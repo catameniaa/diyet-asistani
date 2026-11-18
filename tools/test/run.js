@@ -222,19 +222,130 @@ function ornekDurum(tema) {
   arama = await sayfa.$eval('#gOut', (e) => e.textContent);
   uiEkle('Sonuçsuz aramada boş durum gösteriliyor', true, arama.indexOf('bulunamadı') >= 0 || arama.trim().length > 0);
 
-  /* ---- Depolama dayanıklılığı ---- */
-  /* Bozuk kayıt: uygulama boş açılmalı AMA ham veriyi silmemeli. */
-  await sayfa.evaluate(() => localStorage.setItem('dyt.v1', '{"clients":[{"id":"c1","name":"Ayşe"},{"id":"c2","na'));
-  await sayfa.goto(B, { waitUntil: 'networkidle' });
-  await sayfa.waitForTimeout(300);
-  let dk = await sayfa.evaluate(() => ({
+  /* ---- Depolama dayanıklılığı ----
+     Birincil kayıt IndexedDB'de (dyt-ana), localStorage 'dyt.v1' eşzamanlı
+     ayna (js/depo.js). Yardımcılar sayfanın içinde IndexedDB'yi doğrudan
+     okur/yazar: testler uygulamanın kendi okuma yoluna güvenmesin. */
+  const idb = (islem, metin, ts) => sayfa.evaluate(([islem, metin, ts]) => new Promise((ok) => {
+    if (islem === 'sil') { const r = indexedDB.deleteDatabase('dyt-ana'); r.onsuccess = r.onerror = r.onblocked = () => ok(true); return; }
+    const r = indexedDB.open('dyt-ana', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kayit', { keyPath: 'k' });
+    r.onsuccess = () => {
+      const d = r.result, t = d.transaction('kayit', islem === 'oku' ? 'readonly' : 'readwrite'), st = t.objectStore('kayit');
+      const q = islem === 'oku' ? st.get('ana') : st.put({ k: 'ana', metin, ts });
+      t.oncomplete = () => { d.close(); ok(islem === 'oku' ? (q.result || null) : true); };
+    };
+  }), [islem, metin || null, ts || 0]);
+  const yeniden = async () => {
+    await sayfa.goto(B, { waitUntil: 'networkidle' });
+    await sayfa.waitForFunction(() => window.DA && DA.depoAna && DA.depoAna().kaynak !== '');
+  };
+  const BOZUK = '{"clients":[{"id":"c1","name":"Ayşe"},{"id":"c2","na';
+
+  /* 1) Taşıma: birincil kayıt yokken aynadaki metin AYNEN taşınır, geri okunup doğrulanır */
+  await sayfa.evaluate(() => DA.depoBekle());
+  await idb('sil');
+  const gocMetin = JSON.stringify({ clients: [{ id: 'g1', name: 'Taşınan', meas: [] }], menus: [] });
+  await sayfa.evaluate((m) => { localStorage.setItem('dyt.v1', m); localStorage.setItem('dyt.v1.ts', '1000'); }, gocMetin);
+  await yeniden();
+  let dk = await sayfa.evaluate(() => ({ ana: DA.depoAna(), danisan: DA.state().clients.map((c) => c.name).join(',') }));
+  let kayit = await idb('oku');
+  uiEkle('Taşıma: kaynak "goc", zaman damgası aynadan', 'goc|1000', dk.ana.kaynak + '|' + dk.ana.goc);
+  uiEkle('Taşıma: birincil kayıt aynadaki metnin aynısı', true, !!kayit && kayit.metin === gocMetin && kayit.ts === 1000);
+  uiEkle('Taşıma: ayna silinmiyor', gocMetin, await sayfa.evaluate(() => localStorage.getItem('dyt.v1')));
+  uiEkle('Taşıma: veri açılıyor', 'Taşınan', dk.danisan);
+
+  /* 1b) Taşıma doğrulanamazsa (yazılan geri okunan metinle tutmuyor) localStorage
+     birincil kalır ve uyarı çıkar. IndexedDB yazımı ayrı bir sayfada, açılıştan
+     önce bozularak taklit edilir. */
+  await idb('sil');
+  {
+    const g2 = await sayfa.evaluate(async () => {
+      const asil = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (v, k) { return asil.call(this, v && v.k === 'ana' ? Object.assign({}, v, { metin: v.metin + ' ' }) : v, k); };
+      try { await DA.depoBaslat(); } finally { IDBObjectStore.prototype.put = asil; }
+      return { ana: DA.depoAna(), ayna: localStorage.getItem('dyt.v1') };
+    });
+    uiEkle('Taşıma doğrulanamazsa: localStorage birincil kalıyor, uyarı var', 'ayna|false|true|true',
+      g2.ana.kaynak + '|' + g2.ana.hazir + '|' + /doğrulanamadı/.test(g2.ana.hata) + '|' + (g2.ayna === gocMetin));
+  }
+  await idb('sil');
+  await yeniden();
+
+  /* 2) Kayıt: ayna ve birincil birlikte, aynı zaman damgasıyla */
+  await sayfa.evaluate(async () => { DA.state().clients.push({ id: 'g2', name: 'İkinci', meas: [] }); DA.save(); await DA.depoBekle(); });
+  kayit = await idb('oku');
+  dk = await sayfa.evaluate(() => ({ ayna: localStorage.getItem('dyt.v1'), ts: +localStorage.getItem('dyt.v1.ts') }));
+  uiEkle('Kayıt: birincil = ayna, zaman damgası aynı', true, !!kayit && kayit.metin === dk.ayna && kayit.ts === dk.ts && /İkinci/.test(kayit.metin));
+
+  /* 3) Bozuk ayna, sağlam birincil: birincilden açılır, kilit yok, ayna onarılır */
+  await sayfa.evaluate((b) => localStorage.setItem('dyt.v1', b), BOZUK);
+  await yeniden();
+  dk = await sayfa.evaluate(() => ({ kilit: DA.depoKilit(), danisan: DA.state().clients.length, ayna: localStorage.getItem('dyt.v1'), kaynak: DA.depoAna().kaynak }));
+  uiEkle('Bozuk ayna: birincilden açılıyor, kilit yok', 'idb||2', dk.kaynak + '|' + dk.kilit + '|' + dk.danisan);
+  uiEkle('Bozuk ayna: ayna birincilden onarılıyor', true, dk.ayna === (await idb('oku')).metin);
+
+  /* 4) Ayna daha yeni (IndexedDB yazımı sekme kapanırken yarıda kaldı): ayna kazanır, birincile yazılır */
+  const yeniAyna = JSON.stringify({ clients: [{ id: 'a1', name: 'Aynada yeni', meas: [] }] });
+  await sayfa.evaluate((m) => { localStorage.setItem('dyt.v1', m); localStorage.setItem('dyt.v1.ts', String(Date.now() + 60000)); }, yeniAyna);
+  await yeniden();
+  dk = await sayfa.evaluate(() => ({ kaynak: DA.depoAna().kaynak, danisan: DA.state().clients.map((c) => c.name).join(',') }));
+  uiEkle('Ayna yeni: ayna açılıyor ve birincile yazılıyor', 'ayna-yeni|Aynada yeni|true', dk.kaynak + '|' + dk.danisan + '|' + ((await idb('oku')).metin === yeniAyna));
+
+  /* 5) Birincil daha yeni (ayna eski kalmış): birincil açılır, ayna onarılır */
+  const yeniAna = JSON.stringify({ clients: [{ id: 'b1', name: 'Birincilde yeni', meas: [] }] });
+  await idb('yaz', yeniAna, Date.now() + 120000);
+  await yeniden();
+  dk = await sayfa.evaluate(() => ({ kaynak: DA.depoAna().kaynak, danisan: DA.state().clients.map((c) => c.name).join(','), ayna: localStorage.getItem('dyt.v1') }));
+  uiEkle('Birincil yeni: birincil açılıyor, ayna onarılıyor', 'idb|Birincilde yeni|true', dk.kaynak + '|' + dk.danisan + '|' + (dk.ayna === yeniAna));
+
+  /* 6) Bozuk birincil, sağlam ayna: aynadan açılır, aynanın üzerine yazılmaz, ilk kayıt birincili onarır */
+  await idb('yaz', '{bozuk', Date.now() + 240000);
+  await yeniden();
+  dk = await sayfa.evaluate(() => ({ ana: DA.depoAna(), kilit: DA.depoKilit(), danisan: DA.state().clients.map((c) => c.name).join(','), ayna: localStorage.getItem('dyt.v1') }));
+  uiEkle('Bozuk birincil: aynadan açılıyor, kilit yok, uyarı var', 'ayna||Birincilde yeni|true|true',
+    dk.ana.kaynak + '|' + dk.kilit + '|' + dk.danisan + '|' + (dk.ayna === yeniAna) + '|' + /okunamadı/.test(dk.ana.hata));
+  await sayfa.evaluate(async () => { DA.save(); await DA.depoBekle(); });
+  kayit = await idb('oku');
+  uiEkle('Bozuk birincil: ilk kayıtta onarılıyor (birincil = ayna, okunur)', true,
+    kayit.metin === (await sayfa.evaluate(() => localStorage.getItem('dyt.v1'))) && (() => { try { return JSON.parse(kayit.metin).clients[0].name === 'Birincilde yeni'; } catch (e) { return false; } })());
+
+  /* 7) Ayna dolu: localStorage yazamıyor, birincil hazır → kayıt sürer, kilit yok */
+  dk = await sayfa.evaluate(async () => {
+    const asil = Storage.prototype.setItem;
+    Storage.prototype.setItem = function () { throw new Error('QuotaExceededError'); };
+    DA.state().clients.push({ id: 'q1', name: 'Dolu aynada', meas: [] });
+    const sonuc = DA.save();
+    await DA.depoBekle();
+    Storage.prototype.setItem = asil;
+    return { sonuc, kilit: DA.depoKilit() };
+  });
+  kayit = await idb('oku');
+  uiEkle('Ayna dolu: kayıt birincile gidiyor, kilit yok', 'true||true', dk.sonuc + '|' + dk.kilit + '|' + /Dolu aynada/.test(kayit.metin));
+  await yeniden();
+  uiEkle('Ayna dolu: yeniden açılışta birincilden geliyor', true, await sayfa.evaluate(() => DA.state().clients.some((c) => c.name === 'Dolu aynada')));
+
+  /* 8) Ayarlarda kayıt yeri */
+  await sayfa.goto(B + '#/daha', { waitUntil: 'networkidle' });
+  await sayfa.waitForSelector('#depoYer');
+  uiEkle('Ayarlar: kayıt yeri IndexedDB, ayna yazılı', true, /IndexedDB/.test(await sayfa.$eval('#depoYer', (e) => e.textContent)) &&
+    /ayna/.test(await sayfa.$eval('#depoYer', (e) => e.textContent)));
+
+  /* 9) Birincil kayıt yokken bozuk ayna (taşıma öncesi durum): eski davranış —
+     kaydetme kilitlenir, ham metin korunur, bozuk metin birincile taşınmaz */
+  await sayfa.evaluate(() => DA.depoBekle());
+  await idb('sil');
+  await sayfa.evaluate((b) => localStorage.setItem('dyt.v1', b), BOZUK);
+  await yeniden();
+  dk = await sayfa.evaluate(() => ({
     kilit: DA.depoKilit(), ham: (DA.depoHam() || '').length,
     disk: (localStorage.getItem('dyt.v1') || '').length,
-    danisan: DA.state().clients.length
+    danisan: DA.state().clients.length, kaynak: DA.depoAna().kaynak
   }));
   uiEkle('Bozuk kayıtta kaydetme kilitleniyor', true, !!dk.kilit);
   uiEkle('Bozuk kayıtta ham metin korunuyor', 52, dk.ham);
   uiEkle('Bozuk kayıtta boş durumla açılıyor', 0, dk.danisan);
+  uiEkle('Bozuk kayıt birincile taşınmıyor', 'kilit|null', dk.kaynak + '|' + JSON.stringify(await idb('oku')));
   /* Asıl kontrol: veri değiştirip kaydetmeyi denesek bile disk bozulmamalı */
   await sayfa.evaluate(() => { DA.state().clients.push({ id: 'x', name: 'Yeni' }); DA.save(); });
   dk = await sayfa.evaluate(() => ({ disk: (localStorage.getItem('dyt.v1') || '').length }));
@@ -242,13 +353,14 @@ function ornekDurum(tema) {
   uiEkle('Kilit uyarısı ekranda gösteriliyor', true,
     (await sayfa.$eval('#app', (e) => e.textContent)).indexOf('Veriler kaydedilmiyor') >= 0);
   /* Kullanıcı bilerek sıfırdan başlarsa kilit kalkar ve kayıt çalışır */
-  await sayfa.evaluate(() => { DA.depoKilitAc(); DA.state().clients.push({ id: 'y', name: 'Test' }); DA.save(); });
+  await sayfa.evaluate(async () => { DA.depoKilitAc(); DA.state().clients.push({ id: 'y', name: 'Test' }); DA.save(); await DA.depoBekle(); });
   dk = await sayfa.evaluate(() => ({
     kilit: DA.depoKilit(), danisan: JSON.parse(localStorage.getItem('dyt.v1')).clients.length
   }));
   uiEkle('Kilit açılınca kaydetme çalışıyor', '', dk.kilit);
   /* Kilitliyken bellekteki çalışma sürüyordu (x), kilit açılınca o da yazılır: x + y = 2 */
   uiEkle('Kilit açıldıktan sonra oturumdaki veri diske yazılıyor', 2, dk.danisan);
+  uiEkle('Kilit açılınca birincil kayıt da yazılıyor', 2, JSON.parse((await idb('oku')).metin).clients.length);
 
   /* Anlık kopyalar: IndexedDB'de tutuluyor ve geri yüklenebiliyor */
   await sayfa.goto(B, { waitUntil: 'networkidle' });

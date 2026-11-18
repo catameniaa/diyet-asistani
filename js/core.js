@@ -177,25 +177,32 @@
   const KASA = 'diyet-asistani-kasa';
   DA._kasa = { zarf: null, yazici: null, sifrele: null, coz: null };
   DA.depoAnahtari = KEY;
-  try {
-    const raw = localStorage.getItem(KEY);
-    const ham = raw ? JSON.parse(raw) : null;
-    if (ham && ham.format === KASA && ham.data && ham.anahtar) {
-      DA._kasa.zarf = ham;
+  /* Ham kayıt metnini belleğe alır. Açılışta localStorage aynasından
+     eşzamanlı okunur (ilk çizim beklemesin); js/depo.js IndexedDB'deki
+     birincil kayıt daha yeniyse onu bu işlevle yeniden yükler. */
+  function yukle(raw) {
+    DA._kasa.zarf = null; _kilit = ''; _ham = '';
+    try {
+      const ham = raw ? JSON.parse(raw) : null;
+      if (ham && ham.format === KASA && ham.data && ham.anahtar) {
+        DA._kasa.zarf = ham;
+        state = defaults();
+        /* Tema şifresiz taşınır: kilit ekranı kullanıcının seçtiği temada
+           açılsın. Başka hiçbir alan zarfın dışında değil. */
+        if (['auto', 'light', 'dark'].indexOf(ham.tema) >= 0) state.ui.theme = ham.tema;
+      } else {
+        state = Object.assign(defaults(), ham ? DA.veriDenetle(ham) : {});
+      }
+    } catch (e) {
       state = defaults();
-      /* Tema şifresiz taşınır: kilit ekranı kullanıcının seçtiği temada
-         açılsın. Başka hiçbir alan zarfın dışında değil. */
-      if (['auto', 'light', 'dark'].indexOf(ham.tema) >= 0) state.ui.theme = ham.tema;
-    } else {
-      state = Object.assign(defaults(), ham ? DA.veriDenetle(ham) : {});
+      _ham = raw || '';
+      _kilit = 'Kayıtlı veri okunamadı; bozuk olabilir. Üzerine yazmamak için kaydetme durduruldu.';
     }
-  } catch (e) {
-    state = defaults();
-    try { _ham = localStorage.getItem(KEY) || ''; } catch (e2) { _ham = ''; }
-    _kilit = _ham
-      ? 'Kayıtlı veri okunamadı; bozuk olabilir. Üzerine yazmamak için kaydetme durduruldu.'
-      : 'Tarayıcı depolaması okunamıyor.';
   }
+  let ilkKayit = null, okunamadi = false;
+  try { ilkKayit = localStorage.getItem(KEY); } catch (e) { okunamadi = true; }
+  if (okunamadi) { state = defaults(); _kilit = 'Tarayıcı depolaması okunamıyor.'; } else yukle(ilkKayit);
+  DA._yukle = (raw) => { yukle(raw); if (DA.applyTheme) DA.applyTheme(); };
 
   DA.state = () => state;
   /* Kilit durumu: '' ise sorun yok. Ham metin kurtarma için saklanır. */
@@ -215,7 +222,11 @@
       return true;
     }
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      /* js/depo.js: localStorage aynası + IndexedDB birincil kayıt. Ayna dolsa
+         bile birincil kayıt doğrulanmışsa kayıt sürer; ikisi de yoksa kilit. */
+      const json = JSON.stringify(state);
+      const ok = DA.depoYaz ? DA.depoYaz(json) : (localStorage.setItem(KEY, json), true);
+      if (!ok) throw new Error('yazılamadı');
       if (DA.depoAnlik) DA.depoAnlik();   /* arka planda anlık kopya (js/depo.js) */
       return true;
     } catch (e) {

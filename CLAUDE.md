@@ -24,8 +24,15 @@ Bunlar tartışılmış kararlardır; değiştirmeden önce sor.
   `DA.data` (tembel yüklenen veri), `DA.IA` (bilgi mimarisi / menü sırası).
 - **Yönlendirme:** hash tabanlı (`#/danisan/abc`). `DA.render(true|false)`
   yeniden çizer.
-- **Depolama:** `localStorage`, tek anahtar `dyt.v1`. Ek olarak `js/depo.js`
-  her kayıtta IndexedDB'ye anlık kopya alır (son 12).
+- **Depolama:** birincil kayıt IndexedDB (`dyt-ana` / `kayit` / `ana`);
+  `localStorage` `dyt.v1` eşzamanlı **ayna** (zaman damgası `dyt.v1.ts`).
+  Açılış aynadan eşzamanlı okur, `DA.depoBaslat()` ilk çizimden önce
+  birincili denetler: yeni olan kazanır, bozuk olan sağlamın üzerine
+  yazılmaz, birincil yoksa ayna aynen taşınıp geri okunarak doğrulanır.
+  Yazımlar `DA.depoYaz()`dan (DA.save ve kasa). Testte birincil yazımı
+  beklemek için `await DA.depoBekle()`. Ek olarak `js/depo.js` her kayıtta
+  ayrı IndexedDB'ye (`dyt-depo`) anlık kopya alır (son 12). Kasım 2026'da
+  localStorage'dan taşındı.
 - **Sunucu yok, hesap yok, izleme yok.** Veri kullanıcının cihazından
   çıkmaz. Analitik, reklam, uzak uç nokta ekleme.
 - **Çevrimdışı:** `sw.js` tüm dosyaları önbelleğe alır (önce ağ, 3 sn,

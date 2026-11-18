@@ -11,7 +11,11 @@
   Object.keys(tabs).forEach((k) => { $('#tabs a[data-tab="' + k + '"]').innerHTML = icon(tabs[k][0]) + '<span>' + tabs[k][1] + '</span>'; });
 
   if (!location.hash) history.replaceState(null, '', '#/ana');
-  DA.render(false);
+  /* İlk çizim birincil kayıt (IndexedDB) denetlendikten sonra: ayna eskiyse
+     ya da bozuksa ekranda bir an eski veri görünmesin. depoBaslat en geç
+     2,5 saniyede döner; IndexedDB yoksa aynayla açılır. */
+  const ciz = () => DA.render(false);
+  (DA.depoBaslat ? DA.depoBaslat().catch(() => null) : Promise.resolve()).then(ciz, ciz);
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {

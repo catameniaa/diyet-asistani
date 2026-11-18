@@ -88,8 +88,11 @@
         const metin = bekleyen; bekleyen = null;
         const v = await veriSifrele(metin);
         const zarf = { format: KASA, v: SURUM, tema, anahtar: anahtarlar, iv: v.iv, data: v.data };
-        try { localStorage.setItem(DA.depoAnahtari, JSON.stringify(zarf)); K.zarf = zarf; }
-        catch (e) { if (DA.toast) DA.toast('Kaydedilemedi: tarayıcı depolaması dolu ya da kapalı'); }
+        /* js/depo.js: ayna + IndexedDB birincil; zarf da aynı yoldan yazılır */
+        let ok = false;
+        try { ok = DA.depoYaz ? DA.depoYaz(JSON.stringify(zarf)) : (localStorage.setItem(DA.depoAnahtari, JSON.stringify(zarf)), true); } catch (e) { ok = false; }
+        if (ok) K.zarf = zarf;
+        else if (DA.toast) DA.toast('Kaydedilemedi: tarayıcı depolaması dolu ya da kapalı');
       }
     } finally { yaziliyor = null; }
   }
@@ -211,7 +214,8 @@
       await bekle();
       dek = null; anahtarlar = null; kurtarmaHam = null; mod = 'parola';
       K.zarf = null; K.yazici = null; K.sifrele = null; K.coz = null;
-      try { localStorage.removeItem(DA.depoAnahtari); } catch (e) { /* yok say */ }
+      if (DA.depoAnaSil) await DA.depoAnaSil();
+      else { try { localStorage.removeItem(DA.depoAnahtari); } catch (e) { /* yok say */ } }
       if (DA.depoTemizle) await DA.depoTemizle();
       DA._durumAta({});
       DA.save();
