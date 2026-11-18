@@ -1,5 +1,5 @@
-/* Klinik değerlendirme hesaplayıcıları — GLIM malnütrisyon tanısı ve
-   yeniden beslenme (refeeding) riski.
+/* Klinik değerlendirme hesaplayıcıları — GLIM malnütrisyon tanısı,
+   yeniden beslenme (refeeding) riski, eGFR ve böbrek hastalığında protein.
 
    GLIM: Cederholm T ve ark. GLIM criteria for the diagnosis of
    malnutrition. Clin Nutr 2019;38:1–9 (J Cachexia Sarcopenia Muscle
@@ -155,6 +155,79 @@
         note: 'Kaynak: NICE CG32 Nutrition support for adults (2006, son gözden geçirme 2017). Elektrolitler beslenme öncesi düzeyleri ' +
           'yüksek değilse verilir; beslenmeden önce düşük düzeyi düzeltmek gerekli sayılmaz. Elektrolit ve vitamin desteği hekim istemiyle; ' +
           'ağırlık şimdiki kilodur.'
+      };
+    }
+  });
+
+  /* ---- eGFR (CKD-EPI 2021) ve böbrek hastalığında protein ----
+     Inker LA ve ark. N Engl J Med 2021;385:1737–49 (ırk katsayısız):
+       eGFR = 142 × min(Kr/κ, 1)^α × max(Kr/κ, 1)^−1,200 × 0,9938^yaş × 1,012 [kadın]
+       κ 0,7 (K) / 0,9 (E); α −0,241 (K) / −0,302 (E); Kr mg/dl (IDMS).
+     GFR kategorileri (KDIGO): G1 ≥90, G2 60–89, G3a 45–59, G3b 30–44,
+     G4 15–29, G5 <15. Albüminüri (UACR, mg/g): A1 <30, A2 30–300, A3 >300.
+     Kategori raporlanan (yuvarlanmış) eGFR'den: ekranda 60 yazıp G3a demek
+     çelişki olurdu.
+     Protein:
+       KDIGO 2024 (diyaliz dışı): G3–G5'te 0,8 g/kg/gün; ilerleme riski olan
+         KBH'de >1,3 g/kg/gün'den kaçınılır; gönüllü ve izlemde 0,3–0,4
+         g/kg/gün + ketoasit analogları düşünülebilir. Sodyum <2 g/gün.
+       KDOQI 2020 (metabolik olarak stabil): G3–G5 diyabetsiz 0,55–0,60 ya da
+         0,28–0,43 g/kg/gün + keto/amino asit analogları; diyabetli 0,6–0,8;
+         diyaliz (HD, PD) 1,0–1,2 g/kg/gün.
+     İki kılavuz birlikte gösterilir: hedef seçimi diyetisyenindir. */
+  const GFR_KAT = [[90, 'G1', 'Normal ya da yüksek'], [60, 'G2', 'Hafif azalmış'], [45, 'G3a', 'Hafif–orta azalmış'],
+    [30, 'G3b', 'Orta–ileri azalmış'], [15, 'G4', 'İleri derecede azalmış'], [-Infinity, 'G5', 'Böbrek yetmezliği']];
+  function egfrHesap(cins, yas, kr) {
+    const k = cins === 'K' ? 0.7 : 0.9, a = cins === 'K' ? -0.241 : -0.302;
+    return 142 * Math.pow(Math.min(kr / k, 1), a) * Math.pow(Math.max(kr / k, 1), -1.2) * Math.pow(0.9938, yas) * (cins === 'K' ? 1.012 : 1);
+  }
+  DA.calcs.push({
+    id: 'egfr', title: 'eGFR ve böbrekte protein', desc: 'CKD-EPI 2021 · KDIGO evresi · KDIGO/KDOQI protein hedefi', ico: 'pulse',
+    fields: [
+      { k: 'sex', l: 'Cinsiyet', t: 'sex' }, num_('yas', 'Yaş (yıl)', '', false, [18, 110, 'yıl']),
+      num_('kre', 'Serum kreatinin (mg/dl)', 'örn. 1,2', false, [0.1, 20, 'mg/dl']),
+      num_('w', 'Kilo (kg)', 'protein hedefi için', true, [20, 250, 'kg']),
+      num_('uacr', 'İdrar albümin/kreatinin (mg/g)', 'isteğe bağlı', true, [0, 10000, 'mg/g']),
+      { k: 'dm', l: 'Diyabet', t: 'sel', o: [['yok', 'Yok'], ['var', 'Var']], def: 'yok' },
+      { k: 'diy', l: 'Diyaliz', t: 'sel', o: [['yok', 'Diyaliz yok'], ['hd', 'Hemodiyaliz'], ['pd', 'Periton diyalizi']], def: 'yok' }
+    ],
+    req: ['yas', 'kre'],
+    run(v) {
+      if (v.yas < 18) return { err: 'CKD-EPI 2021 eşitliği 18 yaş ve üstü içindir.' };
+      const cins = v.sex === 'K' ? 'K' : 'E', e = Math.round(egfrHesap(cins, v.yas, v.kre));
+      const kat = GFR_KAT.find((x) => e >= x[0]), diyaliz = v.diy === 'hd' || v.diy === 'pd';
+      const g35 = ['G3a', 'G3b', 'G4', 'G5'].indexOf(kat[1]) >= 0, w = v.w > 0 ? v.w : null;
+      const gram = (a, b) => (w ? fmt(a * w, 0) + (b != null ? '–' + fmt(b * w, 0) : '') + ' g/gün' : 'kilo girilmedi');
+      const rows = [];
+      if (diyaliz) rows.push(R('eGFR', 'diyalizde kullanılmaz', 'kreatinin diyalizle değişir'));
+      else {
+        rows.push(R('eGFR (CKD-EPI 2021)', e + ' ml/dk/1,73 m²', '', true));
+        rows.push(R('GFR kategorisi (KDIGO)', kat[1] + ' — ' + kat[2]));
+      }
+      if (v.uacr >= 0 && isFinite(v.uacr)) {
+        const A = v.uacr < 30 ? ['A1', 'normal ya da hafif artmış'] : v.uacr <= 300 ? ['A2', 'orta derecede artmış'] : ['A3', 'ciddi artmış'];
+        rows.push(R('Albüminüri', A[0] + ' — ' + A[1], fmt(v.uacr, 0) + ' mg/g'));
+      }
+      if (diyaliz) {
+        rows.push(R('Protein (KDOQI 2020)', gram(1.0, 1.2), '1,0–1,2 g/kg/gün · ' + (v.diy === 'hd' ? 'hemodiyaliz' : 'periton diyalizi'), true));
+      } else if (g35) {
+        rows.push(R('Protein (KDIGO 2024)', gram(0.8), '0,8 g/kg/gün', true));
+        if (v.dm === 'var') rows.push(R('Protein (KDOQI 2020)', gram(0.6, 0.8), '0,6–0,8 g/kg/gün · diyabetli'));
+        else {
+          rows.push(R('Protein (KDOQI 2020)', gram(0.55, 0.6), '0,55–0,60 g/kg/gün · diyabetsiz'));
+          rows.push(R('Çok düşük protein (KDOQI 2020)', gram(0.28, 0.43), '0,28–0,43 g/kg/gün + keto/amino asit analogları'));
+        }
+        rows.push(R('Üst sınır (KDIGO 2024)', 'en fazla ' + gram(1.3), '>1,3 g/kg/gün’den kaçınılır'));
+      } else {
+        rows.push(R('Protein (KDIGO 2024)', 'en fazla ' + gram(1.3), 'ilerleme riski varsa >1,3 g/kg/gün’den kaçınılır; kısıtlama önerisi G3–G5 için', true));
+      }
+      if (!diyaliz) rows.push(R('Sodyum (KDIGO 2024)', '<2 g/gün', 'yaklaşık 5 g tuz'));
+      return {
+        rows, tone: 'info', badge: diyaliz ? null : [kat[1], ['G1', 'G2'].indexOf(kat[1]) >= 0 ? 'ok' : kat[1] === 'G3a' ? 'warn' : 'bad'],
+        note: 'eGFR: CKD-EPI 2021 (Inker ve ark., NEJM 2021), ırk katsayısız; ≥18 yaş, kararlı kreatinin, IDMS standardında ölçüm. ' +
+          'Kronik böbrek hastalığı tanısı için bulgunun ≥3 ay sürmesi gerekir; G1–G2 tek başına KBH demek değildir. ' +
+          'Protein kısıtlaması metabolik olarak stabil hastada, hekim ve diyetisyen izleminde uygulanır; hangi ağırlığın (gerçek, ' +
+          'standart, ödemsiz) kullanılacağı klinik karara bağlıdır. Kaynaklar: KDIGO 2024 KBH kılavuzu; KDOQI 2020 beslenme kılavuzu.'
       };
     }
   });

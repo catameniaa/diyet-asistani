@@ -36,7 +36,7 @@ const ROTALAR = [
   '#/hesapla/cocukenerji', '#/hesapla/gy', '#/hesapla/nrs', '#/hesapla/must', '#/hesapla/mnasf',
   '#/hesapla/diyabetrisk', '#/hesapla/sporcu', '#/hesapla/terleme', '#/hesapla/sporke',
   '#/hesapla/sporkh', '#/hesapla/sporyaris', '#/hesapla/derikivrim', '#/hesapla/takviye',
-  '#/hesapla/glim', '#/hesapla/refeeding',
+  '#/hesapla/glim', '#/hesapla/refeeding', '#/hesapla/egfr',
   '#/hesapla/degisimliste',
   '#/hesapla/tuber', '#/hesapla/oruntu', '#/hesapla/hedef', '#/hesapla/porsiyon',
   '#/hesapla/porsiyonbesin', '#/hesapla/istege', '#/hesapla/bebek', '#/hesapla/gebe',

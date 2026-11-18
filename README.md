@@ -11,6 +11,9 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   ≥70 yaş BKİ eşikleri; NRS-2002, MUST, MNA-SF taramasının ardından
 - Yeniden beslenme (refeeding) riski (NICE CG32): tek başına ve ikili ölçütler, başlangıç enerjisi
   (10 ya da 5 kcal/kg/gün), K/P/Mg ve tiamin; >5 gün az yiyende ilk 2 gün gereksinimin %50'si
+- eGFR ve böbrekte protein: CKD-EPI 2021 (ırk katsayısız), KDIGO G1–G5 ve A1–A3; protein hedefi
+  KDIGO 2024 (G3–G5 0,8 g/kg, üst sınır 1,3) ve KDOQI 2020 (diyabetsiz 0,55–0,60 ya da çok düşük
+  protein + analog, diyabetli 0,6–0,8, diyaliz 1,0–1,2) yan yana; sodyum <2 g
 - Değişim listesi: sayaçlı giriş; makro hedefi yüzde ya da gram olarak (yağ kalan, canlı gösterilir);
   klasik basamaklı otomatik dağıtım (süt, sebze, meyve, kuruyemiş
   TÜBER Ek 3.1.1 örüntüsünden; ekmek KH'den, et proteinden, yağ yağ hedefinden) ve hesap adımlarının

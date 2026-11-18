@@ -423,6 +423,45 @@
     r = calistir('refeeding', { w: 60, h: 170, elek: 'yok', oyku: 'yok' });
     ekle(G, 'Refeeding: risk yoksa ilk 2 gün satırı da yok', 'Yüksek risk ölçütü yok | (satır yok: İlk 2 gün)', deger(r, 'Risk') + ' | ' + deger(r, 'İlk 2 gün'));
 
+    /* --- eGFR (CKD-EPI 2021) ---
+       142 × min(Kr/κ,1)^α × max(Kr/κ,1)^−1,2 × 0,9938^yaş × 1,012 [K]
+       1) K 60 y, 1,0: Kr/0,7 = 1,4286 → 1,4286^−1,2 = 0,6518; 0,9938^60 = 0,6886
+          → 142 × 0,6518 × 0,6886 × 1,012 = 64,5 → 64 (G2)
+       2) E 50 y, 0,8: 0,8/0,9 = 0,8889 → ^−0,302 = 1,0362; 0,9938^50 = 0,7328 → 107,8 → 108 (G1)
+       3) E 70 y, 2,5: 2,7778^−1,2 = 0,2935; 0,9938^70 = 0,6470 → 26,96 → 27 (G4)
+       4) K 45 y, 5,0: 7,1429^−1,2 = 0,09450; 0,9938^45 = 0,7558 → × 1,012 → 10,26 → 10 (G5)
+       5) E 65 y, 1,6: 1,7778^−1,2 = 0,5012; 0,9938^65 = 0,6676 → 47,5 → 48 (G3a)
+       6) E 70 y, 2,0: 2,2222^−1,2 = 0,3836; × 0,6470 × 142 = 35,2 → 35 (G3b)
+       7) E 60 y, 1,36: 1,5111^−1,2 = 0,6093; × 0,6886 × 142 = 59,58 → 60: kategori
+          raporlanan değerden, G2 (yuvarlanmamış değerle G3a çıkardı)
+       Protein 80 kg: KDIGO 0,8 → 64 g; üst 1,3 → 104 g; KDOQI 0,55–0,60 → 44–48 g;
+       0,28–0,43 → 22,4–34,4 → 22–34 g; diyabetli 0,6–0,8 → 48–64 g; diyaliz 1,0–1,2 → 80–96 g */
+    const eg = (v) => calistir('egfr', Object.assign({ dm: 'yok', diy: 'yok' }, v));
+    r = eg({ sex: 'K', yas: 60, kre: 1.0, w: 80 });
+    ekle(G, 'eGFR: kadın 60 y, 1,0 mg/dl', '64 ml/dk/1,73 m² | G2 — Hafif azalmış', deger(r, 'eGFR') + ' | ' + deger(r, 'GFR kategorisi'));
+    ekle(G, 'eGFR: G1–G2 yalnız üst sınır', 'en fazla 104 g/gün', deger(r, 'Protein (KDIGO'));
+    ekle(G, 'eGFR: G1–G2 kısıtlama satırı yok', '(satır yok: Protein (KDOQI)', deger(r, 'Protein (KDOQI').slice(0, 30));
+    ekle(G, 'eGFR: erkek 50 / 70 / kadın 45 / erkek 65 / erkek 70', '108 G1 | 27 G4 | 10 G5 | 48 G3a | 35 G3b',
+      [[{ sex: 'E', yas: 50, kre: 0.8 }], [{ sex: 'E', yas: 70, kre: 2.5 }], [{ sex: 'K', yas: 45, kre: 5.0 }], [{ sex: 'E', yas: 65, kre: 1.6 }], [{ sex: 'E', yas: 70, kre: 2.0 }]]
+        .map((x) => { const q = eg(x[0]); return parseInt(deger(q, 'eGFR'), 10) + ' ' + deger(q, 'GFR kategorisi').split(' ')[0]; }).join(' | '));
+    /* K 30 y, 0,7: Kr/κ = 1 → iki çarpan 1; 0,9938^30 = 0,8298 → 142 × 0,8298 = 117,83 × 1,012 = 119,24 → 119
+       (kadın çarpanı olmadan 118) */
+    ekle(G, 'eGFR: kadın çarpanı 1,012 (K 30 y, 0,7)', '119 ml/dk/1,73 m²', deger(eg({ sex: 'K', yas: 30, kre: 0.7 }), 'eGFR'));
+    ekle(G, 'eGFR: 59,58 → 60, kategori G2', '60 ml/dk/1,73 m² | G2 — Hafif azalmış',
+      deger(eg({ sex: 'E', yas: 60, kre: 1.36 }), 'eGFR') + ' | ' + deger(eg({ sex: 'E', yas: 60, kre: 1.36 }), 'GFR kategorisi'));
+    r = eg({ sex: 'E', yas: 70, kre: 2.5, w: 80 });
+    ekle(G, 'eGFR G4 diyabetsiz 80 kg: KDIGO, KDOQI, çok düşük, üst sınır', '64 g/gün | 44–48 g/gün | 22–34 g/gün | en fazla 104 g/gün',
+      [deger(r, 'Protein (KDIGO'), deger(r, 'Protein (KDOQI'), deger(r, 'Çok düşük'), deger(r, 'Üst sınır')].join(' | '));
+    ekle(G, 'eGFR G3a (48) kısıtlama aralığında: KDIGO 0,8', '64 g/gün', deger(eg({ sex: 'E', yas: 65, kre: 1.6, w: 80 }), 'Protein (KDIGO'));
+    ekle(G, 'eGFR G5 diyabetli 80 kg: KDOQI 0,6–0,8', '48–64 g/gün', deger(eg({ sex: 'K', yas: 45, kre: 5.0, w: 80, dm: 'var' }), 'Protein (KDOQI'));
+    ekle(G, 'eGFR diyabetlide çok düşük protein satırı yok', '(satır yok: Çok düşük)', deger(eg({ sex: 'K', yas: 45, kre: 5.0, w: 80, dm: 'var' }), 'Çok düşük'));
+    r = eg({ sex: 'E', yas: 70, kre: 8, w: 80, diy: 'hd' });
+    ekle(G, 'eGFR hemodiyaliz: eGFR kullanılmaz, protein 1,0–1,2', 'diyalizde kullanılmaz | 80–96 g/gün', deger(r, 'eGFR') + ' | ' + deger(r, 'Protein (KDOQI'));
+    ekle(G, 'eGFR albüminüri 25 / 30 / 300 / 301', 'A1 | A2 | A2 | A3',
+      [25, 30, 300, 301].map((u) => deger(eg({ sex: 'E', yas: 50, kre: 0.8, uacr: u }), 'Albüminüri').split(' ')[0]).join(' | '));
+    kosul(G, 'eGFR 18 yaş altında hata', !!eg({ sex: 'E', yas: 17, kre: 0.8 }).err);
+    ekle(G, 'eGFR kilo yoksa gram yazılmaz', 'kilo girilmedi', deger(eg({ sex: 'E', yas: 70, kre: 2.5 }), 'Protein (KDIGO'));
+
     /* --- Çocuk persentil: WHO medyanında z = 0 --- */
     if (DA.growth) {
       const zMed = DA.growth.z('wfa', 'E', 24, DA.growth.lms('wfa', 'E', 24)[1]);
