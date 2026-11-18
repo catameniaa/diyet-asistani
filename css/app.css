@@ -646,6 +646,7 @@ table.t tr.on>td{background:var(--pri-soft);color:var(--ink);font-weight:650}
 /* Toplu beslenme menü taslağı: ödev kâğıdının dört sütunu. Kaplar hücrede
    alt alta; satır sayfa sonunda bölünmez, başlık her sayfada yinelenir. */
 .printdoc .toplu-tablo{font-size:9pt}
+.printdoc .sporkh-tablo td{vertical-align:top}                  /* haftalık KH planı: not sütunu uzun */
 .printdoc .toplu-tablo td{vertical-align:top;line-height:1.35}
 .printdoc .toplu-tablo td.gun{white-space:nowrap;font-weight:700}
 .printdoc .toplu-tablo th:first-child{width:16%}

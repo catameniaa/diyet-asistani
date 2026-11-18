@@ -81,6 +81,9 @@
       '<text x="' + pl + '" y="' + (H - 6) + '">' + fd(t0) + '</text><text x="' + (W - pr) + '" y="' + (H - 6) + '" text-anchor="end">' + fd(t1) + '</text></svg>';
   }
 
+  /* Sporcu takibi (js/sportakip.js) aynı grafiği kompozisyon için kullanır */
+  DA.chartSvg = chartSvg;
+
   /* Danışan bilgisi doğrudan taşınabilen hesaplayıcılar; etikete göre ek öneri gelir */
   const KISAYOL = [
     ['Antropometri', ['bki', 'ideal', 'bel']],
@@ -254,8 +257,9 @@
         kisayolHtml(c) +
         pediatric(c, m) +
         '<div class="card"><h2>Kilo grafiği</h2>' + chartSvg(wPts, 'kg', c.hedef) + hedefOzet(c, last) + '</div>' +
+        (DA.sporTakip ? DA.sporTakip.kart(c) : '') +
         '<div class="sect">Ölçümler</div>' +
-        (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : DA.emptyState('scale', { baslik: 'Henüz ölçüm yok',
+        (m.length ? '<div class="list">' + m.slice().reverse().map((x) => '<button class="li" data-act="measEdit" data-id="' + c.id + '" data-mid="' + x.id + '"><span class="grow"><div class="t">' + esc(DA.fdate(x.d)) + '</div><div class="s">' + [x.w ? fmt(x.w, 1) + ' kg' : '', x.h ? fmt(x.h, 0) + ' cm' : '', x.waist ? 'bel ' + fmt(x.waist, 0) : '', x.hip ? 'kalça ' + fmt(x.hip, 0) : '', x.fat ? 'yağ %' + fmt(x.fat, 1) : '', x.kiv ? 'Σ kıvrım ' + fmt(x.kiv, 1) + ' mm' : ''].filter(Boolean).join(' · ') + (x.note ? ' — ' + esc(x.note) : '') + '</div></span></button>').join('') + '</div>' : DA.emptyState('scale', { baslik: 'Henüz ölçüm yok',
           aciklama: 'İlk ölçümü girdikten sonra kilo grafiği, değişim ve hedefe kalan otomatik çıkar.',
           eylem: { act: 'measNew', veri: 'data-id="' + c.id + '"', etiket: 'Ölçüm ekle', ico: 'plus' } })) +
         /* ADIME düzeni (js/dosya.js): değerlendirme → tanı → müdahale → izlem.
@@ -405,7 +409,8 @@
     return '<form data-form="meas" data-id="' + cid + '" data-mid="' + (x.id || '') + '"><label class="fld"><span>Tarih</span><input type="date" name="d" value="' + (x.d || DA.today()) + '" required></label>' +
       '<div class="grid2"><label class="fld"><span>Kilo (kg)</span><input type="text" inputmode="decimal" name="w" value="' + esc(x.w || '') + '"></label><label class="fld"><span>Yağ %</span><input type="text" inputmode="decimal" name="fat" value="' + esc(x.fat || '') + '"></label>' +
       '<label class="fld"><span>Bel (cm)</span><input type="text" inputmode="decimal" name="waist" value="' + esc(x.waist || '') + '"></label><label class="fld"><span>Kalça (cm)</span><input type="text" inputmode="decimal" name="hip" value="' + esc(x.hip || '') + '"></label>' +
-      '<label class="fld"><span>Boy (cm)</span><input type="text" inputmode="decimal" name="h" value="' + esc(x.h || '') + '" placeholder="çocukta her ölçümde"></label></div>' +
+      '<label class="fld"><span>Boy (cm)</span><input type="text" inputmode="decimal" name="h" value="' + esc(x.h || '') + '" placeholder="çocukta her ölçümde"></label>' +
+      '<label class="fld"><span>Σ deri kıvrımı (mm)</span><input type="text" inputmode="decimal" name="kiv" value="' + esc(x.kiv || '') + '" placeholder="sporcu izlemi"></label></div>' +
       '<label class="fld"><span>Not</span><input type="text" name="note" value="' + esc(x.note || '') + '"></label><button class="btn block">Kaydet</button>' +
       (x.id ? '<button type="button" class="btn danger block mt-s" data-act="measDelete" data-id="' + cid + '" data-mid="' + x.id + '">Ölçümü sil</button>' : '') + '</form>';
   }
@@ -413,8 +418,9 @@
   DA.actions.measEdit = (el) => { const c = clients().find((x) => x.id === el.dataset.id); DA.sheet('Ölçümü düzenle', measForm(c.id, c.meas.find((m) => m.id === el.dataset.mid))); };
   DA.forms.meas = (f) => {
     const d = DA.formData(f), c = clients().find((x) => x.id === f.dataset.id);
-    const rec = { d: d.d, w: num(d.w) || null, fat: num(d.fat) || null, waist: num(d.waist) || null, hip: num(d.hip) || null, h: num(d.h) || null, note: d.note.trim() };
-    if (!rec.w && !rec.fat && !rec.waist && !rec.hip && !rec.h) return DA.toast('En az bir ölçüm değeri gir');
+    const rec = { d: d.d, w: num(d.w) || null, fat: num(d.fat) || null, waist: num(d.waist) || null, hip: num(d.hip) || null, h: num(d.h) || null,
+      kiv: num(d.kiv) || null, note: d.note.trim() };
+    if (!rec.w && !rec.fat && !rec.waist && !rec.hip && !rec.h && !rec.kiv) return DA.toast('En az bir ölçüm değeri gir');
     if (f.dataset.mid) Object.assign(c.meas.find((m) => m.id === f.dataset.mid), rec); else c.meas.push(Object.assign({ id: uid() }, rec));
     DA.save(); DA.closeSheet(); DA.render(true);
   };

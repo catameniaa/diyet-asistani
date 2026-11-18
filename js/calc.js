@@ -237,6 +237,9 @@
 
   /* Danışandan açıldıysa (?c=) sonucu o dosyaya işleyebilmek için */
   let curClient = null, lastRes = null;
+  /* Hesaplayıcı danışandan (?c=) açıldıysa o danışanın kimliği: sporcu
+     takibi gibi modüller sonucu dosyaya kendi biçiminde işler. */
+  DA.hesapDanisan = () => curClient;
 
   function resultHtml(c, v) {
     const missing = c.req.filter((k) => !isFinite(v[k]));

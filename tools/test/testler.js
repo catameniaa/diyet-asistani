@@ -289,6 +289,25 @@
       /* Seçim yoksa varsayılan: yükü bilinmeyen gün "orta" (5–7) — 50 kg → 250–350 */
       ekle(G, 'Antrenman günü: tanınmayan yük ortaya düşer', '250–350 g', deger(calistir('sporkh', { w: 50, pzt: 'x' }), 'Pazartesi · Orta'));
 
+      /* Müsabaka takvimi (ACSM Tablo 2), 60 kg, Pzt–Cmt orta (5–7), Pazar hafif (3–5):
+         Cumartesi 120 dk (>90): Perşembe ve Cuma yükleme 10–12 × 60 = 600–720; müsabaka günü
+         öncesi 1–4 × 60 = 60–240, haftaya girmez. Hafta: Pzt–Çar 3 × 300 + 2 × 600 + Paz 180 = 2280;
+         3 × 420 + 2 × 720 + 300 = 3000; ortalama ÷ 6 = 380–500.
+         90 dk (90'dan uzun değil): yalnız Cuma hazırlık 7–12 × 60 = 420–720; hafta 4 × 300 + 420 + 180 = 1800;
+         4 × 420 + 720 + 300 = 2700. Pazartesi 120 dk: yükleme Cumartesi ve Pazara (hafta döngüsel). */
+      const hf = (o) => calistir('sporkh', Object.assign({ w: 60, pzt: 'orta', sal: 'orta', car: 'orta', per: 'orta', cum: 'orta', cmt: 'orta', paz: 'hafif' }, o));
+      r = hf({ mgun: 'cmt', mdk: 120 });
+      ekle(G, 'Müsabaka >90 dk: önceki iki gün yükleme', '600–720 g | 600–720 g | öncesi 60–240 g',
+        deger(r, 'Perşembe · Karbonhidrat yüklemesi') + ' | ' + deger(r, 'Cuma · Karbonhidrat yüklemesi') + ' | ' + deger(r, 'Cumartesi · Müsabaka'));
+      ekle(G, 'Müsabaka >90 dk: hafta müsabaka günü hariç', '2280–3000 g | Günlük ortalama 380–500 g', satir(r, 'Haftalık karbonhidrat (müsabaka günü hariç)'));
+      r = hf({ mgun: 'cmt', mdk: 90 });
+      ekle(G, 'Müsabaka 90 dk: yalnız önceki gün hazırlık', '420–720 g | 300–420 g | 1800–2700 g',
+        deger(r, 'Cuma · Müsabakaya hazırlık') + ' | ' + deger(r, 'Perşembe · Orta') + ' | ' + deger(r, 'Haftalık karbonhidrat'));
+      r = hf({ mgun: 'pzt', mdk: 120 });
+      ekle(G, 'Pazartesi müsabakası: yükleme Cumartesi ve Pazar', '600–720 g | 600–720 g',
+        deger(r, 'Cumartesi · Karbonhidrat yüklemesi') + ' | ' + deger(r, 'Pazar · Karbonhidrat yüklemesi'));
+      kosul(G, 'Müsabaka günü seçilip süre yoksa hata', !!hf({ mgun: 'cmt' }).err);
+
       /* Müsabaka: 70 kg, 120 dk (>90 → yükleme 10–12 g/kg = 700–840),
          öncesi 1–4 g/kg = 70–280, sırası 30–60 g/saat × 2 saat = 60–120,
          6 saat sonra ikinci seans (<8) → 1,0–1,2 × 70 = 70–84 g/saat, 4 saatte 280–336 */

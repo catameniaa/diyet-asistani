@@ -62,6 +62,11 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   (ACSM/AND/DC 2016 Tablo 1), müsabaka günü ve toparlanma — yükleme, öncesi, sırası, 8 saatten kısa
   arada hızlı toparlanma (Tablo 2), deri kıvrımından vücut yağı (Durnin–Womersley 1974, Jackson–Pollock
   3 ve 7 bölge, Siri), kanıtı yeterli takviyeler ve kiloya göre doz (IOC 2018 Tablo 3)
+- Sporcu takibi (danışan dosyasında, "Sporcu" etiketli): yağsız kütle, yağ % ve Σ deri kıvrımı
+  grafikleri (deri kıvrımı aracından "bugünkü ölçüme işle"; farklı yöntem toplamları karışınca uyarı);
+  müsabaka takvimine göre haftalık KH planı (>90 dk ise önceki iki gün 10–12 g/kg yükleme, değilse
+  önceki gün 7–12 g/kg) dosyaya kaydedilir ve A4 basılır; RED-S belirtileri tarih tarih (IOC 2023),
+  kayıtlar arasında yeni ve geçen belirti
 - Danışan dosyası Beslenme Bakım Süreci (ADIME) düzeninde: tarihli biyokimya (test başına son değer,
   önceki değer ve değişim yönü; referans aralığı bilerek yok — laboratuvara göre değişir), tıbbi
   tanılar, ilaç/takviye ve beslenme öyküsü, 24 saatlik geriçağırma (menü olarak girilir, toplamı

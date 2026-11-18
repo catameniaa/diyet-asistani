@@ -48,7 +48,7 @@
     c.id = kimlik(c.id);
     c.name = metin(c.name);
     c.tags = Array.isArray(c.tags) ? c.tags.map(metin) : [];
-    ['meas', 'calcs', 'lab', 'pes', 'gorusme'].forEach((k) => {
+    ['meas', 'calcs', 'lab', 'pes', 'gorusme', 'reds'].forEach((k) => {
       c[k] = nesneDizisi(c[k]);
       c[k].forEach((x) => { x.id = kimlik(x.id); });
     });
@@ -58,6 +58,10 @@
       if (!(typeof x.deger === 'number' && isFinite(x.deger))) x.deger = typeof x.deger === 'string' ? x.deger : ''; });
     c.pes.forEach((x) => { x.d = metin(x.d); x.p = metin(x.p); x.e = metin(x.e); x.s = metin(x.s); x.cozuldu = x.cozuldu === true; });
     c.gorusme.forEach((x) => { x.d = metin(x.d); x.t = metin(x.t); });
+    /* Sporcu takibi (js/sportakip.js): RED-S kayıtları ve haftalık KH planı */
+    c.reds.forEach((x) => { x.d = metin(x.d); x.not = metin(x.not); x.b = Array.isArray(x.b) ? x.b.filter((k) => typeof k === 'string') : []; });
+    if (c.sporKh != null && !(nesneMi(c.sporKh) && nesneMi(c.sporKh.v))) delete c.sporKh;
+    else if (c.sporKh) c.sporKh.d = metin(c.sporKh.d);
     if (c.dosya != null) {
       if (!nesneMi(c.dosya)) c.dosya = {};
       Object.keys(c.dosya).forEach((k) => { c.dosya[k] = metin(c.dosya[k]); });

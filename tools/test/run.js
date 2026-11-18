@@ -1979,6 +1979,102 @@ function ornekDurum(tema) {
   uiEkle('Hafta: geri alınca günler eski yerlerinde', true, hf.geriGeldi);
   uiEkle('Hafta: içe aktarmada bozuk gün ve boş hafta düzeltiliyor', '0:false:false', hf.denetim);
 
+  /* ---- sporcu takibi ----
+     Elle: 70 kg %20 → yağsız 56; 69 kg %18 → 69 × 0,82 = 56,58 → 56,6.
+     Deri kıvrımı (kadın 30 y; biseps 6, triseps 18, subskapular 14, suprailiak
+     15): Durnin–Womersley ilk yöntem, Σ = 53 mm, yağ %29 (hesap testinde aynı
+     girdi) → bugünkü ölçüme fat 29, kiv 53. RED-S: 1 Kas {üreme, uyku} → 15 Kas
+     {uyku, kas}: yeni kas işlevi, geçti üreme işlevi. */
+  const sp = await sayfa.evaluate(async () => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    S.clients.push({ id: 'sp', name: 'Sporcu Test', sex: 'K', bdate: '1996-01-01', h: 168, tags: ['sporcu'], note: '',
+      meas: [{ id: 'k1', d: '2026-10-01', w: 70, fat: 20, kiv: 50, kivY: 'Jackson–Pollock (3 bölge)' },
+        { id: 'k2', d: '2026-11-01', w: 69, fat: 18, kiv: 44, kivY: 'Jackson–Pollock (3 bölge)' }] });
+    DA.save();
+    const ac = async () => { location.hash = 'danisan/sp'; DA.render(false);
+      await new Promise((ok) => { const b = () => (document.querySelector('#sporReds') ? ok() : setTimeout(b, 20)); b(); }); };
+    await ac();
+    const k = document.querySelector('#sporKomp');
+    o.grafik = k.querySelectorAll('svg.chart').length;
+    o.ozet = (k.querySelector('p') || {}).textContent;
+    o.karisikYok = !k.querySelector('.note.warn');
+    S.clients.find((c) => c.id === 'sp').meas.push({ id: 'k3', d: '2026-11-10', w: 69, kiv: 60, kivY: 'Durnin–Womersley (4 bölge)' });
+    DA.render(false);
+    o.karisik = !!document.querySelector('#sporKomp .note.warn');
+    /* deri kıvrımı → bugünkü ölçüm */
+    location.hash = 'hesapla/derikivrim?c=sp'; DA.render(false);
+    await DA.need(['sporperf']);
+    const dk = DA.calcs.find((x) => x.id === 'derikivrim');
+    dk.run({ sex: 'K', age: 30, biseps: 6, triseps: 18, subskapular: 14, suprailiak: 15 });
+    DA.actions.kivIsle();
+    const bug = S.clients.find((c) => c.id === 'sp').meas.find((m) => m.d === DA.today());
+    o.isle = bug ? [bug.fat, bug.kiv, bug.kivY].join('|') : 'yok';
+    dk.run({ sex: 'K', age: 30, biseps: 6, triseps: 18, subskapular: 14, suprailiak: 15 });
+    DA.actions.kivIsle();
+    o.tekOlcum = S.clients.find((c) => c.id === 'sp').meas.filter((m) => m.d === DA.today()).length;
+    /* haftalık KH planı kaydı ve çıktısı */
+    location.hash = 'hesapla/sporkh?c=sp'; DA.render(false);
+    const kh = DA.calcs.find((x) => x.id === 'sporkh');
+    const r = kh.run({ w: 60, pzt: 'orta', sal: 'orta', car: 'orta', per: 'orta', cum: 'orta', cmt: 'orta', paz: 'hafif', mgun: 'cmt', mdk: 120 });
+    o.dugme = (r.actions || []).map((a) => a.act).join(',');
+    DA.actions.sporKhKaydet();
+    o.kayit = JSON.stringify(S.clients.find((c) => c.id === 'sp').sporKh.v.mgun) + '/' + S.clients.find((c) => c.id === 'sp').sporKh.v.mdk;
+    await ac();
+    o.planSatir = Array.from(document.querySelectorAll('#sporKh .li')).filter((x) => /Cuma · Karbonhidrat yüklemesi/.test(x.textContent)).map((x) => x.querySelector('.end').textContent).join('');
+    location.hash = 'yazdir/sporkh/sp'; DA.render(false);
+    await new Promise((ok) => { const b = () => (document.querySelector('.sporkh-tablo') ? ok() : setTimeout(b, 20)); b(); });
+    o.cikti = document.querySelectorAll('.sporkh-tablo tbody tr').length + '|' +
+      Array.from(Array.from(document.querySelectorAll('.sporkh-tablo tbody tr'))[5].children).slice(0, 3).map((x) => x.textContent).join('|');
+    /* RED-S kayıtları */
+    await ac();
+    DA.actions.redsAc({ dataset: { id: 'sp' } });
+    let f = document.querySelector('form[data-form=reds]');
+    f.d.value = '2026-11-01'; f.b_ureme.checked = true; f.b_uyku.checked = true; DA.forms.reds(f);
+    DA.actions.redsAc({ dataset: { id: 'sp' } });
+    f = document.querySelector('form[data-form=reds]');
+    f.d.value = '2026-11-15'; f.b_uyku.checked = true; f.b_kas.checked = true; DA.forms.reds(f);
+    DA.actions.redsAc({ dataset: { id: 'sp' } });
+    f = document.querySelector('form[data-form=reds]');
+    DA.forms.reds(f);
+    o.bosRed = S.clients.find((c) => c.id === 'sp').reds.length;
+    DA.closeSheet(); DA.render(false);
+    o.reds = Array.from(document.querySelectorAll('#sporReds .li')).map((x) => x.querySelector('.t').textContent + ' | ' +
+      x.querySelector('.s').innerHTML.replace(/<br>/g, ' ~ ')).join(' / ');
+    /* silme ve geri alma */
+    const rid = S.clients.find((c) => c.id === 'sp').reds[0].id;
+    DA.actions.redsSil({ dataset: { id: 'sp', rid } });
+    o.silindi = S.clients.find((c) => c.id === 'sp').reds.length;
+    DA.actions.geriAl();
+    o.geri = DA.state().clients.find((c) => c.id === 'sp').reds.length;
+    /* etiketsiz, verisiz danışanda kart yok */
+    /* Test önceki adımlarda danışan listesini değiştiriyor: c1 olmayabilir,
+       "bulunamadı" ekranı testi boşa geçirirdi. Kendi danışanı açılır. */
+    S.clients.push({ id: 'np', name: 'Sporcu Olmayan', sex: 'E', tags: ['diyabet'], meas: [{ id: 'n1', d: '2026-11-01', w: 80 }] });
+    location.hash = 'danisan/np'; DA.render(false);
+    o.digerKartYok = !!document.querySelector('#app h2') && !document.querySelector('#sporReds');
+    S.clients = S.clients.filter((c) => c.id !== 'np');
+    /* içe aktarma denetimi */
+    const v = DA.veriDenetle({ clients: [{ id: 'z', name: 'Z', reds: [{ id: 'r', d: '2026-01-01', b: ['uyku', 5, null] }, 'x'], sporKh: { d: '2026-01-01' } }] });
+    o.denetim = JSON.stringify(v.clients[0].reds.map((x) => x.b)) + '|' + ('sporKh' in v.clients[0]);
+    DA.state().clients = DA.state().clients.filter((c) => c.id !== 'sp'); DA.save(); DA.toast = eski;
+    return o;
+  });
+  uiEkle('Sporcu: üç kompozisyon grafiği', 3, sp.grafik);
+  uiEkle('Sporcu: son kompozisyon özeti', 'Son: yağsız kütle 56,6 kg · yağ %18 · Σ kıvrım 44 mm (Jackson–Pollock (3 bölge))', sp.ozet);
+  uiEkle('Sporcu: aynı yöntemde karışım uyarısı yok, farklı yöntemde var', 'true/true', sp.karisikYok + '/' + sp.karisik);
+  uiEkle('Sporcu: deri kıvrımı bugünkü ölçüme işleniyor', '29|53|Durnin–Womersley (4 bölge)', sp.isle);
+  uiEkle('Sporcu: ikinci işlem aynı güne yazıyor (yeni ölçüm açmıyor)', 1, sp.tekOlcum);
+  uiEkle('Sporcu: KH planında danışana kaydet düğmesi', 'sporKhKaydet', sp.dugme);
+  uiEkle('Sporcu: plan müsabakayla kaydediliyor', '"cmt"/120', sp.kayit);
+  uiEkle('Sporcu: dosyada plan satırı (60 kg yükleme 600–720)', '600–720 g', sp.planSatir);
+  uiEkle('Sporcu: plan çıktısı 7 gün, 6. satır müsabaka', '7|Cumartesi|Müsabaka|öncesi 60–240 g', sp.cikti);
+  uiEkle('Sporcu: boş RED-S kaydı reddediliyor', 2, sp.bosRed);
+  uiEkle('Sporcu: RED-S kayıtları, yeni ve geçen belirti',
+    '15 Kas 2026 · 2 belirti | Uyku, Kas işlevi ~ yeni: Kas işlevi · geçti: Üreme işlevi / 1 Kas 2026 · 2 belirti | Üreme işlevi, Uyku', sp.reds);
+  uiEkle('Sporcu: RED-S kaydı silinip geri alınıyor', '1/2', sp.silindi + '/' + sp.geri);
+  uiEkle('Sporcu: etiketsiz ve verisiz danışanda kart yok', true, sp.digerKartYok);
+  uiEkle('Sporcu: içe aktarmada bozuk kayıt ayıklanıyor', '[["uyku"]]|false', sp.denetim);
+
   /* ---- IDDSI referansı: 8 düzey, eşikler, atıf ---- */
   const idd = await sayfa.evaluate(async () => {
     location.hash = 'hesapla/iddsi'; DA.render(false);

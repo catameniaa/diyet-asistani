@@ -18,27 +18,54 @@
      her gün yazmak dinlenme gününde fazla, çift antrenmanda az kalıyor. */
   DA.calcs.push({
     id: 'sporkh', data: ['sporperf'], title: 'Antrenman gününe göre karbonhidrat',
-    desc: 'Haftalık plan · her gün antrenman yüküne göre g/kg (ACSM 2016)', ico: 'run',
+    desc: 'Haftalık plan · antrenman yükü ve müsabaka takvimine göre g/kg (ACSM 2016)', ico: 'run',
     fields: [num_('w', 'Vücut ağırlığı (kg)')].concat(GUNLER.map((g, i) => ({
       k: g[0], l: g[1], t: 'sel', def: i === 6 ? 'hafif' : 'orta',
       o: () => (P() ? P().khGun.map((b) => [b.k, b.l + ' · ' + b.g[0] + '–' + b.g[1] + ' g/kg']) : [])
-    }))),
+    }))).concat([
+      { k: 'mgun', l: 'Müsabaka günü', t: 'sel', o: [['yok', 'Bu hafta müsabaka yok']].concat(GUNLER), def: 'yok' },
+      num_('mdk', 'Müsabaka süresi (dakika)', 'örn. 90', true, [1, 1440, 'dk'])
+    ]),
     req: ['w'],
+    /* Müsabaka takvimi: ACSM Tablo 2. Müsabaka 90 dakikadan uzunsa önceki
+       iki gün (36–48 saat) 10–12 g/kg yükleme, değilse önceki gün 7–12 g/kg
+       (24 saatlik hazırlık). Bu günlerde seçilen antrenman yükünün yerine
+       geçer. Müsabaka gününün kendisi için günlük toplam verilmez (kaynak
+       vermiyor): müsabakadan 1–4 saat önceki miktar yazılır, haftalık toplama
+       girmez. Hafta döngüsel: pazartesi müsabakasının yüklemesi pazar ve
+       cumartesiye düşer. */
     run(v) {
-      const D = P(), w = v.w;
+      const D = P(), Y = D.yakit, w = v.w;
+      const m = GUNLER.findIndex((g) => g[0] === v.mgun);
+      if (m >= 0 && !(v.mdk > 0)) return { err: 'Müsabaka süresini gir: 90 dakikadan uzunsa öncesinde 36–48 saatlik yükleme gerekir.' };
+      const ozel = {};
+      if (m >= 0) {
+        if (v.mdk > Y.yukleme.esikDk) {
+          const b = { l: 'Karbonhidrat yüklemesi', g: Y.yukleme.g, d: Y.yukleme.n };
+          ozel[(m + 6) % 7] = b; ozel[(m + 5) % 7] = b;
+        } else ozel[(m + 6) % 7] = { l: 'Müsabakaya hazırlık', g: Y.genel.g, d: Y.genel.n };
+      }
       let alt = 0, ust = 0;
-      const rows = GUNLER.map((g) => {
-        const b = D.khGun.find((x) => x.k === v[g[0]]) || D.khGun[1];
+      const rows = GUNLER.map((g, i) => {
+        if (i === m) {
+          return R(g[1] + ' · Müsabaka', 'öncesi ' + ara(Y.once.g[0] * w, Y.once.g[1] * w) + ' g',
+            Y.once.g[0] + '–' + Y.once.g[1] + ' g/kg · ' + Y.once.n + ' Sırası ve sonrası için "Müsabaka günü ve toparlanma".');
+        }
+        const b = ozel[i] || D.khGun.find((x) => x.k === v[g[0]]) || D.khGun[1];
         alt += b.g[0] * w; ust += b.g[1] * w;
         return R(g[1] + ' · ' + b.l, ara(b.g[0] * w, b.g[1] * w) + ' g', b.g[0] + '–' + b.g[1] + ' g/kg · ' + b.d);
       });
-      rows.push(R('Haftalık karbonhidrat', ara(alt, ust) + ' g', 'Günlük ortalama ' + ara(alt / 7, ust / 7) + ' g', true));
+      const n = m >= 0 ? 6 : 7;
+      rows.push(R(m >= 0 ? 'Haftalık karbonhidrat (müsabaka günü hariç)' : 'Haftalık karbonhidrat', ara(alt, ust) + ' g',
+        'Günlük ortalama ' + ara(alt / n, ust / n) + ' g', true));
+      this._son = Object.assign({}, v);
       rows.push(R('Protein (her gün)', ara(D.protein.gun[0] * w, D.protein.gun[1] * w) + ' g',
         ara(D.protein.gun[0], D.protein.gun[1], 1) + ' g/kg · antrenman yükünden bağımsız', true));
       rows.push(R('Protein dozu', fmt(D.protein.doz * w, 0) + ' g',
         fmt(D.protein.doz, 1) + ' g/kg · anahtar antrenmandan sonra ve gün boyunca ' + D.protein.araSaat[0] + '–' + D.protein.araSaat[1] + ' saatte bir'));
       return { rows,
-        note: 'Kaynak: Thomas, Erdman, Burke 2016 (ACSM/AND/DC), Tablo 1. TÜBER 2022 aynı yükler için 5–10 g/kg verir; '
+        actions: DA.hesapDanisan && DA.hesapDanisan() ? [{ label: 'Danışana haftalık plan olarak kaydet', act: 'sporKhKaydet' }] : null,
+        note: 'Kaynak: Thomas, Erdman, Burke 2016 (ACSM/AND/DC), Tablo 1 ve 2. TÜBER 2022 aynı yükler için 5–10 g/kg verir; '
           + 'tek günlük plan için "Sporcu beslenme planı"na bak. Bantlar başlangıç noktasıdır; sporcunun hedefi, '
           + 'antrenmanın amacı ve enerji dengesiyle birlikte değerlendirilir.',
         tone: 'info' };
@@ -129,12 +156,14 @@
       }
       const rows = sonuc.map((x, i) => R(x.l, '%' + fmt(x.y, 1),
         'Toplam ' + fmt(x.s, 1) + ' mm · yoğunluk ' + fmt(x.d, 4) + ' g/mL', i === 0));
+      this._son = { y: sonuc[0].y, s: sonuc[0].s, l: sonuc[0].l, w: isFinite(v.w) && v.w > 0 ? v.w : null };
       if (isFinite(v.w) && v.w > 0) {
         const y = sonuc[0].y;
         rows.push(R('Yağ kütlesi', fmt(v.w * y / 100, 1) + ' kg', sonuc[0].l + ' sonucuyla'));
         rows.push(R('Yağsız kütle', fmt(v.w * (1 - y / 100), 1) + ' kg', 'Kullanılabilir enerji hesabında payda'));
       }
       return { rows,
+        actions: DA.hesapDanisan && DA.hesapDanisan() ? [{ label: 'Danışanın bugünkü ölçümüne işle', act: 'kivIsle' }] : null,
         html: '<a class="btn ghost sm mt" href="#/hesapla/sporke">' + DA.icon('battery') + ' Kullanılabilir enerji (RED-S)</a>',
         note: (uyari.length ? uyari.join(' ') + ' ' : '') + 'Yoğunluktan yağ %: Siri (495 / yoğunluk − 450). Ölçüm sağ taraftan, '
           + 'kıvrım tutulduktan ~2 saniye sonra okunur; her bölge 2–3 kez ölçülüp ortalaması alınır. Aynı danışanı izlerken '
