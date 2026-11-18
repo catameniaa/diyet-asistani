@@ -138,6 +138,20 @@
       });
       if (ui.exClient != null) ui.exClient = kimlik(ui.exClient);
       /* Çıktı bölümleri: yalnız "kapalı" (false) kayıtları anlamlıdır */
+      /* Menü taslağı ayarı: yapısı bozuksa silinir, taslak varsayılandan kurulur */
+      if (ui.toplu != null) {
+        if (!nesneMi(ui.toplu)) delete ui.toplu;
+        else {
+          const t = ui.toplu;
+          if (!(typeof t.ay === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(t.ay))) delete t.ay;
+          if (t.mevsim !== 'kis' && t.mevsim !== 'yaz') delete t.mevsim;
+          if (!(Number.isInteger(t.tohum) && t.tohum >= 0)) delete t.tohum;
+          if (!nesneMi(t.degis)) t.degis = {};
+          Object.keys(t.degis).forEach((k) => {
+            if (!/^\d{4}-\d{2}-\d{2}\|(sabah|ogle|aksam)\|[0-9]$/.test(k) || typeof t.degis[k] !== 'string') delete t.degis[k];
+          });
+        }
+      }
       if (ui.cikti != null) {
         if (!nesneMi(ui.cikti)) delete ui.cikti;
         else Object.keys(ui.cikti).forEach((t) => {
@@ -556,6 +570,7 @@
     sporcu: ['js/data-sporcu.js'],
     sporperf: ['js/data-sporperf.js'],
     degisim: ['js/data-degisim.js'],
+    toplu: ['js/data-toplu.js'],
     vejetaryen: ['js/data-vejetaryen.js']
   };
   const _yuklu = {};

@@ -615,7 +615,7 @@
   }
   /* Yazdırma rotaları hesaplayıcı yönlendiricisinden geçmediği için
      ihtiyaç duydukları veriyi kendileri yükler. */
-  const YAZ_VERI = { degisim: ['tuber', 'hedef'], ornekmenu: ['ornekMenu'], menu: ['porsiyonBesin', 'hedef'] };
+  const YAZ_VERI = { degisim: ['tuber', 'hedef'], ornekmenu: ['ornekMenu'], menu: ['porsiyonBesin', 'hedef'], toplu: ['toplu'] };
   DA.views.yazdir = (parts) => {
     const ihtiyac = YAZ_VERI[parts[0]];
     if (ihtiyac && !DA.hazir(ihtiyac)) {
@@ -652,6 +652,7 @@
     if (parts[0] === 'degisim' && DA.views._printExchange) return DA.views._printExchange(parts.slice(1));
     if (parts[0] === 'liste' && DA.views._printListe) return DA.views._printListe(parts.slice(1));
     if (parts[0] === 'hafta' && DA.views._printHafta) return DA.views._printHafta(parts.slice(1));
+    if (parts[0] === 'toplu' && DA.views._printToplu) return DA.views._printToplu(parts.slice(1));
     if (parts[0] === 'ornekmenu' && DA.views._printOrnek) return DA.views._printOrnek(parts.slice(1));
     return { title: 'Yazdır', html: '<div class="card">Bulunamadı.</div>' };
   };

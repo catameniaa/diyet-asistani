@@ -43,7 +43,8 @@ const ROTALAR = [
   '#/hesapla/porsiyon?t=olcu&ara=ceviz', '#/hesapla/ornekmenu?m=ek53',
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
   '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
-  '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw'
+  '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw',
+  '#/hesapla/toplumenu', '#/yazdir/toplu'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -1976,6 +1977,154 @@ function ornekDurum(tema) {
   uiEkle('Hafta: silince 7 gün birden gidiyor', 0, hf.silindi);
   uiEkle('Hafta: geri alınca günler eski yerlerinde', true, hf.geriGeldi);
   uiEkle('Hafta: içe aktarmada bozuk gün ve boş hafta düzeltiliyor', '0:false:false', hf.denetim);
+
+  /* ---- toplu beslenme menü taslağı ----
+     Elle, Ulusal Menü Rehberi Tablo 4.5'ten (21 gün; [azami kış, yaz, asgari
+     kış, yaz]):
+       Aralık 2026: 1 Aralık Salı, 31 Aralık Perşembe → hafta içi 4+5+5+5+4 = 23.
+       Kota = ⌊asgari × N/21⌋, eksik sıradaki alt gruba azamiyi geçmeden:
+         1. kap kış 21: asgari 2,2,3,1,3,7,2 = 20 → +1 sebze/dolma (7<8) = 8
+         1. kap kış 23: ⌊2,19⌋=2 ⌊2,19⌋=2 ⌊3,29⌋=3 ⌊1,10⌋=1 ⌊3,29⌋=3 ⌊7,67⌋=7
+           ⌊2,19⌋=2 = 20 → +sebze/dolma 8, +tavuk 4, +köfte 4
+         1. kap kış 20: ⌊×0,952⌋ = 1,1,2,0,2,6,1 = 13; azami ⌊×0,952⌋ = 3,3,3,
+           1,3,7,3 → sırayla +1: sebze 7, tavuk 3, köfte 3, k.parça 2, b.parça 2,
+           baklagil 2, balık 1 = 20 (asgarinin kendisi)
+         1. kap yaz 21: asgari 3,1,4,1,4,6,0 = 19 → sebze 7, tavuk ve köfte
+           azamide (4), k.parça 2
+         2. kap kış 21: çorba 4, pilav 9, börek 4, zy sebze 3, zy baklagil 1 = 21
+         2. kap kış 23: ⌊×1,095⌋ = 4,9,4,3,1 = 21 → +çorba 5, +zy baklagil 2
+         3. kap kış 23: ⌊×1,095⌋ salata 4, meyve 4, yoğurt 3, ayran 3,
+           komposto 2, sütlü 2, tatlı 2 = 20 → +meyve 5, +salata 5, +ayran 4
+       Kahvaltı tohum 0, 1 Aralık Salı: kalıp [(2−1+0) mod 5 = 1] = peynir,
+       tatlı kahvaltılık, çiğ sebze; sıra başı 0 → beyaz peynir, bal, domates-
+       salatalık. Tohum 1: kalıp [2] = yumurta, zeytin, çiğ sebze; sıra başı
+       3 mod uzunluk → yumurta[0], zeytin[1], çiğ sebze[0].
+       Yumurta Pzt/Çar/Cum: 4 + 5 + 4 = 13 gün. */
+  const tb = await sayfa.evaluate(async () => {
+    const S = DA.state(), o = {}, eski = DA.toast; DA.toast = () => {};
+    await DA.need(['toplu']);
+    const T = DA.toplu, K1 = ['bparca', 'kparca', 'kofte', 'balik', 'tavuk', 'sebzeDolma', 'etlibaklagil'],
+      K2 = ['corba', 'pilav', 'borek', 'zysebze', 'zybaklagil'], K3 = ['salata', 'meyve', 'yogurt', 'ayran', 'komposto', 'sutlu', 'tatli'];
+    const S1 = ['sebzeDolma', 'tavuk', 'kofte', 'kparca', 'bparca', 'etlibaklagil', 'balik'], S2 = ['corba', 'zybaklagil', 'pilav', 'borek', 'zysebze'],
+      S3 = ['meyve', 'salata', 'ayran', 'sutlu', 'yogurt', 'komposto', 'tatli'];
+    const kq = (K, mev, N, Sr) => { const q = T.kota(K, mev, N, Sr); return K.map((k) => q[k]).join(','); };
+    const G = T.gunler('2026-12');
+    o.gunler = G.length + ':' + G.slice(0, 5).map((g) => g.no + '/' + g.g).join(',') + ':' + G[G.length - 1].no + '/' + G[G.length - 1].g;
+    o.kota = [kq(K1, 'kis', 21, S1), kq(K1, 'kis', 23, S1), kq(K1, 'kis', 20, S1), kq(K1, 'yaz', 21, S1),
+      kq(K2, 'kis', 21, S2), kq(K2, 'kis', 23, S2), kq(K3, 'kis', 23, S3)].join(' | ');
+    o.mevsim = [T.mevsimOf('2026-12'), T.mevsimOf('2027-03'), T.mevsimOf('2027-04'), T.mevsimOf('2027-09'), T.mevsimOf('2027-10'), T.mevsimOf('2026-12', 'yaz')].join(',');
+    /* kurallar elle seçilmiş öğünlerde */
+    const kur = (k, og) => T.denetle(k, og || 'ogle').map((x) => x.k).join(',');
+    o.kural = [kur(['etli-bamya', 'zy-pirasa', 'coban-salata', 'yogurt']), kur(['lahana-sarma', 'pirinc-pilavi', 'cacik', 'mevsim-meyvesi']),
+      kur(['etli-nohut', 'ispanakli-borek', 'yogurt', 'mevsim-meyvesi']), kur(['mercimek-corbasi', 'firin-kofte', 'ayran', 'elma-kompostosu']),
+      kur(['firin-tavuk', 'bulgur-pilavi', 'kisir', 'muhallebi']), kur(['firin-tavuk', 'izmir-kofte', 'coban-salata', 'yogurt']),
+      kur(['firin-tavuk', 'su-boregi', 'muhallebi', 'kabak-tatlisi']), kur(['etli-nohut', 'pirinc-pilavi', 'piyaz', 'ayran']),
+      kur(['siyah-zeytin', 'bal', 'domates-salatalik'], 'sabah'), kur(['etli-nohut', 'pirinc-pilavi', 'cacik', 'mevsim-meyvesi'])].join(' | ');
+    /* üretilen menü: beş tohumda kural notu yok, kap sayıları, çorba başta,
+       1. ve 2. kap kotaya eşit */
+    const ozet = [];
+    for (let t = 0; t < 5; t++) {
+      const M = T.menuSon({ ay: '2026-12', tohum: t, degis: {} }).M;
+      const c = T.sayim(M), q1 = T.kota(K1, 'kis', 23, S1), q2 = T.kota(K2, 'kis', 23, S2);
+      const kotaTam = ['ogle', 'aksam'].every((og) => K1.every((k) => c[k][og] === q1[k]) && K2.every((k) => c[k][og] === q2[k]));
+      const kap = M.every((m) => m.sabah.length === 3 && m.ogle.length === 4 && m.aksam.length === 4);
+      const corba = M.every((m) => ['ogle', 'aksam'].every((og) => m[og].every((id, i) => !/corba|ezogelin/.test(id) || i === 0)));
+      ozet.push(T.notlar(M).length + '/' + kotaTam + '/' + kap + '/' + corba);
+    }
+    o.uretim = ozet.join(' ');
+    /* Onarım (ay sonunda öğle ve akşama aynı alt grup kalması) başka aylarda
+       da tutmalı: üç ay × beş tohum, kış ve yaz */
+    const genis = [];
+    ['2027-02', '2027-07', '2027-11'].forEach((ay) => { for (let t = 0; t < 5; t++) genis.push(T.notlar(T.menuSon({ ay, tohum: t, degis: {} }).M).length); });
+    o.genis = genis.join('');
+    /* Onarım elle: öğle A,B,A,C · akşam B,A,B,C → 4. gün ikisi de C. Akşam,
+       sondan: 4. gün j=0 (B) ile değişince 3.–4. gün B,B → geri; j=1 (A) ile
+       → B,C,B,A, çakışma yok. Öğlede çakışma kalmaz. */
+    const on = T.onar({ ogle: ['A', 'B', 'A', 'C'], aksam: ['B', 'A', 'B', 'C'] }, 4);
+    o.onar = on.ogle.join(',') + '|' + on.aksam.join(',');
+    const M0 = T.menuSon({ ay: '2026-12', tohum: 0, degis: {} }).M, M1 = T.menuSon({ ay: '2026-12', tohum: 1, degis: {} }).M;
+    o.kahvalti = M0[0].sabah.join(',') + ' | ' + M1[0].sabah.join(',');
+    o.yumurta = M0.filter((m) => /yumurta|menemen|omlet/.test(m.sabah[0])).map((m) => m.g).filter((g, i, a) => a.indexOf(g) === i).sort().join(',') + ':' +
+      M0.filter((m) => /yumurta|menemen|omlet/.test(m.sabah[0])).length;
+    o.farkli = M0.map((m) => m.ogle.join()).join() !== M1.map((m) => m.ogle.join()).join();
+    /* ekran: elle değişiklik, denetim, otomatiğe dönüş */
+    S.ui.toplu = { ay: '2026-12', tohum: 0, degis: {} }; DA.save();
+    location.hash = 'hesapla/toplumenu'; DA.render(false);
+    await new Promise((ok) => { const b = () => (document.querySelector('#topluDenetim') ? ok() : setTimeout(b, 20)); b(); });
+    o.gunKart = document.querySelectorAll('.toplu-gun').length + ':' + document.querySelector('.toplu-gun h2').textContent;
+    o.temiz = /Kurala uymayan öğün yok/.test(document.querySelector('#topluDenetim').textContent);
+    o.sayim = Array.from(document.querySelectorAll('#topluDenetim tr')).filter((tr) => /^(Çorbalar|Pilav ve makarnalar|Köfteler|Salatalar)/.test(tr.textContent))
+      .map((tr) => Array.from(tr.children).map((x) => x.textContent.trim()).join('/')).join(' | ').replace(/Salatalar\/4–5\/\d+\/\d+$/, 'Salatalar/4–5/sayı/sayı');
+    /* 3. kap ve 4. kap her gün 3. gruptan: öğün başına 2 × 23 = 46 */
+    const c0 = T.sayim(M0);
+    o.ucuncu = ['ogle', 'aksam'].map((og) => K3.reduce((a, k) => a + c0[k][og], 0)).join('/');
+    const ana = M0[0].ogle[0];
+    DA.actions.topluOgun({ dataset: { d: '2026-12-01', o: 'ogle' } });
+    const sel = document.querySelector('#topluSayfa select[data-i="3"]');
+    sel.value = 'havuc-salatasi'; DA.live.topluKap(sel);
+    o.degis = JSON.stringify(S.ui.toplu.degis);
+    o.not = Array.from(document.querySelectorAll('#topluDenetim li[data-kural]')).map((x) => x.dataset.kural).join(',');
+    o.sayfaNotu = /Sebze yemeğinin yanına salata verilmez/.test((document.querySelector('#topluSayfa .note') || {}).textContent || '');
+    o.alti = (document.querySelector('[data-gun="2026-12-01"] button[data-o=ogle] u') || {}).textContent;
+    const sel2 = document.querySelector('#topluSayfa select[data-i="3"]');
+    sel2.value = M0[0].ogle[3]; DA.live.topluKap(sel2);
+    o.geriDondu = JSON.stringify(S.ui.toplu.degis);
+    const sel3 = document.querySelector('#topluSayfa select[data-i="1"]');
+    sel3.value = 'pirinc-pilavi'; DA.live.topluKap(sel3);
+    DA.actions.topluOtomatik({ dataset: { d: '2026-12-01', o: 'ogle' } });
+    o.otomatik = JSON.stringify(S.ui.toplu.degis) + ':' + ana;
+    DA.closeSheet();
+    /* ay değişince elle değişiklikler gider, geri alınır */
+    S.ui.toplu.degis = { '2026-12-02|aksam|2': 'yogurt' }; DA.save();
+    DA.live.topluAy({ value: '2027-01' });
+    o.ayDegisti = S.ui.toplu.ay + ':' + Object.keys(S.ui.toplu.degis).length;
+    DA.actions.geriAl();
+    o.ayGeri = Object.keys(DA.state().ui.toplu.degis).join(',');
+    DA.state().ui.toplu = { ay: '2026-12', tohum: 0, degis: {} }; DA.save();
+    DA.actions.topluKaristir();
+    o.karistir = DA.state().ui.toplu.tohum;
+    DA.state().ui.toplu.tohum = 0; DA.save();
+    /* çıktı */
+    location.hash = 'yazdir/toplu'; DA.render(false);
+    const doc = document.querySelector('.toplu-doc');
+    o.cikti = doc.querySelector('h2').textContent + ' | ' + doc.querySelectorAll('tbody tr').length + ' | ' +
+      Array.from(doc.querySelectorAll('tbody tr')[0].children).slice(0, 2).map((x) => x.innerHTML.replace(/<br>/g, ' / ')).join(' | ');
+    /* içe aktarma denetimi */
+    const v = DA.veriDenetle({ ui: { toplu: { ay: '2026-13', mevsim: 'bahar', tohum: -1,
+      degis: { x: 'y', '2026-12-01|ogle|1': 'pirinc-pilavi', '2026-12-01|ogle|2': 5 } } } });
+    o.denetim = JSON.stringify(v.ui.toplu);
+    DA.toast = eski;
+    return o;
+  });
+  uiEkle('Menü taslağı: Aralık 2026 hafta içi günleri (no/gün)', '23:1/2,2/3,3/4,4/5,7/1:31/4', tb.gunler);
+  uiEkle('Menü taslağı: Tablo 4.5 kotaları (1. kap kış 21/23/20, yaz 21; 2. kap kış 21/23; 3. kap kış 23)',
+    '2,2,3,1,3,8,2 | 2,2,4,1,4,8,2 | 2,2,3,1,3,7,2 | 3,2,4,1,4,7,0 | 4,9,4,3,1 | 5,9,4,3,2 | 5,5,3,4,2,2,2', tb.kota);
+  uiEkle('Menü taslağı: mevsim (Nisan–Eylül yaz; seçim önce gelir)', 'kis,kis,yaz,yaz,kis,yaz', tb.mevsim);
+  uiEkle('Menü taslağı: rehber kuralları',
+    'sebzeZy,sebzeSalata,zySalata | dolmaPilav | baklagilPilav | corbaYan,corbaYan | benzer,pilavTatli | birinci | benzer | benzer | kahvaltiProtein | ', tb.kural);
+  uiEkle('Menü taslağı: beş tohumda not yok, kap sayıları, çorba başta, 1. ve 2. kap kotada',
+    '0/true/true/true 0/true/true/true 0/true/true/true 0/true/true/true 0/true/true/true', tb.uretim);
+  uiEkle('Menü taslağı: üç ay × beş tohumda kural notu yok', '000000000000000', tb.genis);
+  uiEkle('Menü taslağı: onarım çözmeyen değiş tokuşu geri alıyor', 'A,B,A,C|B,C,B,A', tb.onar);
+  uiEkle('Menü taslağı: kahvaltı kalıbı ve sırası', 'beyaz-peynir,bal,domates-salatalik | haslanmis-yumurta,yesil-zeytin,domates-salatalik', tb.kahvalti);
+  uiEkle('Menü taslağı: yumurta Pzt/Çar/Cum, 13 gün', '1,3,5:13', tb.yumurta);
+  uiEkle('Menü taslağı: tohum değişince menü değişiyor', true, tb.farkli);
+  uiEkle('Menü taslağı: gün kartları', '23:1 Salı', tb.gunKart);
+  uiEkle('Menü taslağı: üretilen menüde denetim temiz', true, tb.temiz);
+  uiEkle('Menü taslağı: sıklık tablosu (1. ve 2. grup işaretli, 3. grup yalnız sayı)',
+    'Köfteler/3–4/4 ✓/4 ✓ | Çorbalar/4–6/5 ✓/5 ✓ | Pilav ve makarnalar/9–9/9 ✓/9 ✓ | Salatalar/4–5/sayı/sayı', tb.sayim);
+  uiEkle('Menü taslağı: 3. grup her öğünde iki kap (2 × 23)', '46/46', tb.ucuncu);
+  uiEkle('Menü taslağı: elle değişiklik saklanıyor', '{"2026-12-01|ogle|3":"havuc-salatasi"}', tb.degis);
+  uiEkle('Menü taslağı: elle seçilen salata sebze yemeğiyle not veriyor', 'sebzeSalata', tb.not);
+  uiEkle('Menü taslağı: öğün sayfasında kural notu', true, tb.sayfaNotu);
+  uiEkle('Menü taslağı: elle değişen kap altı çizili', 'Havuç salatası', tb.alti);
+  uiEkle('Menü taslağı: otomatiğin seçimine dönünce kayıt siliniyor', '{}', tb.geriDondu);
+  uiEkle('Menü taslağı: öğün otomatiğe dönüyor', '{}:etli-bamya', tb.otomatik);
+  uiEkle('Menü taslağı: ay değişince elle değişiklikler kalkıyor', '2027-01:0', tb.ayDegisti);
+  uiEkle('Menü taslağı: kaldırılan değişiklik geri alınıyor', '2026-12-02|aksam|2', tb.ayGeri);
+  uiEkle('Menü taslağı: yeniden dağıt tohumu artırıyor', 1, tb.karistir);
+  uiEkle('Menü taslağı çıktısı: başlık, satır, ilk gün', 'Menü taslağı — Aralık 2026 | 23 | 1 Salı | Beyaz peynir / Bal / Domates, salatalık', tb.cikti);
+  uiEkle('Menü taslağı: içe aktarmada bozuk ayar ayıklanıyor', '{"degis":{"2026-12-01|ogle|1":"pirinc-pilavi"}}', tb.denetim);
 
   /* ---- danışan dosyası (ADIME) ----
      Biyokimya elle: HbA1c 10 Oca 7,2 · 1 Şub 7,0 (küçük harfle "hba1c" yazıldı,

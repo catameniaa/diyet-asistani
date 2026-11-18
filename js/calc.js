@@ -297,7 +297,8 @@
       ['Çocuk ve gebelik', ['cocuk', 'cocukenerji', 'gebelik']],
       ['Tarama', ['nrs', 'must', 'mnasf', 'diyabetrisk']],
       ['Spor beslenmesi', ['sporcu', 'sporkh', 'sporyaris', 'terleme', 'sporke', 'takviye']],
-      ['Klinik', ['enteral', 'gir']]
+      ['Klinik', ['enteral', 'gir']],
+      ['Toplu beslenme', ['toplumenu']]
     ],
     referans: [
       ['TÜBER referans değerleri', ['tuber', 'hedef', 'oruntu', 'enerjiref']],

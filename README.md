@@ -36,6 +36,10 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
 - 7 günlük liste: plandan 7 gün; 2–7. günler taslakla (her gün başka çorba, et, meyve, tahıl; balık
   haftada iki kez) ya da 1. günün kopyası olarak açılır. Gün sekmeleri, başlık/öneri/çıktı seçimi
   haftaya ortak; tek PDF'te yedi gün (öğünler iki sütun, iki gün bir A4) ve haftalık metin paylaşımı
+- Toplu beslenme menü taslağı: ay seçilir, hafta içi günler (gün adıyla) sabah 3, öğle 4, akşam 4 kap
+  dolar. Ulusal Menü Planlama ve Uygulama Rehberi (2020): EK-1 yemek grupları, birlikte verilmeyecek
+  yemekler, Tablo 4.5 aylık sıklık (kış/yaz). Çorba bir kap sayılır ve başa yazılır. Her öğün elle
+  değiştirilir, denetim anında yenilenir; Gün | Sabah | Öğle | Akşam tablosu olarak PDF
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş; besinin miktarı ve ölçüsü
   sonradan düzenlenir, çıktıya ev ölçüsü basılır ("3 dilim (75 g)")
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla

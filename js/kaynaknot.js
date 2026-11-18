@@ -4,6 +4,7 @@
   'use strict';
   const { esc, icon } = DA;
 
+  /* kaynak: TÜBER dışındaki kaynaklar için; boşsa TÜBER 2022 */
   const NOT = [
     { id: 'potasyum', ek: 'Ek 3.4.1 / 3.4.2', t: 'Potasyum satırının birimi',
       tip: 'Birim hatası', ekran: ['hedef'],
@@ -47,7 +48,14 @@
       tip: 'Not', ekran: ['hedef'],
       n: 'Tablodaki karşılama yüzdeleri Ek 3.2.1 içeriği ÷ Ek 3.4.1 hedefi ile karşılaştırıldığında ' +
          '2000–3200 kkal aralığında 337 kontrolün 336’sı tutuyor. Ancak <b>riboflavin ve B6</b> 64 sütunun tamamında sapıyor; ' +
-         'kaynağın bu iki öge için farklı bir hedef değeri kullandığı anlaşılıyor. Tablodaki resmî değerler olduğu gibi aktarıldı.' }
+         'kaynağın bu iki öge için farklı bir hedef değeri kullandığı anlaşılıyor. Tablodaki resmî değerler olduğu gibi aktarıldı.' },
+    { id: 'toplu45', kaynak: 'Ulusal Menü Planlama ve Uygulama Rehberi (2020)', ek: 'Tablo 4.5, EK-1',
+      t: 'Aylık sıklık tablosu ve dört kaplı menü', tip: 'Not', ekran: ['toplumenu'],
+      n: 'Tablo 4.5 değerleri rehberin çevrim içi kopyasından okundu; <b>basılı rehberle doğrulanmalı</b>. ' +
+         'Tablonun asgari toplamları 21 günde 1. grup için 20 (kış) / 19 (yaz), 2. grup için 21, 3. grup için 20 (+ garnitür yoğurt) ediyor: ' +
+         'günde <b>bir 1., bir 2., bir 3. grup</b> yemeğine denk. Her gün dördüncü kap verilince 2. ya da 3. grubun azamileri aşılır. ' +
+         'Taslak 1. ve 2. kapı asgari sayılarla dağıtır, 3. kapı asgariyle, 4. kapı azamiye oranla yayar; aralık yalnız 1. ve 2. grupta işaretlenir. ' +
+         'Yazın etli kuru baklagil asgarisi tabloda “–”: 0 alındı. Kış/yaz sınırı okunan kısımda yok; Nisan–Eylül yaz varsayıldı.' }
   ];
   DA.kaynakNot = NOT;
 
@@ -67,15 +75,15 @@
     return {
       title: 'Kaynak notları', tab: 'ana', back: 'daha', noRecent: true,
       html:
-        '<div class="note">TÜBER 2022 verilerini uygulamaya aktarırken bulunan dizgi hataları, birim tutarsızlıkları ve ' +
+        '<div class="note">TÜBER 2022 ve öteki rehberlerin verilerini uygulamaya aktarırken bulunan dizgi hataları, birim tutarsızlıkları ve ' +
         'okunamayan yerler burada toplanır. Her not, kaynaktaki değerin ne olduğunu ve uygulamada ne yapıldığını söyler.</div>' +
         NOT.map((x) => {
           const on = vurgu && x.ekran.indexOf(vurgu) >= 0;
           return '<details class="acc"' + (on ? ' open' : '') + '><summary>' + esc(x.t) +
             ' <span class="badge ' + (TIP_TONE[x.tip] || '') + '" style="margin-left:6px">' + esc(x.tip) + '</span></summary>' +
-            '<div class="body"><p class="muted tiny">' + esc(x.ek) + '</p><p style="margin-bottom:0">' + x.n + '</p></div></details>';
+            '<div class="body"><p class="muted tiny">' + esc((x.kaynak ? x.kaynak + ' · ' : '') + x.ek) + '</p><p style="margin-bottom:0">' + x.n + '</p></div></details>';
         }).join('') +
-        '<p class="muted tiny center">Kaynak: T.C. Sağlık Bakanlığı, Türkiye Beslenme Rehberi (TÜBER) 2022.</p>'
+        '<p class="muted tiny center">Kaynak: T.C. Sağlık Bakanlığı, Türkiye Beslenme Rehberi (TÜBER) 2022; aksi yazılan notlarda o kaynak.</p>'
     };
   };
 })();
