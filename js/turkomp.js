@@ -48,7 +48,7 @@
       'asesulfam_k', 'sodyum_sakkarin']]
   ];
   /* Ana ögeler: özet kutuları, enerji dağılımı ve 100 kcal başına sıralama */
-  const ANA = { kcal: 'enerji_kcal', prot: 'protein', yag: 'yag_toplam', kh: 'karbonhidrat' };
+  const ANA = { kcal: 'enerji_kcal', prot: 'protein', yag: 'yag_toplam', kh: 'karbonhidrat', lif: 'lif_toplam_diyet' };
   /* Ana bileşenlerin toplamı 100 g'dan bu kadar saparsa ayrıntıda uyarılır */
   const TOPLAM_SAPMA = 5;
   const TOPLAM_OGE = ['su', 'kul', 'protein', 'yag_toplam', 'karbonhidrat', 'lif_toplam_diyet', 'alkol'];
@@ -213,6 +213,8 @@
   const T = {
     id: 'turkomp', ad: 'TürKomp', rota: 'turkomp', listeBaslik: 'TürKomp', detayBaslik: 'TürKomp besini',
     veri: () => DA.data.turkomp,
+    onek: 'tk',
+    yukle: () => yukle(),
     ana: ANA,
     samanlik: (r) => DA.vb.katla(r[1]) + ' ' + r[0],
     ara: (Td, q) => DA.vb.araDuz(Td, q),

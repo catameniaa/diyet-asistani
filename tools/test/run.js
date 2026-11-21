@@ -3853,6 +3853,232 @@ function ornekDurum(tema) {
       !DA.data.turkomp && /bu cihaza henüz yüklenmedi/.test(document.querySelector('#app').textContent)));
   } else uiEkle('TürKomp: silinince cihazdan da gidiyor', 'silme düğmesi', 'yok (veri yüklenmemiş)');
 
+  /* ---- Menü besin analizi (js/analiz.js) ----
+     Değerler BLS kaynak dosyasından ve sentetik TürKomp fixture'ından elle:
+       M111300 süt (100 g): 62 kcal, P 3,55, Ca 117, A (RE) 25
+       G561100 domates:     22 kcal, P 0,95, Ca 10,  A (RE) 103
+       R231000 kuru fesleğen: Ca 2240, Mg 711     V531100 sığır ciğeri: retinol 19630, RE 19775
+       G620100 havuç: RE 1890, retinol 0          Q4A1000 margarin: sentetik folik asit 1000 µg
+       fixture 1 "Peynir, beyaz, deneme": 300 kcal, P 20, Ca 500 (A vitamini yok)
+       kendi besinim "Deneme ekmeği": 250 kcal, P 8 (mikro yok)
+     Menü an1 (Kadın, doğum 1996-06-15, menü 2026-11-21 → 30 yaş; hedef 1800 kcal):
+       Kahvaltı süt 200 g + peynir 50 g; Öğle domates 150 g + ekmek 50 g
+       enerji 124 + 150 + 33 + 125 = 432; protein 7,1 + 10 + 1,425 + 4 = 22,525
+       Ca 234 + 250 + 15 = 499 (4 besinin 3'ünde) → TÜBER Ek 1.5.2 K 19-50: 950–1000 PRI
+         → üst uca %49,9 → "%50", alt uca %52,5 → "%53"; katkıda ilk peynir 250/499 = %50
+       A (RE) 50 + 154,5 = 204,5 (2/4); öğün: Kahvaltı 274, Öğle 158 kcal
+       tiamin hedefi 0,4 mg/1000 kkal × 1800 = 0,72; niasin 6,6 × 1,8 = 11,88
+     Menü an2 (UL): fesleğen 150 g → Ca 3360 > UL 2500; Mg 1066,5 > 350 ama Mg UL yalnız takviye
+       → uyarı YOK; ciğer 20 g → retinol 3926 > 3000; margarin 150 g → folik asit 1500 > 1000
+     Menü an3: havuç 300 g → RE 5670 > 3000 ama retinol 0 → A vitamini UL uyarısı YOK
+     Sodyum an1: 69,8 + 6 = 75,8 mg (2/4) → AI 2000'in %4'ü; üst hedef olduğu için yeşil
+     TürKomp türetilenleri (fixture 1'e eklenen): gıda folatı 40 + 1,7 × folik asit 10 = 57 DFE;
+       K1 4 + K2 6 = 10; D3 0,4; sistin eşlenmez. Fixture 3'te yalnız K1 → K vitamini yok.
+     TÜBER Ek 2.3.1 "İnek sütü, tam yağlı" 240 g: Ca 288 → 100 g'da 120; B12 1,9 → 0,7917;
+       A vitamini ve folik asit eşlenmez (tanımı belirsiz)
+     BLS kolesterol, 100 kcal başına ilk 10'da üç karışık yemek var; öneri listesinde olmamalı */
+  const an = await sayfa.evaluate(async (tkMetin) => {
+    await DA.need(['bls', 'blsSozluk', 'tuber', 'porsiyonBesin']);
+    const J = JSON.parse(tkMetin);
+    Object.assign(J.nutrients, { folat_gida: { name: 'Folat, gıda', unit: 'µg' }, folik_asit_sentetik: { name: 'Folik asit, sentetik', unit: 'µg' },
+      k_1_vitamini: { name: 'K-1 vitamini', unit: 'µg' }, k_2_vitamini: { name: 'K-2 vitamini', unit: 'µg' },
+      d_3_vitamini_kolekalsiferol: { name: 'D-3 vitamini', unit: 'µg' }, sistin: { name: 'Sistin', unit: 'mg' } });
+    Object.assign(J.foods[0].values, { folat_gida: 40, folik_asit_sentetik: 10, k_1_vitamini: 4, k_2_vitamini: 6, d_3_vitamini_kolekalsiferol: 0.4, sistin: 90 });
+    J.foods[2].values.k_1_vitamini = 3;
+    await DA.turkomp.icerAktar(JSON.stringify(J), 'turkomp-ornek.json');
+    const o = {}, S = DA.state();
+    S.customFoods.push({ id: 'c_antest', n: 'Deneme ekmeği', cat: 'Eklediklerim', kcal: 250, p: 8, c: 50, f: 2, fib: 0, u: [] });
+    DA.foodsInvalidate();
+    S.clients.push({ id: 'antest', name: 'Analiz Test', sex: 'K', bdate: '1996-06-15', birth: 1996, tags: [], meas: [], calcs: [], lab: [], pes: [], gorusme: [], reds: [] });
+    const menu = (id, ogunler, ek) => {
+      const m = Object.assign(DA.foods.yeniMenu(), { id, title: id, date: '2026-11-21', c: 'antest' }, ek || {});
+      Object.keys(ogunler).forEach((k) => ogunler[k].forEach((x) => {
+        const f = DA.foods.get(x[0]);
+        m.meals[k].push(Object.assign({ id: x[0], n: f ? f.n : '', g: x[1] }, f && f.vb ? { s: DA.vb.anlik(f) } : {}));
+      }));
+      S.menus = S.menus.filter((x) => x.id !== id); S.menus.unshift(m);
+      return m;
+    };
+    const m1 = menu('an1', { 'Kahvaltı': [['vb-bls-M111300', 200], ['vb-tk-1', 50]], 'Öğle': [['vb-bls-G561100', 150], ['c_antest', 50]] },
+      { target: { kcal: 1800, p: 90, c: 200, f: 60 } });
+    menu('an2', { 'Öğle': [['vb-bls-R231000', 150]], 'Akşam': [['vb-bls-V531100', 20]], 'Kuşluk': [['vb-bls-Q4A1000', 150]] });
+    menu('an3', { 'Öğle': [['vb-bls-G620100', 300]] });
+    DA.save();
+    const A = DA.analiz.hesapla(m1), r6 = (x) => Math.round(x * 1e6) / 1e6;
+    o.top = [r6(A.top.kcal.t), r6(A.top.prot.t), A.top.ca.t + '/' + A.top.ca.n + '/' + A.top.ca.N, r6(A.top.vitA.t) + '/' + A.top.vitA.n].join('|');
+    o.ogun = A.ogun.map((x) => x.og + ':' + r6(x.x.kcal)).join(',');
+    /* kişi: doğum gününden bir gün önce 29, o gün 30; yalnız doğum yılıyla yıl farkı; profil */
+    const ki = (d, c) => { const k = DA.analiz.kisi(Object.assign({ c: 'antest', date: d }, c || {})); return k ? k.cins + k.yas : 'yok'; };
+    const cl = S.clients.find((c) => c.id === 'antest');
+    o.kisi = [ki('2026-06-14'), ki('2026-06-15')];
+    cl.bdate = null; o.kisi.push(ki('2026-11-21')); cl.bdate = '1996-06-15';
+    const eskiP = S.profile; S.profile = { age: 45, sex: 'E' };
+    o.kisi.push(ki('2026-11-21', { c: '' }));
+    S.profile = eskiP; o.kisi = o.kisi.join(',');
+    /* TÜBER satırı: 70 yaş "65-70" (D 15), 71 "≥70" (D 20); 4 yaş çocuk satırı; 1 yaş yok */
+    /* Satır ya da hedef bulunamazsa test çökmesin, yanlış değerle kalsın: çökme
+       blokta sonraki bütün denetimleri de götürüyordu (mutasyon denemesi). */
+    const T = DA.data.tuber, sb = (c, y, i) => { const r = DA.analiz.satirBul(T.ek151, c, y); return r ? (i == null ? r[0] + r[1] : r[i]) : String(r); };
+    o.satir = [sb('K', 70, 6), sb('K', 71, 6), sb('K', 4), sb('K', 1)].join(',');
+    const H = DA.analiz.hedefler({ cins: 'K', yas: 30 }, 1800), h = (k) => H[k] || {};
+    o.hedef = [h('ca').a, h('ca').b, h('ca').tur, h('fe').a + '-' + h('fe').b, h('na').a, r6(h('b1').a), r6(h('niasinEs').a), h('mo').ul, h('retinol').ul, h('folik').ul,
+      String(h('vitA').ul), String(h('mg').ul), String(h('niasinEs').ul)].join('|');
+    /* Kendi eklenen besinde posa girilmezse 0 kaydediliyor: ölçülmüş 0 sayılmaz */
+    S.customFoods.push({ id: 'c_anlif', n: 'Posasız deneme', cat: 'Eklediklerim', kcal: 100, p: 1, c: 2, f: 3, fib: 0, u: [] });
+    DA.foodsInvalidate();
+    const vc = DA.analiz.vektor({ id: 'c_anlif', g: 100 }).v;
+    o.ozelLif = String(vc.lif) + '|' + vc.kcal;
+    S.customFoods = S.customFoods.filter((x) => x.id !== 'c_anlif'); DA.foodsInvalidate();
+    /* ekran */
+    location.hash = 'analiz/an1'; DA.render(false);
+    const bekle = (sec) => new Promise((ok) => { const b = () => (document.querySelector(sec) ? ok() : setTimeout(b, 20)); b(); });
+    await bekle('#anKatki');
+    /* innerText: hücredeki blok satırlar (yüzde, alt uç, hedef) boşlukla ayrılsın */
+    const hucre = (k) => { const tr = document.querySelector('#anMikro tr[data-k="' + k + '"]'); return tr ? Array.from(tr.cells).slice(1).map((c) => c.innerText.replace(/\s+/g, ' ').trim()).join(' | ') : '(satır yok: ' + k + ')'; };
+    o.ca = hucre('ca');
+    o.caTon = (document.querySelector('#anMikro tr[data-k="ca"] .badge') || {}).className;
+    o.naTon = (document.querySelector('#anMikro tr[data-k="na"] .badge') || {}).className;
+    o.kTon = (document.querySelector('#anMikro tr[data-k="k"] .badge') || {}).className;
+    o.kisiYazi = (document.querySelector('#anKisi') || {}).textContent;
+    o.uyg = !!document.querySelector('#anUyg');
+    const sec = document.querySelector('select[data-change=analizKatki]'); sec.value = 'ca'; DA.live.analizKatki(sec);
+    o.katki = Array.from(document.querySelectorAll('#anKatkiListe .li')).map((x) => x.innerText.replace(/\s+/g, ' ').trim()).join(' || ');
+    location.hash = 'analiz/an2'; DA.render(false);
+    await bekle('#anKatki');
+    o.ul = [/UL aşıldı/.test(hucre('ca')), /UL aşıldı/.test(hucre('mg')), !!document.querySelector('[data-ul=retinol]'),
+      !!document.querySelector('[data-ul=folik]'), /UL aşıldı/.test(hucre('vitA'))].join(',');
+    location.hash = 'analiz/an3'; DA.render(false);
+    await bekle('#anKatki');
+    o.ulA = [!!document.querySelector('[data-ul=retinol]'), /UL aşıldı/.test(hucre('vitA'))].join(',');
+    const d3 = DA.analiz.dusukler(DA.analiz.hesapla(S.menus.find((x) => x.id === 'an3')), DA.analiz.hedefler({ cins: 'K', yas: 30 }, 2000)).map((x) => x.k);
+    o.dusuk = (d3.indexOf('ca') >= 0) + '|' + (d3.indexOf('k') < 0) + '|' + !!document.querySelector('[data-act=analizOneri][data-k=ca]');
+    /* an1'de kalsiyum %52 ama kendi besinimde ölçülmemiş: eksik toplamla "düşük" denmez */
+    o.dusukEksik = DA.analiz.dusukler(A, H).map((x) => x.k).indexOf('ca') < 0;
+    /* görüntü eşiği: PRI %70 sınırı, AI nötr, üst hedef */
+    const rz = DA.analiz.rozet;
+    o.rozet = [rz(1, 'PRI'), rz(0.7, 'PRI'), rz(0.69, 'PRI'), rz(0.5, 'AI'), rz(0.9, 'AI', true), rz(1.2, 'AI', true)].map((x) => /badge (\w+)/.exec(x)[1]).join(',');
+    /* TürKomp türetilenleri ve uygulama besininin TÜBER paneli (100 g'da) */
+    const v1 = DA.analiz.vektor({ id: 'vb-tk-1', g: 100 }).v, v3 = DA.analiz.vektor({ id: 'vb-tk-3', g: 100 }).v;
+    o.tk = [r6(v1.folat), v1.vitK, v1.vitD, String(v1.cys), String(v3.vitK)].join('|');
+    const sut = DA.foods.all().find((f) => f.tuberAd === 'İnek sütü, tam yağlı' || f.n === 'İnek sütü, tam yağlı');
+    const vs = sut ? DA.analiz.vektor({ id: sut.id, g: 100 }).v : {};
+    o.panel = [r6(vs.ca), r6(vs.b12), String(vs.vitA), String(vs.folat)].join('|');
+    o.oneriKol = DA.analiz.kaynakBesinler('kol', 10).filter((x) => x.T.id === 'bls').map((x) => x.r[0][0]).filter((c) => 'XY'.indexOf(c) >= 0).length +
+      '|' + DA.analiz.kaynakBesinler('kol', 10).filter((x) => x.T.id === 'bls').length;
+    /* kaynak besin önerisi: 100 kcal başına, karışık yemek hariç */
+    DA.actions.analizOneri({ dataset: { k: 'ca' } });
+    o.oneri = [(document.querySelector('#sheetBody [data-kaynak=bls] a') || { getAttribute: () => '' }).getAttribute('href'),
+      (document.querySelector('#sheetBody [data-kaynak=turkomp] a') || { getAttribute: () => '' }).getAttribute('href')].join('|');
+    o.oneriXY = Array.from(document.querySelectorAll('#sheetBody [data-kaynak=bls] a')).every((a) => !/\/[XY]/.test(a.getAttribute('href')));
+    DA.closeSheet();
+    /* menü ekranı: analiz bağlantısı ve kaynak etiketi */
+    location.hash = 'menu/an1'; DA.render(false);
+    o.menu = !!document.querySelector('a[href="#/analiz/an1"]') + '|' + /· BLS/.test(document.querySelector('#app').textContent) +
+      '|' + /· TürKomp/.test(document.querySelector('#app').textContent) + '|' + DA.foods.toplam(m1).kcal;
+    /* anlık görüntü: veri bankası yokken toplam öğedeki makrodan */
+    const yok = { id: 'vb-tk-999999', n: 'Yok', g: 200, s: { kcal: 50, p: 2 } };
+    o.anlik = (DA.foods.ogeBesin(yok) || {}).kcal + '|' + JSON.stringify(DA.analiz.vektor(yok)) + '|' + String(DA.foods.ogeBesin({ id: 'vb-tk-999999', g: 1 }));
+    /* kayıt denetimi: anlık görüntüde yalnız eksi olmayan sayı alanları */
+    try {
+      const den = DA.veriDenetle({ menus: [{ id: 'x', meals: { 'Kahvaltı': [{ id: 'vb-bls-G561100', g: 100, s: { kcal: '22', p: -1, f: 3, zz: 5 } }, { id: 'vb-bls-G561100', g: 1, s: 'bozuk' }] } }] });
+      o.denetim = JSON.stringify(den.menus[0].meals['Kahvaltı'].map((x) => x.s === undefined ? 'yok' : x.s));
+    } catch (e) { o.denetim = 'hata: ' + e.message; }
+    /* menü seçicisinde veri bankası sonuçları; veri bankası besini 100 g ile açılır */
+    DA.actions.menuAdd({ dataset: { m: 'an1', k: 'Akşam' } });
+    const ps = document.querySelector('input[data-live=pickSearch]'); ps.value = 'domates'; DA.live.pickSearch(ps);
+    o.secici = !!document.querySelector('#pickList button[data-id="vb-bls-G561100"]') + '|' + !!document.querySelector('#pickList button[data-id="vb-tk-1"]');
+    DA.actions.pickFood({ dataset: { id: 'vb-bls-G561100', m: 'an1', k: 'Akşam' } });
+    o.seciciMiktar = document.querySelector('#amtForm input[name=amt]').value;
+    /* seçiciden eklenen veri bankası besini de anlık görüntüyle kaydedilir */
+    DA.actions.pickConfirm();
+    const son = S.menus.find((x) => x.id === 'an1').meals['Akşam'].slice(-1)[0] || {};
+    o.seciciEkle = son.id + '|' + son.g + '|' + JSON.stringify(son.s);
+    DA.closeSheet();
+    /* ölçülmemiş makro anlık görüntüye 0 diye girmez (fixture 4: protein, yağ, posa yok) */
+    o.anlikEksik = JSON.stringify(DA.vb.anlik(DA.vb.besin('vb-tk-4')));
+    /* BLS ayrıntısından menüye ekleme: gram ve anlık görüntüyle */
+    location.hash = 'bls/G561100'; DA.render(false);
+    const g = document.querySelector('input[data-live=blsGram]'); g.value = '120'; DA.live.blsGram(g);
+    document.querySelector('#vbMenu').value = 'an3'; document.querySelector('#vbOgun').value = 'Akşam';
+    DA.actions.vbMenuyeEkle(document.querySelector('[data-act=vbMenuyeEkle]'));
+    g.value = '100'; DA.live.blsGram(g);
+    o.ekle = JSON.stringify(S.menus.find((x) => x.id === 'an3').meals['Akşam']);
+    /* veri bankası bu cihazda olmayan besin: analizde uyarı */
+    menu('an4', { 'Öğle': [] }).meals['Öğle'].push({ id: 'vb-tk-999999', n: 'Silinmiş besin', g: 100, s: { kcal: 80, p: 3 } });
+    location.hash = 'analiz/an4'; DA.render(false);
+    await bekle('#anKatki');
+    o.yok = /1 besinin veri bankası bu cihazda yok/.test((document.querySelector('#anYok') || {}).textContent || '');
+    /* temizlik */
+    S.menus = S.menus.filter((x) => ['an1', 'an2', 'an3', 'an4'].indexOf(x.id) < 0);
+    S.clients = S.clients.filter((c) => c.id !== 'antest');
+    S.customFoods = S.customFoods.filter((f) => f.id !== 'c_antest'); DA.foodsInvalidate();
+    await DA.turkomp.sil(); DA.save();
+    return o;
+  }, tkDosya);
+  uiEkle('Analiz: toplamlar (enerji, protein, Ca 3/4 besin, A vitamini 2/4)', '432|22.525|499/3/4|204.5/2', an.top);
+  uiEkle('Analiz: öğünlere göre enerji', 'Kahvaltı:274,Öğle:158', an.ogun);
+  uiEkle('Analiz: yaş doğum gününe göre, yalnız yıl, profil', 'K29,K30,K30,E45', an.kisi);
+  uiEkle('Analiz: TÜBER satırı (70 → 65-70, 71 → ≥70, 4 → çocuk, 1 → yok)', '15,20,cocuk4,null', an.satir);
+  uiEkle('Analiz: hedefler ve UL (aralık, g→mg, enerjiye bağlı, mg→µg, biçime özel)',
+    '950|1000|PRI|11-16|2000|0.72|11.88|600|3000|1000|undefined|undefined|undefined', an.hedef);
+  uiEkle('Analiz ekranı: kalsiyum satırı (en az, üst/alt uç, hedef)', '≥ 499mg | %50 alt uca %53 950–1000 PRI', an.ca);
+  uiEkle('Analiz ekranı: PRI altında kırmızı, AI altında nötr, sodyum üst hedef', 'badge bad|badge info|badge ok', an.caTon + '|' + an.kTon + '|' + an.naTon);
+  uiEkle('Analiz: renk eşiği (PRI 1, 0,7, 0,69; AI 0,5; üst hedef 0,9, 1,2)', 'ok,warn,bad,info,ok,warn', an.rozet);
+  uiEkle('Analiz: eksik toplamda "düşük" denmiyor', true, an.dusukEksik);
+  uiEkle('Analiz: kendi eklenen besinde posa ölçülmüş sayılmaz', 'undefined|100', an.ozelLif);
+  uiEkle('Analiz: TürKomp türetilenleri (DFE, K1+K2, D3; sistin yok; tek K1 yok)', '57|10|0.4|undefined|undefined', an.tk);
+  uiEkle('Analiz: TÜBER porsiyon paneli 100 g’a (Ca, B12; A ve folik asit eşlenmez)', '120|0.791667|undefined|undefined', an.panel);
+  uiEkle('Analiz: kolesterol önerisinde karışık yemek yok', '0|10', an.oneriKol);
+  uiEkle('Analiz: veri bankası olmayan besinde uyarı', true, an.yok);
+
+  /* Yeniden açılışta veri bankaları bellekte yok (BLS ağır veri, needAll
+     yüklemez): menü ve analiz ekranı gerekeni kendisi yükler. Bu noktada
+     TürKomp silinmiş; BLS besini hesaba girer, TürKomp besini anlık kopyadan. */
+  await sayfa.evaluate(async () => {
+    const m = DA.foods.yeniMenu(); m.id = 'an5'; m.title = 'Yükleme deneme';
+    m.meals['Öğle'] = [{ id: 'vb-bls-G561100', n: 'Domates', g: 100, s: { kcal: 22 } }, { id: 'vb-tk-1', n: 'Peynir', g: 10, s: { kcal: 30 } }];
+    DA.state().menus.unshift(m); DA.save(); await DA.depoBekle();
+  });
+  await sayfa.reload({ waitUntil: 'networkidle' });
+  const yk = {};
+  yk.gerek = await sayfa.evaluate(() => JSON.stringify(DA.vb.gerekenler(DA.state().menus.filter((m) => m.id === 'an5'))) + '|' + DA.hazir(['bls']));
+  await sayfa.evaluate(() => { location.hash = '#/analiz/an5'; });
+  await sayfa.waitForSelector('#anKatki', { state: 'attached' }).catch(() => {});
+  yk.analiz = await sayfa.evaluate(() => DA.hazir(['bls']) + '|' + /1 besinin veri bankası bu cihazda yok/.test((document.querySelector('#anYok') || {}).textContent || '') +
+    '|' + Math.round(DA.analiz.hesapla(DA.state().menus.find((m) => m.id === 'an5')).top.ca.t * 10) / 10);
+  await sayfa.reload({ waitUntil: 'networkidle' });
+  await sayfa.evaluate(() => { location.hash = '#/menu/an5'; });
+  yk.menu = await sayfa.waitForFunction(() => DA.hazir(['bls']), null, { timeout: 15000 }).then(() => 'yüklendi', () => 'yüklenmedi');
+  /* TürKomp cihazda yokken ekran bir kez denedikten sonra durulmalı: önceden
+     her çizim yeniden yükleyip yeniden çiziyordu (sonsuz döngü). Yüklemenin
+     ardından gelen tek meşru çizim ilk pencerede biter; çizim ikinci yarım
+     saniyede sayılır, durulmuş ekranda sıfır. */
+  yk.dongu = await sayfa.evaluate(() => new Promise((tamam) => setTimeout(() => {
+    let n = 0; const asil = DA.render;
+    DA.render = function () { n++; return asil.apply(this, arguments); };
+    setTimeout(() => { DA.render = asil; tamam(n); }, 500);
+  }, 500)));
+  await sayfa.evaluate(async () => { const S = DA.state(); S.menus = S.menus.filter((m) => m.id !== 'an5'); DA.save(); await DA.depoBekle(); });
+  /* domates 100 g Ca 10 (BLS G561100); peynir TürKomp yok → kalsiyuma katılmaz */
+  uiEkle('Menü: yüklenmemiş veri bankaları bulunuyor', '["bls","turkomp"]|false', yk.gerek);
+  uiEkle('Analiz ekranı veri bankasını kendisi yüklüyor', 'true|true|10', yk.analiz);
+  uiEkle('Menü ekranı veri bankasını kendisi yüklüyor', 'yüklendi', yk.menu);
+  uiEkle('Menü ekranı cihazda olmayan veri bankasında döngüye girmiyor', 0, yk.dongu);
+  uiEkle('Analiz ekranı: kıyas kişisi ve uygulama besini notu', 'Kıyas: Kadın, 30 yaş — danışan (Analiz Test) · TÜBER 2022|true', an.kisiYazi + '|' + an.uyg);
+  uiEkle('Analiz: katkı sıralaması', 'Peynir, beyaz, deneme Kahvaltı · 50 g 250 mg · %50 || Whole milk, fresh, 3.5 % fat, pasteurised Kahvaltı · 200 g 234 mg · %47 || Tomato raw Öğle · 150 g 15 mg · %3', an.katki);
+  uiEkle('Analiz: UL (Ca var, Mg yok, retinol, folik asit; RE satırında yok)', 'true,false,true,true,false', an.ul);
+  uiEkle('Analiz: karotenden gelen A vitamini UL’yi aşmaz', 'false,false', an.ulA);
+  uiEkle('Analiz: düşük ögeler yalnız PRI (AI hariç), öneri düğmesi', 'true|true|true', an.dusuk);
+  uiEkle('Analiz: kaynak besin önerisi (BLS 100 kcal başına, TürKomp)', '#/bls/G261132|#/turkomp/2', an.oneri);
+  uiEkle('Analiz: öneride karışık yemek yok', true, an.oneriXY);
+  uiEkle('Menü: analiz bağlantısı, kaynak etiketleri, toplam', 'true|true|true|432', an.menu);
+  uiEkle('Menü: veri bankası yokken anlık görüntü', '50|{"kaynak":"yok","v":{"kcal":50,"prot":2}}|null', an.anlik);
+  uiEkle('Kayıt denetimi: anlık görüntüde yalnız sayı alanları', '[{"f":3},"yok"]', an.denetim);
+  uiEkle('Menü seçicisi: BLS sonucu (fixture’da domates yok); 100 g ile açılır', 'true|false|100', an.secici + '|' + an.seciciMiktar);
+  uiEkle('Menü seçicisinden ekleme: gram ve anlık görüntü', 'vb-bls-G561100|100|{"kcal":22,"p":0.95,"c":3.25,"f":0.11,"fib":1.3}', an.seciciEkle);
+  uiEkle('Anlık görüntüde ölçülmemiş makro yok', '{"kcal":5,"c":1}', an.anlikEksik);
+  uiEkle('BLS ayrıntısından menüye ekleme', '[{"id":"vb-bls-G561100","n":"Tomato raw","g":120,"s":{"kcal":22,"p":0.95,"c":3.25,"f":0.11,"fib":1.3}}]', an.ekle);
+
   /* ---- çevrimdışı: yüklenen her dosya önbellekte ----
      Manifestteki maskable ikon önbellek listesinde yoktu. Yeni bir veri
      dosyası eklenip ASSETS'e yazılmayı unutulursa da burası yakalar. */

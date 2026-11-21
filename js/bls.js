@@ -360,6 +360,7 @@
         '<label class="fld mt"><span>Miktar (g, yenilebilir kısım)</span><input type="text" inputmode="decimal" ' +
         'data-live="blsGram" value="' + esc(fmt(gram, 1)) + '" aria-label="Miktar, gram"></label>' +
         '<div id="blsOzet">' + ozetHtml(r) + '</div></div>' +
+        (T.onek ? menuyeEkleHtml(T, kod) : '') +
         '<div id="blsKokenOzet">' + notHtml(r) + '</div>' +
         '<div id="blsDeger" data-kod="' + esc(kod) + '">' + degerHtml(r) + '</div>' +
         '<details class="acc"><summary>Değer türleri ve kaynak</summary><div class="body small">' + T.bilgi(B) + '</div></details>',
@@ -378,6 +379,78 @@
     const d = DA.$('#blsDeger'), i = d && indeks().kod[d.dataset.kod];
     if (i == null) return;
     detayYenile(tanim().veri().b[i]);
+  };
+
+  /* ---- menüye bağlama ----
+     Menü öğesinin kimliği "vb-bls-<kod>" ya da "vb-tk-<kimlik>". Ayraç iki
+     nokta değil tire: kimlik denetimi (core.js) yalnız [\w-] bırakıyor, iki
+     nokta alt çizgiye dönüp bağ kopardı. Öğe ayrıca ad ve makroların anlık
+     görüntüsünü (s) taşır: menü listesi, toplam ve çıktı 2,2 MB'lık BLS'yi
+     ya da cihazdaki TürKomp'u yüklemeden doğru enerjiyi gösterir; mikro
+     besin analizi veri bankasını yükler. */
+  const ONEK = /^vb-([a-z]+)-([\w-]+)$/;
+  const ANLIK = { kcal: 'kcal', prot: 'p', kh: 'c', yag: 'f', lif: 'fib' };
+  function cozId(id) {
+    const m = ONEK.exec(String(id || ''));
+    if (!m) return null;
+    const T = Object.keys(KAYNAK).map((k) => KAYNAK[k]).find((x) => x.onek === m[1]);
+    return T ? { T, kod: m[2] } : null;
+  }
+  /* Menüdeki besin: uygulama besiniyle aynı biçim (kcal, p, c, f, fib 100 g'da).
+     Ölçülmemiş makro 0 yazılır ama "eksik"te listelenir; analiz bunu sayar. */
+  function besin(id) {
+    const c = cozId(id);
+    if (!c || !c.T.veri()) return null;
+    const T = c.T, i = indeks(T).kod[c.kod];
+    if (i == null) return null;
+    const r = T.veri().b[i], o = { id, n: r[1], cat: T.ad, u: [], vb: T.id, kod: c.kod, satir: r, eksik: [] };
+    Object.keys(ANLIK).forEach((a) => {
+      const x = sayi(deger(r, T.ana[a], T));
+      if (x == null) { o.eksik.push(ANLIK[a]); o[ANLIK[a]] = 0; } else o[ANLIK[a]] = x;
+    });
+    return o;
+  }
+  function anlik(f) {
+    const s = {};
+    Object.keys(ANLIK).forEach((a) => { const k = ANLIK[a]; if (f.eksik.indexOf(k) < 0) s[k] = f[k]; });
+    return s;
+  }
+  /* Menülerdeki öğeler için yüklenmemiş veri bankaları.
+     Bir kez denenip verisi gelmeyen kaynak (TürKomp bu cihaza içe aktarılmamış)
+     yeniden istenmez: menü ve analiz ekranı her çizimde yükleyip yeniden
+     çizdiği için sonsuz döngüye giriyordu; analiz ekranı iskelette kalıyordu.
+     İçe aktarma veriyi doğrudan belleğe koyduğu için bu işarete takılmaz. */
+  const denendi = {};
+  function gerekenler(menuler) {
+    const g = [];
+    (menuler || []).forEach((m) => Object.keys((m && m.meals) || {}).forEach((k) => (m.meals[k] || []).forEach((it) => {
+      const c = cozId(it && it.id);
+      if (c && !c.T.veri() && !denendi[c.T.id] && g.indexOf(c.T.id) < 0) g.push(c.T.id);
+    })));
+    return g;
+  }
+  const yukle = (ids) => Promise.all((ids || []).map((id) => { denendi[id] = true; return KAYNAK[id].yukle().catch(() => false); }));
+
+  function menuyeEkleHtml(T, kod) {
+    const menus = DA.state().menus || [];
+    return '<div class="card"><h3 style="margin-top:0">Menüye ekle</h3><div class="grid2">' +
+      '<label class="fld"><span>Menü</span><select id="vbMenu">' + menus.map((m) => '<option value="' + esc(m.id) + '">' +
+        esc(m.title) + (m.tur === 'geri' ? ' (geriçağırma)' : '') + '</option>').join('') + '<option value="new">+ Yeni menü</option></select></label>' +
+      '<label class="fld"><span>Öğün</span><select id="vbOgun">' + DA.foods.ogunler.map((k) => '<option>' + esc(k) + '</option>').join('') +
+      '</select></label></div><button class="btn block" data-act="vbMenuyeEkle" data-id="vb-' + T.onek + '-' + esc(kod) + '">' +
+      DA.icon('plus') + ' Yukarıdaki gramla menüye ekle</button></div>';
+  }
+  DA.actions.vbMenuyeEkle = (el) => {
+    const f = besin(el.dataset.id);
+    if (!f) return DA.toast('Besin bulunamadı');
+    if (!(gram > 0)) return DA.toast('Miktarı gir');
+    const S = DA.state(), sec = DA.$('#vbMenu'), ogun = DA.$('#vbOgun');
+    let m = S.menus.find((x) => x.id === (sec && sec.value));
+    if (!m) { m = DA.foods.yeniMenu(); S.menus.unshift(m); }
+    const k = ogun && DA.foods.ogunler.indexOf(ogun.value) >= 0 ? ogun.value : DA.foods.ogunler[0];
+    (m.meals[k] = m.meals[k] || []).push({ id: f.id, n: f.n, g: Math.round(gram * 10) / 10, s: anlik(f) });
+    DA.save();
+    DA.toast('“' + m.title + '” menüsüne, ' + k + ' öğününe eklendi');
   };
 
   /* Veri bankası değiştirme: hangi bankada aranacağı ekranın üstünden seçilir */
@@ -411,7 +484,9 @@
   KAYNAK.bls = {
     id: 'bls', ad: 'BLS 4.0', rota: 'bls', listeBaslik: 'BLS veri bankası', detayBaslik: 'BLS besini',
     veri: () => DA.data.bls,
-    ana: { kcal: 'kcal', prot: 'prot', yag: 'yag', kh: 'kh' },
+    onek: 'bls',
+    yukle: () => DA.need(['bls', 'blsSozluk']).then(() => true),
+    ana: { kcal: 'kcal', prot: 'prot', yag: 'yag', kh: 'kh', lif: 'lif' },
     samanlik: (r) => (r[1] + ' ' + r[0]).toLowerCase(),
     ara: araBls,
     yerTutucu: 'Besin ara: domates, tavuk göğüs, yoğurt…',
@@ -475,7 +550,11 @@
   /* Öteki veri bankaları kendini buradan kaydeder (js/turkomp.js) */
   DA.vb = {
     kaynakEkle: (T) => { KAYNAK[T.id] = T; },
+    kaynak: (id) => KAYNAK[id],
+    kaynaklar: () => Object.keys(KAYNAK).map((k) => KAYNAK[k]),
     gorunum, kaynakSecici, araDuz, sirala, indeks, deger, sayi, katla, yaz,
+    besin, anlik, cozId, gerekenler, yukle,
+    ara: (id, q, g) => KAYNAK[id].ara(KAYNAK[id], q, g),
     aktif: (id) => { aktif = id; }
   };
   /* Sonraki adım (menü analizi) ve testler için */

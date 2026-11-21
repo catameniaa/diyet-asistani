@@ -79,7 +79,15 @@
     if (!nesneMi(m.meals)) m.meals = {};
     Object.keys(m.meals).forEach((k) => {
       m.meals[k] = nesneDizisi(m.meals[k]);
-      m.meals[k].forEach((it) => { if (it.id != null) it.id = kimlik(it.id); });
+      m.meals[k].forEach((it) => {
+        if (it.id != null) it.id = kimlik(it.id);
+        /* Veri bankası besininin makro anlık görüntüsü (js/bls.js): toplamlara
+           doğrudan girer, yalnız eksi olmayan sayı alanları kalır. */
+        if (it.s != null) {
+          if (!nesneMi(it.s)) delete it.s;
+          else Object.keys(it.s).forEach((a) => { if (['kcal', 'p', 'c', 'f', 'fib'].indexOf(a) < 0 || !sayiMi(it.s[a]) || it.s[a] < 0) delete it.s[a]; });
+        }
+      });
     });
   }
   /* Diyet listesi: öğün anahtarları ve satırlar ekrana ve kâğıda doğrudan

@@ -64,6 +64,16 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   girmez). Dosya alan alan denetlenir; tek bozuk değer bütün dosyayı reddeder. BLS ile aynı ekranda,
   üstteki seçiciyle geçilir. Ölçülmemiş öge "veri yok"; protein ya da yağı ölçülmemiş besinde ve
   ana bileşenleri 100 g'ı tutmayan kayıtta uyarı
+- Veri bankası besinleri menüde ve geriçağırmada: BLS ve TürKomp besini menü seçicisinde aranır ya da
+  ayrıntı ekranından gramla eklenir. Öğe makroların anlık kopyasını taşır; veri bankası o cihazda
+  yoksa toplam bu kopyadan hesaplanır, analiz uyarır
+- Menü besin analizi (#/analiz/menü): enerji ve makro dağılımı TÜBER 2022 Ek 1.2/1.3 aralıklarına,
+  vitamin ve mineraller Ek 1.5.1/1.5.2 PRI/AI'ye göre yüzde; UL (Ek 1.5.4/1.5.5) aşılınca uyarı —
+  A vitamini UL'si yalnız retinole, folat UL'si yalnız sentetik folik aside uygulanır, magnezyum ve
+  niasin UL'si besinle karşılaştırılmaz. Kıyas kişisi menüye bağlı danışandan (menü tarihindeki yaş),
+  yoksa profilden. Bazı besinlerde ölçülmemiş öge "≥" ile yazılır, eksik toplama "düşük" denmez.
+  Öğünlere göre dağılım, ögeye göre katkı sıralaması, PRI'nin %70'i altında kalan öge için 100 kcal
+  başına en yoğun kaynak besinler (karışık yemekler hariç)
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
   eşleme, gece peynir/peynir-ekmek yok, bulgur pilavının yanına ekmek yok, meyve ara öğünde;
   çorba ve sıvılar başa, ekmek sona — tek dokunuşla yazım sırasına dizme (geri alınabilir)

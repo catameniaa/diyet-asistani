@@ -54,14 +54,20 @@
     return _birlesik;
   }
   DA.foodsInvalidate = () => { _birlesik = null; };
-  const getFood = (id) => allFoods().find((f) => f.id === id);
+  /* "vb-" önekli kimlik veri bankası besinidir (BLS, TürKomp; js/bls.js) */
+  const getFood = (id) => (DA.vb && /^vb-/.test(id) ? DA.vb.besin(id) : allFoods().find((f) => f.id === id));
+  /* Menü öğesinin besini. Veri bankası yüklenmemişse öğedeki anlık görüntüden
+     (s: 100 g'da kcal, p, c, f, fib) kurulur: toplam ve çıktı 2,2 MB'lık BLS'yi
+     beklemeden doğru enerjiyi gösterir. */
+  const ogeBesin = (it) => (it && (getFood(it.id) || (/^vb-/.test(it.id) && it.s
+    ? Object.assign({ id: it.id, n: it.n || '', cat: '', u: [], kcal: 0, p: 0, c: 0, f: 0, fib: 0, anlik: true }, it.s) : null))) || null;
   const nut = (f, g) => ({ kcal: f.kcal * g / 100, p: f.p * g / 100, c: f.c * g / 100, f: f.f * g / 100, fib: (f.fib || 0) * g / 100 });
   const add = (a, b) => ({ kcal: a.kcal + b.kcal, p: a.p + b.p, c: a.c + b.c, f: a.f + b.f, fib: a.fib + b.fib });
   const zero = () => ({ kcal: 0, p: 0, c: 0, f: 0, fib: 0 });
-  DA.foods = { all: allFoods, get: getFood, nut, ogunler: MEALS };
+  DA.foods = { all: allFoods, get: getFood, nut, ogunler: MEALS, ogeBesin, yeniMenu: () => newMenu() };
 
   function itemNut(it) {
-    const f = getFood(it.id);
+    const f = ogeBesin(it);
     return f ? nut(f, it.g) : zero();
   }
   function menuTotals(m) {
@@ -292,6 +298,7 @@
     const sec = form.unit.selectedOptions && form.unit.selectedOptions[0];
     const f = getFood(form.dataset.id);
     const it = { id: form.dataset.id, n: f ? f.n : '', g: Math.round(g * 10) / 10 };
+    if (f && f.vb) it.s = DA.vb.anlik(f);
     if (sec && sec.dataset.ad && isFinite(amt) && amt > 0) { it.o = sec.dataset.ad; it.a = Math.round(amt * 100) / 100; }
     return it;
   }
@@ -386,6 +393,9 @@
     if (!DA.data.porsiyonBesin || !DA.data.hedef) {
       DA.need(['porsiyonBesin', 'hedef']).then(() => { DA.foodsInvalidate(); DA.render(true); }).catch(() => {});
     }
+    /* Veri bankası besini varsa banka arka planda yüklenir; o arada anlık görüntü yeter */
+    const vbGerek = DA.vb ? DA.vb.gerekenler([m]) : [];
+    if (vbGerek.length) DA.vb.yukle(vbGerek).then(() => { if (location.hash.replace(/^#\/?/, '') === 'menu/' + id) DA.render(true); });
     const t = menuTotals(m), tg = targetOf(m);
     const pct = (a, b) => (b > 0 ? Math.min(100, a / b * 100) : 0);
     /* Toplam kartı (referanstaki "Your Macros Today"): solda planlanan ve
@@ -415,9 +425,10 @@
         const list = m.meals[k] || [], mt = mealTotals(list);
         return '<div class="card"><div class="row between"><h2 class="ogun-bas">' + DA.ogunIkon(k) + k + '</h2><span class="small muted">' + (list.length ? fmt(mt.kcal, 0) + ' kcal' : '') + '</span></div>' +
           list.map((it, i) => {
-            const f = getFood(it.id), n = itemNut(it);
+            const f = ogeBesin(it), n = itemNut(it);
             const olcu = olcuYazi(it);
-            return '<div class="res"><button class="l duzen" data-act="menuItemEdit" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="' + esc((f ? f.n : it.n) + ' — miktarı düzenle') + '">' + esc(f ? f.n : it.n) + '<span class="sub">' + (olcu ? esc(olcu) + ' · ' : '') + fmt(it.g, 0) + ' g' + (f ? '' : ' · besin veritabanında yok') + '</span></button><span class="v" style="font-size:15px">' + fmt(n.kcal, 0) + ' kcal <button class="iconbtn" style="width:36px;height:36px" data-act="menuDelItem" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="Sil">' + DA.icon('trash') + '</button></span></div>';
+            const kaynak = /^vb-bls-/.test(it.id) ? ' · BLS' : /^vb-tk-/.test(it.id) ? ' · TürKomp' : '';
+            return '<div class="res"><button class="l duzen" data-act="menuItemEdit" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="' + esc((f ? f.n : it.n) + ' — miktarı düzenle') + '">' + esc(f ? f.n : it.n) + '<span class="sub">' + (olcu ? esc(olcu) + ' · ' : '') + fmt(it.g, 0) + ' g' + kaynak + (f ? '' : ' · besin veritabanında yok') + '</span></button><span class="v" style="font-size:15px">' + fmt(n.kcal, 0) + ' kcal <button class="iconbtn" style="width:36px;height:36px" data-act="menuDelItem" data-m="' + m.id + '" data-k="' + esc(k) + '" data-i="' + i + '" aria-label="Sil">' + DA.icon('trash') + '</button></span></div>';
           }).join('') +
           '<div class="grid2 mt-s"><button class="btn sec sm block" data-act="menuAdd" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('plus') + ' Besin ekle</button>' +
           '<button class="btn ghost sm block" data-act="menuSablon" data-m="' + m.id + '" data-k="' + esc(k) + '">' + DA.icon('cards') + ' Şablon</button></div></div>';
@@ -427,6 +438,7 @@
       danisanSecimi(m) + '</div>' +
       '<label class="fld"><span>Notlar / öneriler</span><textarea data-live="menuMeta" data-f="note" data-m="' + m.id + '" placeholder="Su tüketimi, pişirme yöntemi, öneriler…">' + esc(m.note) + '</textarea></label>' +
       '<button class="btn sec block" data-act="menuTarget" data-m="' + m.id + '">Günlük hedefi düzenle (' + fmt(tg.kcal, 0) + ' kcal)</button></div>' +
+      '<a class="btn sec block mb" href="#/analiz/' + m.id + '">' + DA.icon('bars') + ' Ayrıntılı besin analizi</a>' +
       '<div class="grid2"><a class="btn block" href="#/yazdir/menu/' + m.id + '">' + DA.icon('share') + ' PDF / Paylaş</a><button class="btn ghost block" data-act="menuCopy" data-m="' + m.id + '">Kopyala</button></div>' +
       '<button class="btn danger block mt" data-act="menuDelete" data-m="' + m.id + '">Menüyü sil</button>';
     return { title: m.title, tab: 'besin', back: 'menu', html };
@@ -526,17 +538,40 @@
   let pickQ = '';
   DA.actions.menuAdd = (el) => {
     pickQ = '';
-    DA.sheet(el.dataset.k + ' — besin ekle', '<input type="search" placeholder="Besin ara…" data-live="pickSearch" data-m="' + el.dataset.m + '" data-k="' + esc(el.dataset.k) + '"><div id="pickList" class="list mt-s"></div>',
-      () => { fillPick(el.dataset.m, el.dataset.k); });
+    DA.sheet(el.dataset.k + ' — besin ekle', '<input type="search" placeholder="Besin ara…" data-live="pickSearch" data-m="' + el.dataset.m + '" data-k="' + esc(el.dataset.k) + '"><div id="pickList" class="mt-s"></div>',
+      () => {
+        fillPick(el.dataset.m, el.dataset.k);
+        /* Veri bankaları arka planda yüklenir (BLS ve cihazdaki TürKomp); arama
+           sonuçları gelince liste yenilenir. */
+        if (!DA.vb) return;
+        const eksik = DA.vb.kaynaklar().filter((T) => !T.veri()).map((T) => T.id);
+        if (eksik.length) DA.vb.yukle(eksik).then(() => { if (DA.$('#pickList')) fillPick(el.dataset.m, el.dataset.k); });
+      });
   };
   function fillPick(mid, k) {
     const q = DA.trLower(pickQ), items = allFoods().filter((f) => !q || DA.trLower(f.n).includes(q)).slice(0, 60);
-    DA.$('#pickList').innerHTML = items.length ? items.map((f) => '<button class="li" data-act="pickFood" data-id="' + esc(f.id) + '" data-m="' + mid + '" data-k="' + esc(k) + '">' + DA.besinIkon(f.cat) + '<span class="grow"><div class="t">' + esc(f.n) + '</div><div class="s">' + esc(f.cat) + '</div></span><span class="end">' + fmt(f.kcal, 0) + ' kcal</span></button>').join('') : '<div class="empty">Bulunamadı</div>';
+    const satir = (id, n, alt, kcal, ikon) => '<button class="li" data-act="pickFood" data-id="' + esc(id) + '" data-m="' + mid + '" data-k="' + esc(k) + '">' +
+      ikon + '<span class="grow"><div class="t">' + esc(n) + '</div><div class="s">' + esc(alt) + '</div></span><span class="end">' + fmt(kcal, 0) + ' kcal</span></button>';
+    let h = items.length ? '<div class="list">' + items.map((f) => satir(f.id, f.n, f.cat, f.kcal, DA.besinIkon(f.cat))).join('') + '</div>' : '';
+    /* Uygulamanın 124 besininde olmayan besin veri bankalarında aranır */
+    if (DA.vb && q.trim().length >= 2) {
+      DA.vb.kaynaklar().filter((T) => T.veri()).forEach((T) => {
+        const bul = DA.vb.ara(T.id, pickQ).slice(0, 8);
+        if (!bul.length) return;
+        h += '<div class="sect">' + esc(T.ad) + '</div><div class="list">' + bul.map((i) => {
+          const f = DA.vb.besin('vb-' + T.onek + '-' + T.veri().b[i][0]);
+          return f ? satir(f.id, f.n, T.ad + (f.eksik.length ? ' · makro verisi eksik' : ''), f.kcal, DA.besinIkon('')) : '';
+        }).join('') + '</div>';
+      });
+    }
+    DA.$('#pickList').innerHTML = h || '<div class="empty">Bulunamadı</div>';
   }
   DA.live.pickSearch = (el) => { pickQ = el.value; fillPick(el.dataset.m, el.dataset.k); };
   DA.actions.pickFood = (el) => {
     const f = getFood(el.dataset.id), mid = el.dataset.m, k = el.dataset.k;
-    DA.sheet(f.n, '<form id="amtForm" data-id="' + esc(f.id) + '" data-m="' + mid + '" data-k="' + esc(k) + '" onsubmit="return false"><div class="grid2"><label class="fld"><span>Miktar</span><input type="text" inputmode="decimal" name="amt" value="1" data-live="amt"></label>' +
+    if (!f) return DA.toast('Besin bulunamadı');
+    /* Veri bankası besininde ev ölçüsü yok, birim gram: 1 g yerine 100 g ile açılır */
+    DA.sheet(f.n, '<form id="amtForm" data-id="' + esc(f.id) + '" data-m="' + mid + '" data-k="' + esc(k) + '" onsubmit="return false"><div class="grid2"><label class="fld"><span>Miktar</span><input type="text" inputmode="decimal" name="amt" value="' + (f.vb ? '100' : '1') + '" data-live="amt"></label>' +
       '<label class="fld"><span>Birim</span><select name="unit" data-live="amt">' + unitOptions(f) + '</select></label></div><div id="amtPrev"></div>' +
       '<button class="btn block mt" data-act="pickConfirm">' + esc(k) + ' öğününe ekle</button></form>',
       () => { const form = DA.$('#amtForm'); form.unit.value = f.u.length ? String(f.u[0][1]) : '1'; updatePreview(); });
@@ -558,8 +593,15 @@
   };
   DA.actions.menuItemEdit = (el) => {
     const o = ogeBul(el.dataset); if (!o) return;
-    const f = getFood(o.it.id);
+    const f = ogeBesin(o.it);
     if (!f) return DA.toast('Bu besin veritabanında yok; silip yeniden ekleyebilirsin');
+    /* Miktar formu besinin tamamını ister: veri bankası henüz yüklenmediyse önce yüklenir */
+    if (f.anlik) {
+      return DA.vb.yukle(DA.vb.gerekenler([o.m])).then(() => {
+        if (getFood(o.it.id)) DA.actions.menuItemEdit(el);
+        else DA.toast('Bu besinin veri bankası (' + (/^vb-tk-/.test(o.it.id) ? 'TürKomp' : 'BLS') + ') bu cihazda yok');
+      });
+    }
     const veri = 'data-m="' + esc(o.m.id) + '" data-k="' + esc(el.dataset.k) + '" data-i="' + o.i + '"';
     DA.sheet(f.n, '<form id="amtForm" data-id="' + esc(f.id) + '" ' + veri + ' onsubmit="return false"><div class="grid2">' +
       '<label class="fld"><span>Miktar</span><input type="text" inputmode="decimal" name="amt" value="' + esc(fmt(o.it.o ? o.it.a : o.it.g, 2)) + '" data-live="amt"></label>' +
