@@ -45,7 +45,7 @@ const ROTALAR = [
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
   '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
   '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw',
-  '#/hesapla/toplumenu', '#/yazdir/toplu', '#/ilerleme/c1'
+  '#/hesapla/toplumenu', '#/yazdir/toplu', '#/ilerleme/c1', '#/bls', '#/bls/G561100', '#/bls/S151000'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -114,7 +114,9 @@ function ornekDurum(tema) {
   await sayfa.goto(B, { waitUntil: 'networkidle' });
   await sayfa.evaluate(ornekDurum, 'light');
   /* Bütün tembel veri dosyaları yüklensin ki veri testleri tamamını görsün */
-  await sayfa.evaluate(() => DA.needAll());
+  /* needAll ağır verileri (BLS) bilerek atlar; veri bütünlüğü testi her
+     tembel anahtarın gerçekten dolduğunu denetlediği için onlar da yüklenir. */
+  await sayfa.evaluate(() => DA.needAll().then(() => DA.need(DA.LAZY_AGIR)));
   await sayfa.addScriptTag({ path: path.join(__dirname, 'testler.js') });
 
   /* ---- 1. hesaplayıcı + veri testleri ---- */
@@ -465,6 +467,11 @@ function ornekDurum(tema) {
   await sayfa.goto(B, { waitUntil: 'networkidle' });
   await sayfa.evaluate(ornekDurum, 'light');
   await sayfa.evaluate(() => DA.needAll());   /* tembel ekranlar gerçek içerikle çizilsin */
+  /* needAll BLS'yi (~2,8 MB) yüklememeli: genel aramada tek harf yazmak
+     telefonda megabaytlarca veri ayrıştırtıyordu. */
+  uiEkle('Genel arama (needAll) BLS’yi yüklemiyor', 'false|false', await sayfa.evaluate(() =>
+    !!document.querySelector('script[src="js/data-bls.js"]') + '|' + !!DA.data.bls));
+  await sayfa.evaluate(() => DA.need(['bls', 'blsSozluk', 'blsKoken']));
   const a11y = await sayfa.evaluate(() => {
     const kucuk = [];
     const say = (yol) => {
@@ -481,7 +488,7 @@ function ornekDurum(tema) {
     };
     /* chip, stepper, kilit ve segment düğmelerinin hepsinin görüldüğü rota kümesi */
     ['ana', 'hesapla', 'hesapla/degisim', 'hesapla/vejetaryen', 'hesapla/enerjiref',
-      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha', 'liste', 'liste/ll'].forEach(say);
+      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha', 'liste', 'liste/ll', 'bls', 'bls/G561100'].forEach(say);
     return kucuk;
   });
   kosulUi('Dokunma hedefleri en az 44 px', a11y.length === 0, a11y.slice(0, 3).join(' · '));
@@ -2264,6 +2271,167 @@ function ornekDurum(tema) {
   uiEkle('IDDSI: 0–7 düzey sırayla', '01234567', idd.duzey);
   uiEkle('IDDSI: akış ve parça eşikleri (0, 2, 5, 6)', 'true,true,true,true', [idd.d0, idd.d2, idd.d5, idd.d6].join(','));
   uiEkle('IDDSI: CC BY-SA atfı ve türev notu', true, idd.atif);
+
+  /* ---- BLS 4.0 veri bankası ----
+     Beklenen değerler kaynak dosyadan (BLS_4_0_Daten_2025_DE.xlsx) elle
+     okundu; uygulamadan türetilmedi:
+       C131000 Oat whole grain, raw   ENERCC 343 · WATER 11.45
+       G561100 Tomato raw             ENERCC 22 · FAT 0.11 · VITB6 68 µg · CU 40 µg
+                                      MN 110 µg · NA 4 mg · PHE 0.024 g · LACS "<LOD or <LOQ"
+                                      OLSAC "-" · MO "-"   (eksik iki öge)
+       M111300 Whole milk 3.5 %       PHE 0.16 g
+       N500900 Coffee substitute pwd  CARTB "TR"
+       S151000 Glucose syrup          ENERCC 413 · OLSAC 47.7
+       C133000 Oat flakes             STARCH kökeni "Übernommener Wert"
+     Birim çevirileri elle: B6 68 µg = 0,068 mg; Cu 40 µg = 0,04 mg;
+       Mn 110 µg = 0,11 mg; Phe 0,024 g = 24 mg; süt 0,16 g = 160 mg.
+     150 g domates: 22 × 1,5 = 33 kcal; yağ 0,11 × 1,5 = 0,165 g;
+       tuz 4 mg × 2,5 / 1000 × 1,5 = 0,015 g.
+     Glukoz şurubu: oligosakkariti yalnız CHO'da saymak 413 − 2 × 47,7 = 317,6 → 318 kcal.
+     Sıralamalar kaynakta Python ile ayrıca hesaplandı:
+       kalsiyum en çok (100 g): R231000 Basil dried 2240 mg
+       kalsiyum en çok (100 kcal, ENERCC ≥ 10): G261132 Stinging nettle boiled 1606,98 → 1607
+       iyotu dolu besin: 6288 (7140 − 852 eksik)
+       \bchicken + \bbreast + \braw: V416100, V421000, V4A6100
+       F grubunda \bapple: 14
+       \b(brine cheese|feta): M012200, M052000, M053000, M3A4300, M6A6800 */
+  const bls = await sayfa.evaluate(async () => {
+    await DA.need(['bls', 'blsSozluk', 'blsKoken']);
+    const o = {}, B = DA.data.bls, bul = (k) => B.b.find((r) => r[0] === k), d = DA.bls.deger;
+    const kod = (q, g) => DA.bls.ara(q, g).map((i) => B.b[i][0]);
+    o.sayi = B.b.length + '|' + B.oge.length + '|' + B.b.every((r) => r.length === B.oge.length + 2);
+    const yulaf = bul('C131000'), dom = bul('G561100');
+    o.yulaf = [d(yulaf, 'kcal'), d(yulaf, 'su')].join('|');
+    o.cevir = [d(dom, 'b6'), d(dom, 'cu'), d(dom, 'mn'), d(dom, 'phe'), d(bul('M111300'), 'phe')].join('|');
+    o.ozel = [d(dom, 'laktoz'), String(d(dom, 'oligo')), String(d(dom, 'mo')), d(bul('N500900'), 'bkaroten')].join('|');
+    /* Sözlükte her seçenek en az bir besinde geçmeli; ölü seçenek aramayı sessizce boşaltır */
+    const S = DA.data.blsSozluk, adlar = B.b.map((r) => r[1]), olu = [];
+    Object.keys(S.s).forEach((k) => S.s[k].split('|').forEach((a) => {
+      if (!adlar.some((x) => new RegExp('\\b(?:' + a + ')', 'i').test(x))) olu.push(k + '→' + a);
+    }));
+    Object.keys(S.grup).forEach((g) => S.grup[g].forEach((k) => { if (!S.s[k]) olu.push('grup ' + g + ':' + k); }));
+    o.olu = olu.join(' ');
+    o.domates = kod('domates')[0];
+    o.yarim = kod('doma')[0];
+    o.tavukGogus = kod('tavuk göğüs çiğ').slice().sort().join(',');
+    o.beyazPeynir = kod('beyaz peynir').slice().sort().join(',');
+    /* Her sıralama kuralını tek başına sabitleyen örnekler: kural kaldırılınca
+       ilk sonuç değişiyor (mutasyonla bulundu, parantezde kuralsız sonuç). */
+    o.kurallar = [
+      kod('makarna')[0],      /* baş eşleşmesi: Pasta egg-free (Egg pasta raw) */
+      kod('susam')[0],        /* doğal grup H: Sesame seed (Sesame oil) */
+      (kod('turşu')[0] || '-')[0],     /* karışık yemek geride: sebze turşusu (Pickled herring in cream sauce) */
+      kod('keçi')[0],         /* tam kelime: Goat meat (Goatfish) */
+      kod('bezelye')[0],      /* çiğ hâli: Pea green, raw (Pea flour) */
+      kod('mercimek')[0],     /* asıl anlam: Lentil mature (Lentil flour) */
+      kod('böbrek')[0],       /* sözlük: böbrek, barbunya (Kidney bean) değil */
+      (kod('su')[0] || '-')[0]  /* sözlük: su, karpuz (Watermelon) değil */
+    ].join('|');
+    /* Sözlük sınırları: grup tercihi ilk sonucu zaten doğru getiriyor, bu yüzden
+       listenin TAMAMI denetlenir. Kidney bean barbunyadır, böbrek değil;
+       \bwater karpuzu (Watermelon) da bulurdu. Mutasyonla bulundu: yalnız ilk
+       sonuca bakan sürüm sözlükteki sınırı ölçmüyordu. */
+    o.sinir = (kod('böbrek').indexOf('H742100') < 0) + '|' + (kod('su').indexOf('F535100') < 0);
+    o.katlanmis = kod('ispanak')[0] + '|' + kod('sogan')[0];
+    o.yumurta = kod('yumurta')[0];
+    o.tavuk = (B.b[DA.bls.ara('tavuk')[0]] || [])[1];
+    /* boş liste every() ile doğru döner; üç sonuç olduğu da denetlenir */
+    o.sut = kod('süt').slice(0, 3).filter((k) => k[0] === 'M').length === 3;
+    o.kodla = kod('G561100').join(',');
+    o.ingilizce = kod('tomato')[0];
+    o.elmaF = kod('apple', 'F').length + '|' + kod('apple', 'F').every((k) => k[0] === 'F');
+    /* ekran: liste ve sıralama */
+    const bekle = (sec) => new Promise((ok) => { const b = () => (document.querySelector(sec) ? ok() : setTimeout(b, 20)); b(); });
+    const S0 = DA.state();
+    S0.ui.bls = {};
+    /* Veri yukarıda yüklendi, çizim eşzamanlı. #blsListe beklenseydi sonuç
+       çıkmayan bir hatada test zaman aşımına düşüp çökerdi; çıktı kabı beklenir. */
+    location.hash = 'bls?q=domates'; DA.render(false);
+    await bekle('#blsOut');
+    o.paramIlk = (document.querySelector('#blsListe a.li') || {}).getAttribute && document.querySelector('#blsListe a.li').getAttribute('href');
+    const inp = document.querySelector('input[data-live=blsAra]');
+    inp.value = 'kaşar'; DA.live.blsAra(inp);
+    o.kasar = /“kaşar” BLS’de birebir yok.*en yakın ürünler/.test(document.querySelector('#blsOut').textContent);
+    inp.value = 'pastırma'; DA.live.blsAra(inp);
+    o.pastirma = /“pastırma” BLS’de birebir yok/.test(document.querySelector('#blsOut').textContent) && !document.querySelector('#blsListe');
+    inp.value = ''; DA.live.blsAra(inp);
+    S0.ui.bls = { s: 'ca', yon: 'cok', baz: 'g' }; DA.render(true);
+    const ilk = () => { const a = document.querySelector('#blsListe a.li'); return a ? a.getAttribute('href') + ' ' + a.querySelector('.end').textContent : '(liste yok)'; };
+    o.caG = ilk();
+    S0.ui.bls.baz = 'kcal'; DA.render(true);
+    o.caKcal = ilk();
+    S0.ui.bls = { s: 'iyot', yon: 'az', baz: 'g' }; DA.render(true);
+    o.iyotSay = document.querySelector('#blsSay').textContent.split(' · ')[0];
+    S0.ui.bls = { g: 'F' }; DA.render(true);
+    inp.value = 'apple';
+    const inp2 = document.querySelector('input[data-live=blsAra]'); inp2.value = 'apple'; DA.live.blsAra(inp2);
+    o.grupSay = document.querySelector('#blsSay').textContent;
+    inp2.value = ''; DA.live.blsAra(inp2);
+    /* bozuk ayar ekranı kilitlememeli, varsayılana dönmeli */
+    S0.ui.bls = 'bozuk'; DA.render(true);
+    o.bozuk1 = (document.querySelector('#blsSay') || {}).textContent;
+    S0.ui.bls = { g: 'Z', s: 'yok', yon: 'x', baz: 'y' }; DA.render(true);
+    o.bozuk2 = (document.querySelector('#blsSay') || {}).textContent + '|' + JSON.stringify(S0.ui.bls);
+    S0.ui.bls = {};
+    /* ekran: ayrıntı */
+    location.hash = 'bls/G561100'; DA.render(false);
+    await bekle('#blsDeger');
+    const g = document.querySelector('input[data-live=blsGram]'); g.value = '150'; DA.live.blsGram(g);
+    const satir = (ad) => { const tr = Array.from(document.querySelectorAll('#blsDeger tr')).find((x) => x.cells[0].textContent.trim() === ad); return tr ? tr.cells[1].textContent.trim() : '(satır yok: ' + ad + ')'; };
+    const kok = (ad) => { const tr = Array.from(document.querySelectorAll('#blsDeger tr')).find((x) => x.cells[0].textContent.trim() === ad); return tr && tr.cells[2] ? tr.cells[2].textContent + (tr.cells[2].classList.contains('benzer') ? '!' : '') : '-'; };
+    o.detay = [satir('Enerji'), satir('Yağ'), satir('Tuz eşdeğeri (Na × 2,5)'), satir('Molibden'), satir('Laktoz')].join('|');
+    g.value = '100'; DA.live.blsGram(g);
+    o.detay100 = [satir('B6 vitamini'), satir('Bakır'), satir('Fenilalanin')].join('|');
+    o.kokEnerji = kok('Enerji');
+    o.oligoYok = !document.querySelector('#blsOligo');
+    location.hash = 'bls/C133000'; DA.render(false);
+    await bekle('#blsDeger');
+    o.kokBenzer = kok('Nişasta');
+    location.hash = 'bls/S151000'; DA.render(false);
+    await bekle('#blsDeger');
+    o.oligo = /47,7 g kullanılabilir oligosakkarit.*413 kcal.*318 kcal/.test((document.querySelector('#blsOligo') || {}).textContent || '') &&
+      !!document.querySelector('#blsOligo a[href="#/daha/kaynaknot?e=bls"]');
+    location.hash = 'bls/YOK0000'; DA.render(false);
+    o.yokKod = /Besin bulunamadı/.test(document.querySelector('#app').textContent);
+    /* genel arama BLS'yi yüklemez, kelimeyi BLS ekranına taşır */
+    location.hash = 'ara'; DA.render(false);
+    const ga = document.querySelector('input[data-live=gSearch]'); ga.value = 'domates'; DA.live.gSearch(ga);
+    o.genel = !!document.querySelector('#gOut a[href="#/bls?q=domates"]');
+    return o;
+  });
+  uiEkle('BLS: 7140 besin, 68 öge, satırlar tam', '7140|68|true', bls.sayi);
+  uiEkle('BLS: kaynak değerleri aynen (yulaf enerji, su)', '343|11.45', bls.yulaf);
+  uiEkle('BLS: B6, Cu, Mn µg→mg; Phe g→mg', '0.068|0.04|0.11|24|160', bls.cevir);
+  uiEkle('BLS: ölçüm sınırı altı, eksik, eser ayrı kodlanıyor', '<|undefined|undefined|iz', bls.ozel);
+  uiEkle('BLS sözlüğü: ölü seçenek ya da tanımsız grup anahtarı yok', '', bls.olu);
+  uiEkle('BLS arama: "domates" önce çiğ domates', 'G561100', bls.domates);
+  uiEkle('BLS arama: yarım kelime ("doma") tamamlanıyor', 'G561100', bls.yarim);
+  uiEkle('BLS arama: çok kelimeli ("tavuk göğüs çiğ")', 'V416100,V421000,V4A6100', bls.tavukGogus);
+  /* "beyaz" + "peynir" ayrı ayrı aransaydı beyaz peynirli üç yemek çıkardı (X455013, X533042, Y782613) */
+  uiEkle('BLS arama: çok kelimeli anahtar tek kavram ("beyaz peynir")', 'M012200,M052000,M053000,M3A4300,M6A6800', bls.beyazPeynir);
+  uiEkle('BLS arama: Türkçe harfsiz yazım (ispanak, sogan)', 'G211100|G480100', bls.katlanmis);
+  uiEkle('BLS arama: asıl anlam önce ("yumurta" → tavuk yumurtası)', 'E111100', bls.yumurta);
+  uiEkle('BLS arama: "tavuk" önce tavuk eti', true, /^Chicken meat/.test(bls.tavuk || ''));
+  uiEkle('BLS arama: "süt" ilk üçü süt grubundan', true, bls.sut);
+  uiEkle('BLS arama: sıralama kuralları (baş, grup, karışık, tam kelime, çiğ, asıl; böbrek, su)',
+    'E401000|H420100|G|V122100|G760100|H725100|V571100|N', bls.kurallar);
+  uiEkle('BLS sözlüğü: böbrekte barbunya, suda karpuz yok', 'true|true', bls.sinir);
+  uiEkle('BLS arama: BLS koduyla ve İngilizce', 'G561100|G561100', bls.kodla + '|' + bls.ingilizce);
+  uiEkle('BLS arama: grup süzgeci', '14|true', bls.elmaF);
+  uiEkle('BLS: genel aramadan gelen kelime uygulanıyor', '#/bls/G561100', bls.paramIlk);
+  uiEkle('BLS: birebir karşılığı olmayan üründe uyarı (kaşar, pastırma)', 'true|true', bls.kasar + '|' + bls.pastirma);
+  uiEkle('BLS sıralama: kalsiyum 100 g’da', '#/bls/R231000 2240 mg', bls.caG);
+  uiEkle('BLS sıralama: kalsiyum 100 kcal başına (10 kcal altı dışarıda)', '#/bls/G261132 1607 mg', bls.caKcal);
+  uiEkle('BLS sıralama: eksik değerli besin listeye girmiyor', '6288 besin', bls.iyotSay);
+  uiEkle('BLS: grup + arama sayacı', '14 besin', bls.grupSay);
+  uiEkle('BLS: bozuk ayar (metin) varsayılana dönüyor', '7140 besin', bls.bozuk1);
+  uiEkle('BLS: tanınmayan grup/öge/yön/ölçü varsayılana dönüyor', '7140 besin|{"g":"","s":"","yon":"cok","baz":"g"}', bls.bozuk2);
+  uiEkle('BLS ayrıntı: 150 g (enerji, yağ, tuz, eksik, sınır altı)', '33kcal|0,165g|0,015g|veri yok|ölçüm sınırı altı', bls.detay);
+  uiEkle('BLS ayrıntı: çevrilmiş birimler ekranda', '0,068mg|0,04mg|24mg', bls.detay100);
+  uiEkle('BLS ayrıntı: değer kökeni (formül; benzer besinden işaretli)', 'formül|benzer besinden!', bls.kokEnerji + '|' + bls.kokBenzer);
+  uiEkle('BLS ayrıntı: oligosakkarit uyarısı ve kaynak notu bağlantısı', 'true|true', bls.oligo + '|' + bls.oligoYok);
+  uiEkle('BLS ayrıntı: bilinmeyen kodda boş durum', true, bls.yokKod);
+  uiEkle('Genel arama BLS ekranına yönlendiriyor', true, bls.genel);
 
   /* ---- toplu beslenme menü taslağı ----
      Elle, Ulusal Menü Rehberi Tablo 4.5'ten (21 gün; [azami kış, yaz, asgari

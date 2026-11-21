@@ -51,6 +51,13 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   değiştirilir, denetim anında yenilenir; Gün | Sabah | Öğle | Akşam tablosu olarak PDF
 - Besin veritabanı (124 besin) ve öğün öğün menü planlayıcı, PDF/paylaş; besinin miktarı ve ölçüsü
   sonradan düzenlenir, çıktıya ev ölçüsü basılır ("3 dilim (75 g)")
+- BLS 4.0 veri bankası (Bundeslebensmittelschlüssel, Max Rubner-Institut 2025; ücretsiz, uygulamada
+  kullanımı belgesinde açıkça izinli): 7.140 besin, 68 öge (makrolar, şekerler, posa türleri, yağ
+  asitleri, EPA/DHA, kolesterol, 17 vitamin, 14 mineral, 11 amino asit). Türkçe arama sözlüğüyle
+  ("tavuk göğüs çiğ", "ıspanak", "beyaz peynir"); besin ögesine göre sıralama, 100 g ya da 100 kcal
+  başına (besin yoğunluğu); gram girilerek ayrıntı. Eksik değer "veri yok" yazılır, sıfır sayılmaz;
+  her değerin kökeni (analiz, literatür, tarif hesabı, benzer besinden…) gösterilir. Veri ~2,2 MB,
+  yalnız bu ekran açılınca yüklenir. Üretim: `python3 tools/bls_cevir.py BLS_4_0_Daten_2025_DE.xlsx`
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
   eşleme, gece peynir/peynir-ekmek yok, bulgur pilavının yanına ekmek yok, meyve ara öğünde;
   çorba ve sıvılar başa, ekmek sona — tek dokunuşla yazım sırasına dizme (geri alınabilir)

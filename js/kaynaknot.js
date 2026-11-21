@@ -55,7 +55,16 @@
          'Tablonun asgari toplamları 21 günde 1. grup için 20 (kış) / 19 (yaz), 2. grup için 21, 3. grup için 20 (+ garnitür yoğurt) ediyor: ' +
          'günde <b>bir 1., bir 2., bir 3. grup</b> yemeğine denk. Her gün dördüncü kap verilince 2. ya da 3. grubun azamileri aşılır. ' +
          'Taslak 1. ve 2. kapı asgari sayılarla dağıtır, 3. kapı asgariyle, 4. kapı azamiye oranla yayar; aralık yalnız 1. ve 2. grupta işaretlenir. ' +
-         'Yazın etli kuru baklagil asgarisi tabloda “–”: 0 alındı. Kış/yaz sınırı okunan kısımda yok; Nisan–Eylül yaz varsayıldı.' }
+         'Yazın etli kuru baklagil asgarisi tabloda “–”: 0 alındı. Kış/yaz sınırı okunan kısımda yok; Nisan–Eylül yaz varsayıldı.' },
+    { id: 'blsOlsac', kaynak: 'BLS 4.0 (Max Rubner-Institut, 2025)', ek: 'Components dosyası ENERCC formülü; Dokumentation 5.2',
+      t: 'Oligosakkarit enerjisi iki kez sayılıyor görünüyor', tip: 'Şüpheli değer', ekran: ['bls'],
+      n: 'Bileşen dosyasındaki enerji formülü kullanılabilir karbonhidratı (CHO) 4 kcal/g sayıyor ve <b>ayrıca 2 × OLSAC</b> ekliyor; ' +
+         'oysa CHO tanımı (CHO = şeker + nişasta + OLSAC + polyol) kullanılabilir oligosakkaritleri zaten içeriyor. ' +
+         'Böylece oligosakkarit 6 kcal/g sayılmış oluyor. Belgenin PDF’indeki formülde (5.2) OLSAC terimi hiç yok; ' +
+         'veri bileşen dosyasının formülüne uyuyor (OLSAC’ı 0,5 g’ı aşan 114 besinin tamamında). ' +
+         'En açık örnek glukoz şurubu (S151000): su 20,5 g, CHO 79,5 g, enerji <b>413 kcal</b>; saf şekerin 400 kcal’sinden fazla. ' +
+         'Yalnız CHO içinde sayılınca 318 kcal çıkıyor. 411 besinde OLSAC var, 64’ünde fark 5 kcal’yi aşıyor (çoğu şurup, şekerleme, malt özütü, bal). ' +
+         'Değerler <b>olduğu gibi aktarıldı, değiştirilmedi</b>; ayrıntı ekranı etkilenen besinde farkı ayrıca gösterir.' }
   ];
   DA.kaynakNot = NOT;
 

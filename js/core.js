@@ -586,8 +586,15 @@
     sporperf: ['js/data-sporperf.js'],
     degisim: ['js/data-degisim.js'],
     toplu: ['js/data-toplu.js'],
-    vejetaryen: ['js/data-vejetaryen.js']
+    vejetaryen: ['js/data-vejetaryen.js'],
+    bls: ['js/data-bls.js'],
+    blsSozluk: ['js/data-bls-sozluk.js'],
+    blsKoken: ['js/data-bls-koken.js']
   };
+  /* Genel arama needAll ile her şeyi yükler. BLS (~2,8 MB) ona dahil değil:
+     tek bir harf yazmak telefonda megabaytlarca veri ayrıştırtıyordu. Genel
+     arama BLS'yi kendi ekranına yönlendirir (js/search.js). */
+  DA.LAZY_AGIR = ['bls', 'blsSozluk', 'blsKoken'];
   const _yuklu = {};
   function script(src) {
     if (_yuklu[src]) return _yuklu[src];
@@ -606,7 +613,7 @@
     (keys || []).forEach((k) => { if (!DA.data[k]) (DA.LAZY[k] || []).forEach((f) => { if (src.indexOf(f) < 0) src.push(f); }); });
     return src.reduce((z, f) => z.then(() => script(f)), Promise.resolve());
   };
-  DA.needAll = () => DA.need(Object.keys(DA.LAZY));
+  DA.needAll = () => DA.need(Object.keys(DA.LAZY).filter((k) => DA.LAZY_AGIR.indexOf(k) < 0));
 
   /* ---- yönlendirici ---- */
   function parseHash() {

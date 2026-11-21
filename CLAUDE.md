@@ -162,7 +162,8 @@ da formül, gerçek bir insanın planına giriyor.
 
 - **Değer uydurma.** Kaynağı yoksa ekleme. Emin değilsen sor.
 - Kaynaklar: **TÜBER 2022** (Türkiye Beslenme Rehberi), **TEMD**, **WHO**
-  büyüme eğrileri, USDA. Her tablonun hangi Ek/Tablo numarasından geldiği
+  büyüme eğrileri, USDA, **BLS 4.0** (Alman ulusal besin veri tabanı; `js/data-bls.js`
+  araçla üretilir, elle düzenlenmez). Her tablonun hangi Ek/Tablo numarasından geldiği
   veri dosyasının başında yazılı olmalı.
 - **Kaynakta hata bulursan düzeltme — belgele.** `js/kaynaknot.js` bunun
   için var: birim hataları, şüpheli değerler, düzeltilenler. Her not ilgili
@@ -190,6 +191,8 @@ da formül, gerçek bir insanın planına giriyor.
 ## Araçlar
 
 - `tools/tuber_pdf_extract*.py` — TÜBER PDF'lerinden tablo çıkarma
+- `tools/bls_cevir.py` — BLS 4.0 xlsx → `js/data-bls.js` + `js/data-bls-koken.js`
+  (öge seçimi ve birim çevirileri dosyanın başındaki tabloda)
 - `tools/turkomp_scraper.py` — TürKomp besin veritabanı çekici
   (`--selftest` ile fixture üzerinde çalışır; **çekme işlemi kullanıcının
   kendi makinesinde koşmalı**, bu ortamın çıkış vekili o alan adlarını

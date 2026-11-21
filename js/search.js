@@ -82,14 +82,18 @@
       return h;
     }
     const items = hits();
-    if (!items.length) return '<div class="empty">' + icon('search') + '<div>“' + esc(q) + '” için sonuç yok.</div></div>';
+    /* BLS genel aramaya yüklenmez (2,8 MB); kelime BLS ekranına taşınır */
+    const bls = '<div class="sect">Geniş veri bankası</div><div class="list"><a class="li chev" href="#/bls?q=' +
+      encodeURIComponent(q.trim()) + '"><span class="ic">' + icon('book') + '</span><span class="grow"><div class="t">“' +
+      esc(q.trim()) + '” BLS 4.0’da ara</div><div class="s">7.140 besin, vitamin ve mineral değerleriyle</div></span></a></div>';
+    if (!items.length) return '<div class="empty">' + icon('search') + '<div>“' + esc(q) + '” için sonuç yok.</div></div>' + bls;
     let html = '', last = '';
     items.forEach((x) => {
       if (x.g !== last) { html += (last ? '</div>' : '') + '<div class="sect">' + esc(x.g) + '</div><div class="list">'; last = x.g; }
       html += '<a class="li chev" href="' + esc(x.h) + '"><span class="ic">' + icon(x.ico) + '</span>' +
         '<span class="grow"><div class="t">' + esc(x.t) + '</div><div class="s">' + esc(x.s) + '</div></span></a>';
     });
-    return html + '</div>';
+    return html + '</div>' + bls;
   }
 
   DA.live.gSearch = (el) => { q = el.value; DA.$('#gOut').innerHTML = listHtml(); };
