@@ -64,7 +64,14 @@
          'veri bileşen dosyasının formülüne uyuyor (OLSAC’ı 0,5 g’ı aşan 114 besinin tamamında). ' +
          'En açık örnek glukoz şurubu (S151000): su 20,5 g, CHO 79,5 g, enerji <b>413 kcal</b>; saf şekerin 400 kcal’sinden fazla. ' +
          'Yalnız CHO içinde sayılınca 318 kcal çıkıyor. 411 besinde OLSAC var, 64’ünde fark 5 kcal’yi aşıyor (çoğu şurup, şekerleme, malt özütü, bal). ' +
-         'Değerler <b>olduğu gibi aktarıldı, değiştirilmedi</b>; ayrıntı ekranı etkilenen besinde farkı ayrıca gösterir.' }
+         'Değerler <b>olduğu gibi aktarıldı, değiştirilmedi</b>; ayrıntı ekranı etkilenen besinde farkı ayrıca gösterir.' },
+    { id: 'turkompToplam', kaynak: 'TürKomp (cihaza içe aktarılan dosya)', ek: 'Ana bileşen toplamı',
+      t: 'Ana bileşenleri 100 g’ı tutmayan besinler', tip: 'Şüpheli değer', ekran: ['turkomp'],
+      n: 'Su, kül, protein, yağ, karbonhidrat, posa ve alkolün toplamı 100 g yenilebilir kısımda 100 g’a yakın olmalı. ' +
+         'Kasım 2026 dosyasında 645 besinin 23’ünde 2 g’dan fazla sapıyor. Bir kısmı açıklanabilir: tatlandırıcı ve diyabetik ' +
+         'ürünlerde şeker alkolleri ya da tatlandırıcı toplama girmiyor (ör. tablet tatlandırıcı 53,4 g). Bir kısmı ise hatalı değer ' +
+         'gösteriyor: koyun bağırsağı <b>125,9 g</b>, Erzurum kavurması <b>122,1 g</b>. TürKomp ayrıntı ekranı sapma 5 g’ı ' +
+         'aşınca uyarır. Değerler <b>olduğu gibi gösterilir, değiştirilmez</b>; kaynak sitesinden doğrulanmalı.' }
   ];
   DA.kaynakNot = NOT;
 

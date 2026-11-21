@@ -195,7 +195,11 @@
         /* Geniş veri bankası ayrı ekranda: 7.140 besin ve mikro besinler (js/bls.js) */
         '<div class="list"><a class="li chev" href="#/bls"><span class="ic">' + DA.icon('book') + '</span>' +
         '<span class="grow"><div class="t">BLS 4.0 veri bankası</div><div class="s">7.140 besin · vitamin, mineral, ' +
-        'yağ asidi ve amino asit · besin ögesine göre arama</div></span></a></div>' +
+        'yağ asidi ve amino asit · besin ögesine göre arama</div></span></a>' +
+        /* TürKomp uygulamayla gelmez, cihaza içe aktarılır (js/turkomp.js) */
+        '<a class="li chev" href="#/turkomp"><span class="ic">' + DA.icon('book') + '</span>' +
+        '<span class="grow"><div class="t">TürKomp</div><div class="s">Türk besinleri, 645 besin · ' +
+        'dosyandan bu cihaza yüklenir</div></span></a></div>' +
         '<input type="search" placeholder="Besin ara…" value="' + esc(query) + '" data-live="foodSearch" aria-label="Besin ara">' +
         '<div class="chips mt-s">' + cats.map((c) => '<button class="chip' + (c === cat ? ' on' : '') + '" data-act="foodCat" data-c="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' +
         '<div id="foodList">' + foodListHtml() + '</div>' +

@@ -58,6 +58,12 @@ Diyetetik öğrencileri ve diyetisyenler için ücretsiz, reklamsız, çevrimdı
   başına (besin yoğunluğu); gram girilerek ayrıntı. Eksik değer "veri yok" yazılır, sıfır sayılmaz;
   her değerin kökeni (analiz, literatür, tarif hesabı, benzer besinden…) gösterilir. Veri ~2,2 MB,
   yalnız bu ekran açılınca yüklenir. Üretim: `python3 tools/bls_cevir.py BLS_4_0_Daten_2025_DE.xlsx`
+- TürKomp (Ulusal Gıda Kompozisyon Veri Tabanı): 645 Türk besini, 104 öge, kaynaktaki en düşük–en
+  yüksek ölçüm aralığıyla. Açık lisansı olmadığı için uygulamayla gelmez: diyetisyen elindeki
+  `Turkomp_clean.json` dosyasını bir kez seçer, veri yalnız o cihazda IndexedDB'de durur (yedeğe
+  girmez). Dosya alan alan denetlenir; tek bozuk değer bütün dosyayı reddeder. BLS ile aynı ekranda,
+  üstteki seçiciyle geçilir. Ölçülmemiş öge "veri yok"; protein ya da yağı ölçülmemiş besinde ve
+  ana bileşenleri 100 g'ı tutmayan kayıtta uyarı
 - Menü yazım kuralları: ara öğünde ekmek yerine galeta, karbonhidratı protein ya da yağlı tohumla
   eşleme, gece peynir/peynir-ekmek yok, bulgur pilavının yanına ekmek yok, meyve ara öğünde;
   çorba ve sıvılar başa, ekmek sona — tek dokunuşla yazım sırasına dizme (geri alınabilir)

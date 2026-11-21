@@ -33,6 +33,8 @@ Bunlar tartışılmış kararlardır; değiştirmeden önce sor.
   beklemek için `await DA.depoBekle()`. Ek olarak `js/depo.js` her kayıtta
   ayrı IndexedDB'ye (`dyt-depo`) anlık kopya alır (son 12). Kasım 2026'da
   localStorage'dan taşındı.
+  Başvuru verisi ayrı: kullanıcının içe aktardığı TürKomp `dyt-veri` /
+  `banka` / `turkomp` (js/turkomp.js). Danışan kaydına ve yedeğe girmez.
 - **Sunucu yok, hesap yok, izleme yok.** Veri kullanıcının cihazından
   çıkmaz. Analitik, reklam, uzak uç nokta ekleme.
 - **Çevrimdışı:** `sw.js` tüm dosyaları önbelleğe alır (önce ağ, 3 sn,
@@ -163,7 +165,9 @@ da formül, gerçek bir insanın planına giriyor.
 - **Değer uydurma.** Kaynağı yoksa ekleme. Emin değilsen sor.
 - Kaynaklar: **TÜBER 2022** (Türkiye Beslenme Rehberi), **TEMD**, **WHO**
   büyüme eğrileri, USDA, **BLS 4.0** (Alman ulusal besin veri tabanı; `js/data-bls.js`
-  araçla üretilir, elle düzenlenmez). Her tablonun hangi Ek/Tablo numarasından geldiği
+  araçla üretilir, elle düzenlenmez). **TürKomp** açık lisanslı değil: depoya ve siteye
+  KONMAZ, kullanıcı kendi dosyasını cihaza içe aktarır. Testler sentetik
+  fixture'la (`tools/test/fixtures/turkomp-ornek.json`). Her tablonun hangi Ek/Tablo numarasından geldiği
   veri dosyasının başında yazılı olmalı.
 - **Kaynakta hata bulursan düzeltme — belgele.** `js/kaynaknot.js` bunun
   için var: birim hataları, şüpheli değerler, düzeltilenler. Her not ilgili

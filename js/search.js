@@ -82,10 +82,14 @@
       return h;
     }
     const items = hits();
-    /* BLS genel aramaya yüklenmez (2,8 MB); kelime BLS ekranına taşınır */
+    /* BLS genel aramaya yüklenmez (2,8 MB), TürKomp cihazdan ayrıca okunur;
+       kelime ikisinin ekranına taşınır */
     const bls = '<div class="sect">Geniş veri bankası</div><div class="list"><a class="li chev" href="#/bls?q=' +
       encodeURIComponent(q.trim()) + '"><span class="ic">' + icon('book') + '</span><span class="grow"><div class="t">“' +
-      esc(q.trim()) + '” BLS 4.0’da ara</div><div class="s">7.140 besin, vitamin ve mineral değerleriyle</div></span></a></div>';
+      esc(q.trim()) + '” BLS 4.0’da ara</div><div class="s">7.140 besin, vitamin ve mineral değerleriyle</div></span></a>' +
+      '<a class="li chev" href="#/turkomp?q=' + encodeURIComponent(q.trim()) + '"><span class="ic">' + icon('book') +
+      '</span><span class="grow"><div class="t">“' + esc(q.trim()) + '” TürKomp’ta ara</div><div class="s">Türk besinleri, ' +
+      'bu cihaza yüklendiyse</div></span></a></div>';
     if (!items.length) return '<div class="empty">' + icon('search') + '<div>“' + esc(q) + '” için sonuç yok.</div></div>' + bls;
     let html = '', last = '';
     items.forEach((x) => {

@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "source": "TürKomp biçiminde SENTETİK test dosyası — değerler uydurmadır, gerçek besin verisi değildir",
+    "basis": "100 g yenilebilir kısım",
+    "notes": ["Gerçek TürKomp verisi telif nedeniyle depoya konmaz; testler bu dosyayla çalışır."]
+  },
+  "nutrients": {
+    "kalsiyum_ca": { "name": "Kalsiyum, Ca", "unit": "mg", "food_count": 5 },
+    "enerji_kcal": { "name": "Enerji", "unit": "kcal", "food_count": 6 },
+    "yeni_oge": { "name": "Yeni öge", "unit": "mg", "food_count": 1 },
+    "yag_asidi_18_2_n_6_cis_cis": { "name": "Yağ asidi 18:2 n-6 cis,cis", "unit": "g", "food_count": 1 },
+    "kul": { "name": "Kül", "unit": "g", "food_count": 5 },
+    "su": { "name": "Su", "unit": "g", "food_count": 6 },
+    "protein": { "name": "Protein", "unit": "g", "food_count": 5 },
+    "yag_asidi_4_0_butirik_asit": { "name": "Yağ asidi 4:0 (bütirik asit)", "unit": "g", "food_count": 1 },
+    "yag_toplam": { "name": "Yağ, toplam", "unit": "g", "food_count": 5 },
+    "karbonhidrat": { "name": "Karbonhidrat", "unit": "g", "food_count": 6 },
+    "tuz": { "name": "Tuz", "unit": "mg", "food_count": 1 }
+  },
+  "foods": [
+    { "id": 1, "name": "Peynir, beyaz, deneme", "url": "",
+      "values": { "enerji_kcal": 300, "su": 50, "kul": 4, "protein": 20, "yag_toplam": 24, "karbonhidrat": 1, "kalsiyum_ca": 500, "tuz": 2500,
+        "yag_asidi_4_0_butirik_asit": 0.8, "yag_asidi_18_2_n_6_cis_cis": 0.5 },
+      "ranges": { "kalsiyum_ca": [400, 600] } },
+    { "id": 2, "name": "Peynir suyu", "url": "",
+      "values": { "enerji_kcal": 25, "su": 93, "kul": 0.5, "protein": 1, "yag_toplam": 0.2, "karbonhidrat": 5, "kalsiyum_ca": 50 } },
+    { "id": 3, "name": "Süt, çiğ, deneme", "url": "",
+      "values": { "enerji_kcal": 60, "su": 88, "kul": 0.7, "protein": 3.2, "yag_toplam": 3.3, "karbonhidrat": 4.8, "kalsiyum_ca": 120 } },
+    { "id": 4, "name": "Baharat, deneme", "url": "",
+      "values": { "enerji_kcal": 5, "su": 10, "karbonhidrat": 1, "kalsiyum_ca": 1000 } },
+    { "id": 5, "name": "Sakatat, deneme", "url": "",
+      "values": { "enerji_kcal": 345, "su": 70, "kul": 1, "protein": 30, "yag_toplam": 25, "karbonhidrat": 0, "yeni_oge": 7 } },
+    { "id": 6, "name": "<img src=x onerror=\"window.__tkXss=1\"> deneme", "url": "",
+      "values": { "enerji_kcal": 100, "su": 75, "kul": 1, "protein": 5, "yag_toplam": 4, "karbonhidrat": 11 } },
+    { "id": 7, "name": "Tost, peynir", "url": "",
+      "values": { "enerji_kcal": 270, "su": 40, "kul": 2, "protein": 10, "yag_toplam": 10, "karbonhidrat": 35 } }
+  ]
+}

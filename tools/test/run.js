@@ -45,7 +45,7 @@ const ROTALAR = [
   '#/danisan/c1', '#/menu/mm', '#/daha/sablon', '#/daha/kaynaknot',
   '#/yazdir/menu/mm', '#/yazdir/danisan/c1', '#/yazdir/degisim', '#/yazdir/ornekmenu/ek53',
   '#/liste', '#/liste/ll', '#/yazdir/liste/ll', '#/liste/hw0', '#/yazdir/hafta/hw',
-  '#/hesapla/toplumenu', '#/yazdir/toplu', '#/ilerleme/c1', '#/bls', '#/bls/G561100', '#/bls/S151000'
+  '#/hesapla/toplumenu', '#/yazdir/toplu', '#/ilerleme/c1', '#/bls', '#/bls/G561100', '#/bls/S151000', '#/turkomp'
 ];
 
 /* ---- küçük statik sunucu ---- */
@@ -488,7 +488,7 @@ function ornekDurum(tema) {
     };
     /* chip, stepper, kilit ve segment düğmelerinin hepsinin görüldüğü rota kümesi */
     ['ana', 'hesapla', 'hesapla/degisim', 'hesapla/vejetaryen', 'hesapla/enerjiref',
-      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha', 'liste', 'liste/ll', 'bls', 'bls/G561100'].forEach(say);
+      'hesapla/khdagilim', 'besin', 'danisan', 'menu', 'daha', 'liste', 'liste/ll', 'bls', 'bls/G561100', 'turkomp'].forEach(say);
     return kucuk;
   });
   kosulUi('Dokunma hedefleri en az 44 px', a11y.length === 0, a11y.slice(0, 3).join(' · '));
@@ -2361,11 +2361,11 @@ function ornekDurum(tema) {
     S0.ui.bls.baz = 'kcal'; DA.render(true);
     o.caKcal = ilk();
     S0.ui.bls = { s: 'iyot', yon: 'az', baz: 'g' }; DA.render(true);
-    o.iyotSay = document.querySelector('#blsSay').textContent.split(' · ')[0];
+    o.iyotSay = (document.querySelector('#blsSay') || { textContent: '(sayaç yok)' }).textContent.split(' · ')[0];
     S0.ui.bls = { g: 'F' }; DA.render(true);
     inp.value = 'apple';
     const inp2 = document.querySelector('input[data-live=blsAra]'); inp2.value = 'apple'; DA.live.blsAra(inp2);
-    o.grupSay = document.querySelector('#blsSay').textContent;
+    o.grupSay = (document.querySelector('#blsSay') || { textContent: '(sayaç yok)' }).textContent;
     inp2.value = ''; DA.live.blsAra(inp2);
     /* bozuk ayar ekranı kilitlememeli, varsayılana dönmeli */
     S0.ui.bls = 'bozuk'; DA.render(true);
@@ -3719,6 +3719,139 @@ function ornekDurum(tema) {
     swSurumEki = '';
     await swBag.close();
   }
+
+  /* ---- TürKomp: cihaza içe aktarma ----
+     Gerçek TürKomp verisi telif nedeniyle depoya girmez; testler SENTETİK
+     fixture ile (tools/test/fixtures/turkomp-ornek.json). Beklentiler elle:
+       öge sırası: makro (enerji, su, protein, yağ, KH, kül) → yağ asitleri
+         (4:0 < 18:2) → mineraller (tuz, kalsiyum) → tanınmayan "yeni_oge" sonda
+       ana bileşen toplamı: 1 → 50+4+20+24+1 = 99; 5 → 70+1+30+25+0 = 126 (uyarı);
+         6 → 75+1+5+4+11 = 96 (sapma 4 < 5, uyarı yok: sınır)
+       "peynir": 1 (21 harf −50 −30 −20 virgül = −79), 2 (11 −50 −30 = −69),
+         7 "Tost, peynir" (12 −30 −20 ad sonu = −38); baş eşleşmesi olmasa 7 öne geçer
+         (1: −29, 2: −19)
+       "deneme": 3 (16 −30 −20 −10 çiğ = −44) önce; çiğ bonusu olmasa 4 ve 5 (−35) önde
+       kalsiyum 100 g: 4 (1000), 3, 1, 2 → 4 besin (5 ve 6 ölçülmemiş)
+       kalsiyum 100 kcal: 4 dışarıda (5 kcal < 10); 2: 50/25 = 200, 3: 120/60 = 200,
+         1: 500/300 = 166,7 → eşitlikte ad sırası, ilk 2 "200 mg", 3 besin
+       1 besini 50 g: kalsiyum 250 mg, aralık 200–300, tuz 1250 mg */
+  const tkDosya = fs.readFileSync(path.join(__dirname, 'fixtures', 'turkomp-ornek.json'), 'utf8');
+  const tkBekle = (sec) => sayfa.waitForSelector(sec, { state: 'attached' });
+  /* Temiz başlangıç: önceki koşudan kalan kayıt silinir */
+  await sayfa.evaluate(() => DA.turkomp.sil());
+  await sayfa.evaluate(() => { location.hash = 'turkomp'; DA.render(false); });
+  await tkBekle('input[data-change=turkompDosya]');
+  const tkBos = await sayfa.evaluate(() => /bu cihaza henüz yüklenmedi/.test(document.querySelector('#app').textContent));
+  await sayfa.setInputFiles('input[data-change=turkompDosya]', { name: 'turkomp-ornek.json', mimeType: 'application/json', buffer: Buffer.from(tkDosya) });
+  await tkBekle('#blsListe');
+  const tk = await sayfa.evaluate((metin) => {
+    const o = {}, B = DA.data.turkomp;
+    o.say = (document.querySelector('#blsSay') || { textContent: '(sayaç yok)' }).textContent;
+    o.oge = B.oge.map((x) => x[0]).join(',');
+    o.grupSon = B.oge[B.oge.length - 1][4];
+    /* denetim: tek bozuk alan bütün dosyayı reddeder */
+    const J = () => JSON.parse(metin);
+    const den = (f) => { const j = J(); f(j); const r = DA.turkomp.donustur(j); return r.hata ? 'red' : 'kabul'; };
+    o.denetim = [
+      den((j) => { j.meta.source = 'Başka bir veri tabanı'; }),
+      den((j) => { j.foods[0].values.protein = '20'; }),
+      den((j) => { j.foods[0].values.protein = -1; }),
+      den((j) => { j.foods[0].values.bilinmeyen = 1; }),
+      den((j) => { j.foods[1].id = 1; }),
+      den((j) => { j.foods[0].ranges.kalsiyum_ca = [600, 400]; }),
+      den((j) => { j.foods[0].id = 'abc'; }),
+      den((j) => { j.nutrients['kötü anahtar'] = { name: 'x', unit: 'g' }; }),
+      den(() => {})
+    ].join(',');
+    const q = (s) => {
+      const i = document.querySelector('input[data-live=blsAra]'); i.value = s; DA.live.blsAra(i);
+      return Array.from(document.querySelectorAll('#blsListe a.li')).map((a) => a.getAttribute('href').split('/').pop());
+    };
+    o.peynir = q('peynir').join(',');
+    o.sut = q('sut').join(',');
+    o.deneme = q('deneme')[0];
+    o.xss = !document.querySelector('#blsListe img') && window.__tkXss === undefined && /<img src=x/.test(document.querySelector('#blsListe').textContent);
+    q('');
+    const S = DA.state();
+    S.ui.turkomp = { s: 'kalsiyum_ca', yon: 'cok', baz: 'g' }; DA.render(true);
+    const ilk = () => { const a = document.querySelector('#blsListe a.li'); return a ? a.getAttribute('href') + ' ' + a.querySelector('.end').textContent : '(liste yok)'; };
+    o.caG = ilk() + ' | ' + (document.querySelector('#blsSay') || { textContent: '(sayaç yok)' }).textContent.split(' · ')[0];
+    S.ui.turkomp.baz = 'kcal'; DA.render(true);
+    o.caKcal = ilk() + ' | ' + (document.querySelector('#blsSay') || { textContent: '(sayaç yok)' }).textContent.split(' · ')[0];
+    S.ui.turkomp = {};
+    o.secici = !!document.querySelector('#app a.chip[href="#/bls"]') && !document.querySelector('select[data-change=blsGrup]');
+    /* ayrıntı */
+    const ac = (id) => { location.hash = 'turkomp/' + id; DA.render(false); };
+    const satir = (ad) => { const tr = Array.from(document.querySelectorAll('#blsDeger tr')).find((x) => x.cells[0].textContent.trim() === ad);
+      return tr ? tr.cells[1].textContent.trim() + ' ' + tr.cells[2].textContent.trim() : '(satır yok: ' + ad + ')'; };
+    ac(1);
+    const g = document.querySelector('input[data-live=blsGram]'); g.value = '50'; DA.live.blsGram(g);
+    o.d1 = [satir('Kalsiyum, Ca'), satir('Tuz')].map((x) => x.trim()).join('|');
+    o.d1Uyari = !document.querySelector('#tkEksik') + '|' + !document.querySelector('#tkToplam');
+    g.value = '100'; DA.live.blsGram(g);
+    ac(2);
+    o.grupBos = /Yağ asitleri ve kolesterol veri yok/.test(document.querySelector('#blsDeger').textContent) &&
+      satir('Yağ asidi 4:0 (bütirik asit)').indexOf('satır yok') >= 0;
+    ac(4);
+    o.d4 = /protein ve yağ ölçülmemiş/.test((document.querySelector('#tkEksik') || {}).textContent || '');
+    ac(5);
+    o.d5 = /toplamı 100 g’da 126 g/.test((document.querySelector('#tkToplam') || {}).textContent || '') &&
+      !!document.querySelector('#tkToplam a[href="#/daha/kaynaknot?e=turkomp"]');
+    ac(6);
+    o.d6 = !document.querySelector('#tkToplam');
+    /* Sorgusuz liste de 1 ile başlar; uygulanmayan parametre fark edilsin diye 1 olmayan bir sonuç */
+    location.hash = 'turkomp?q=sakatat'; DA.render(false);
+    o.param = (document.querySelector('#blsListe a.li') || { getAttribute: () => '' }).getAttribute('href');
+    location.hash = 'ara'; DA.render(false);
+    const ga = document.querySelector('input[data-live=gSearch]'); ga.value = 'domates'; DA.live.gSearch(ga);
+    o.genel = !!document.querySelector('#gOut a[href="#/turkomp?q=domates"]');
+    return o;
+  }, tkDosya);
+  uiEkle('TürKomp: yüklenmemişken boş durum ve dosya seçici', true, tkBos);
+  uiEkle('TürKomp: dosyadan içe aktarma', '7 besin', tk.say);
+  uiEkle('TürKomp: öge sırası türe göre, tanınmayan sonda',
+    'enerji_kcal,su,protein,yag_toplam,karbonhidrat,kul,yag_asidi_4_0_butirik_asit,yag_asidi_18_2_n_6_cis_cis,tuz,kalsiyum_ca,yeni_oge|diger',
+    tk.oge + '|' + tk.grupSon);
+  uiEkle('TürKomp denetimi: kaynak, metin, eksi, tanımsız öge, yinelenen kimlik, ters aralık, kimlik, anahtar; sağlam dosya',
+    'red,red,red,red,red,red,red,red,kabul', tk.denetim);
+  uiEkle('TürKomp arama: baş eşleşmesi, ana ad (virgül), Türkçe harfsiz, taze hâl önce', '1,2,7|3|3', tk.peynir + '|' + tk.sut + '|' + tk.deneme);
+  uiEkle('TürKomp: dosyadaki ad HTML olarak çalışmıyor', true, tk.xss);
+  uiEkle('TürKomp sıralama: kalsiyum 100 g’da, eksikler dışarıda', '#/turkomp/4 1000 mg | 4 besin', tk.caG);
+  uiEkle('TürKomp sıralama: 100 kcal başına (10 kcal altı dışarıda)', '#/turkomp/2 200 mg | 3 besin', tk.caKcal);
+  uiEkle('TürKomp: veri bankası seçici, grup süzgeci yok', true, tk.secici);
+  uiEkle('TürKomp ayrıntı: 50 g değer ve aralık', '250mg 200–300|1250mg', tk.d1);
+  uiEkle('TürKomp ayrıntı: sağlam besinde uyarı yok', 'true|true', tk.d1Uyari);
+  uiEkle('TürKomp ayrıntı: hiç ölçülmeyen grup tek satırda', true, tk.grupBos);
+  uiEkle('TürKomp ayrıntı: protein ve yağı ölçülmemiş besinde uyarı', true, tk.d4);
+  uiEkle('TürKomp ayrıntı: bileşen toplamı 126 g uyarısı ve kaynak notu', true, tk.d5);
+  uiEkle('TürKomp ayrıntı: 4 g sapmada uyarı yok (sınır 5 g)', true, tk.d6);
+  uiEkle('TürKomp: aramadan gelen kelime uygulanıyor', '#/turkomp/5', tk.param);
+  uiEkle('Genel arama TürKomp ekranına da yönlendiriyor', true, tk.genel);
+  /* bozuk dosya: reddedilir, cihazdaki veri değişmez */
+  await sayfa.evaluate(() => { location.hash = 'turkomp'; DA.render(false); });
+  await tkBekle('input[data-change=turkompDosya]');
+  await sayfa.setInputFiles('input[data-change=turkompDosya]', { name: 'bozuk.json', mimeType: 'application/json', buffer: Buffer.from('{bozuk') });
+  await tkBekle('#sheetBody .note.bad');
+  uiEkle('TürKomp: bozuk dosya reddediliyor, eski veri duruyor', 'true|7', await sayfa.evaluate(() =>
+    /geçerli bir JSON değil/.test(document.querySelector('#sheetBody .note.bad').textContent) + '|' + DA.data.turkomp.b.length));
+  await sayfa.evaluate(() => DA.closeSheet());
+  /* kalıcılık: sayfa yeniden açılınca IndexedDB'den gelir. Yalnız adres
+     çubuğuna aynı adresi yazmak (goto) sayfayı yenilemiyordu; bellekteki
+     veri ve son arama kalıyor, test cihazdan okumayı ölçmüyordu. */
+  await sayfa.reload({ waitUntil: 'networkidle' });
+  await tkBekle('#blsOut, input[data-change=turkompDosya]');
+  uiEkle('TürKomp: yeniden açılışta cihazdan okunuyor', '7 besin', await sayfa.evaluate(() =>
+    (document.querySelector('#blsSay') || { textContent: 'yüklenmedi' }).textContent));
+  /* silme: bellekten ve cihazdan. Veri yüklenemediyse düğme yoktur; test
+     zaman aşımıyla çökmek yerine başarısız olur. */
+  if (await sayfa.$('[data-act=turkompSil]')) {
+    await sayfa.click('[data-act=turkompSil]');
+    await sayfa.waitForFunction(() => !DA.data.turkomp);
+    await sayfa.reload({ waitUntil: 'networkidle' });
+    await tkBekle('#blsOut, .empty');
+    uiEkle('TürKomp: silinince cihazdan da gidiyor', true, await sayfa.evaluate(() =>
+      !DA.data.turkomp && /bu cihaza henüz yüklenmedi/.test(document.querySelector('#app').textContent)));
+  } else uiEkle('TürKomp: silinince cihazdan da gidiyor', 'silme düğmesi', 'yok (veri yüklenmemiş)');
 
   /* ---- çevrimdışı: yüklenen her dosya önbellekte ----
      Manifestteki maskable ikon önbellek listesinde yoktu. Yeni bir veri
